@@ -1,67 +1,67 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
-} from '@dnd-kit/sortable'
-import { Lock, Unlock, RotateCcw, Plus } from 'lucide-react'
-import { DraggableWidget } from './draggable-widget'
+import { useState, useEffect, useMemo } from 'react'
+import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout'
+import 'react-grid-layout/css/styles.css'
+import 'react-resizable/css/styles.css'
+import { Lock, Unlock, RotateCcw, Plus, X, GripVertical } from 'lucide-react'
 import { SectorPillBox } from './sector-pill-box'
 import { ThemesColumn } from './themes-column'
 import { TradingViewChart } from './tradingview-chart'
 import { WatchlistPanel } from './watchlist-panel'
 
-const STORAGE_KEY = 'trading-dashboard-widgets-v2'
+const ResponsiveGridLayout = WidthProvider(GridLayout)
 
-type WidgetSize = 'sm' | 'md' | 'lg' | 'xl' | 'full'
+const STORAGE_KEY = 'trading-dashboard-rgl-v1'
 
-interface WidgetConfig {
+type WidgetType =
+  | 'chart'
+  | 'watchlist'
+  | 'themes'
+  | 'sector-ai'
+  | 'sector-banking'
+  | 'sector-energy'
+  | 'sector-healthcare'
+  | 'sector-consumer'
+  | 'sector-semis'
+
+interface WidgetMeta {
   id: string
-  type:
-    | 'chart'
-    | 'watchlist'
-    | 'themes'
-    | 'sector-ai'
-    | 'sector-banking'
-    | 'sector-energy'
-    | 'sector-healthcare'
-    | 'sector-consumer'
-    | 'sector-semis'
+  type: WidgetType
   title: string
-  size: WidgetSize
 }
 
-const SIZE_CLASSES: Record<WidgetSize, string> = {
-  sm: 'col-span-12 md:col-span-3 row-span-2 min-h-[260px]',
-  md: 'col-span-12 md:col-span-4 row-span-2 min-h-[320px]',
-  lg: 'col-span-12 md:col-span-6 row-span-3 min-h-[400px]',
-  xl: 'col-span-12 md:col-span-8 row-span-4 min-h-[520px]',
-  full: 'col-span-12 row-span-4 min-h-[600px]',
+interface SavedState {
+  layout: Layout[]
+  widgets: WidgetMeta[]
 }
 
-const DEFAULT_LAYOUT: WidgetConfig[] = [
-  { id: 'sector-ai', type: 'sector-ai', title: 'AI & Tech', size: 'sm' },
-  { id: 'themes', type: 'themes', title: 'Themes', size: 'md' },
-  { id: 'watchlist', type: 'watchlist', title: 'Watchlist', size: 'sm' },
-  { id: 'sector-banking', type: 'sector-banking', title: 'Banking', size: 'sm' },
-  { id: 'sector-healthcare', type: 'sector-healthcare', title: 'Healthcare', size: 'sm' },
-  { id: 'sector-energy', type: 'sector-energy', title: 'Energy', size: 'sm' },
-  { id: 'chart', type: 'chart', title: 'Chart', size: 'full' },
-  { id: 'sector-consumer', type: 'sector-consumer', title: 'Consumer', size: 'md' },
-  { id: 'sector-semis', type: 'sector-semis', title: 'Semiconductors', size: 'md' },
+const ALL_WIDGETS: WidgetMeta[] = [
+  { id: 'sector-ai', type: 'sector-ai', title: 'AI & Tech' },
+  { id: 'themes', type: 'themes', title: 'Themes' },
+  { id: 'watchlist', type: 'watchlist', title: 'Watchlist' },
+  { id: 'sector-banking', type: 'sector-banking', title: 'Banking' },
+  { id: 'sector-healthcare', type: 'sector-healthcare', title: 'Healthcare' },
+  { id: 'sector-energy', type: 'sector-energy', title: 'Energy' },
+  { id: 'sector-consumer', type: 'sector-consumer', title: 'Consumer' },
+  { id: 'sector-semis', type: 'sector-semis', title: 'Semiconductors' },
+  { id: 'chart', type: 'chart', title: 'Chart' },
 ]
+
+// Default 12-col grid layout (rowHeight=60)
+const DEFAULT_LAYOUT: Layout[] = [
+  { i: 'sector-ai', x: 0, y: 0, w: 3, h: 5, minW: 2, minH: 3 },
+  { i: 'themes', x: 3, y: 0, w: 6, h: 10, minW: 3, minH: 4 },
+  { i: 'watchlist', x: 9, y: 0, w: 3, h: 10, minW: 2, minH: 4 },
+  { i: 'sector-banking', x: 0, y: 5, w: 3, h: 5, minW: 2, minH: 3 },
+  { i: 'sector-healthcare', x: 0, y: 10, w: 3, h: 5, minW: 2, minH: 3 },
+  { i: 'sector-energy', x: 3, y: 10, w: 3, h: 5, minW: 2, minH: 3 },
+  { i: 'sector-consumer', x: 6, y: 10, w: 3, h: 5, minW: 2, minH: 3 },
+  { i: 'sector-semis', x: 9, y: 10, w: 3, h: 5, minW: 2, minH: 3 },
+  { i: 'chart', x: 0, y: 15, w: 12, h: 9, minW: 4, minH: 5 },
+]
+
+const DEFAULT_WIDGETS: WidgetMeta[] = ALL_WIDGETS.slice()
 
 const SECTOR_DATA = {
   'sector-ai': {
@@ -132,7 +132,8 @@ interface WidgetGridProps {
 }
 
 export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) {
-  const [widgets, setWidgets] = useState<WidgetConfig[]>(DEFAULT_LAYOUT)
+  const [layout, setLayout] = useState<Layout[]>(DEFAULT_LAYOUT)
+  const [widgets, setWidgets] = useState<WidgetMeta[]>(DEFAULT_WIDGETS)
   const [isEditMode, setIsEditMode] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [hydrated, setHydrated] = useState(false)
@@ -142,9 +143,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
-        const parsed = JSON.parse(saved) as WidgetConfig[]
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setWidgets(parsed)
+        const parsed = JSON.parse(saved) as SavedState
+        if (parsed.layout && parsed.widgets) {
+          setLayout(parsed.layout)
+          setWidgets(parsed.widgets)
         }
       }
     } catch {
@@ -157,65 +159,56 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   useEffect(() => {
     if (!hydrated) return
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets))
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ layout, widgets } satisfies SavedState)
+      )
     } catch {
       // ignore
     }
-  }, [widgets, hydrated])
+  }, [layout, widgets, hydrated])
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    setWidgets((items) => {
-      const oldIndex = items.findIndex((w) => w.id === active.id)
-      const newIndex = items.findIndex((w) => w.id === over.id)
-      return arrayMove(items, oldIndex, newIndex)
-    })
+  const handleLayoutChange = (newLayout: Layout[]) => {
+    setLayout(newLayout)
   }
 
   const removeWidget = (id: string) => {
     setWidgets((items) => items.filter((w) => w.id !== id))
-  }
-
-  const cycleSize = (id: string) => {
-    const order: WidgetSize[] = ['sm', 'md', 'lg', 'xl', 'full']
-    setWidgets((items) =>
-      items.map((w) => {
-        if (w.id !== id) return w
-        const next = order[(order.indexOf(w.size) + 1) % order.length]
-        return { ...w, size: next }
-      })
-    )
+    setLayout((items) => items.filter((l) => l.i !== id))
   }
 
   const resetLayout = () => {
-    setWidgets(DEFAULT_LAYOUT)
+    setLayout(DEFAULT_LAYOUT)
+    setWidgets(DEFAULT_WIDGETS)
   }
 
-  const availableToAdd = DEFAULT_LAYOUT.filter(
-    (def) => !widgets.find((w) => w.id === def.id)
+  const availableToAdd = useMemo(
+    () => ALL_WIDGETS.filter((def) => !widgets.find((w) => w.id === def.id)),
+    [widgets]
   )
 
-  const addWidget = (config: WidgetConfig) => {
-    setWidgets((items) => [...items, config])
+  const addWidget = (meta: WidgetMeta) => {
+    const defaultLayoutItem = DEFAULT_LAYOUT.find((l) => l.i === meta.id) ?? {
+      i: meta.id,
+      x: 0,
+      y: Infinity, // drops at the bottom
+      w: 3,
+      h: 5,
+      minW: 2,
+      minH: 3,
+    }
+    setWidgets((items) => [...items, meta])
+    setLayout((items) => [...items, defaultLayoutItem])
     setShowAddMenu(false)
   }
 
-  const renderWidget = (widget: WidgetConfig) => {
+  const renderWidgetContent = (widget: WidgetMeta) => {
     if (widget.type === 'chart') {
       return <TradingViewChart ticker={selectedTicker} />
     }
     if (widget.type === 'watchlist') {
       return (
-        <WatchlistPanel
-          onSelectTicker={onSelectTicker}
-          selectedTicker={selectedTicker}
-        />
+        <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
       )
     }
     if (widget.type === 'themes') {
@@ -238,11 +231,17 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     return null
   }
 
+  // Filter layout to only contain items that match current widgets (defensive)
+  const visibleLayout = useMemo(
+    () => layout.filter((l) => widgets.some((w) => w.id === l.i)),
+    [layout, widgets]
+  )
+
   return (
     <div className="flex flex-col h-full">
-      {/* Edit toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/30 flex-shrink-0">
-        <div className="flex items-center gap-2">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border bg-card/30 flex-shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setIsEditMode((v) => !v)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono font-bold tracking-wider uppercase transition-colors border ${
@@ -292,10 +291,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           )}
         </div>
 
-        <div className="flex items-center gap-3 text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
+        <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
           {isEditMode ? (
             <span className="text-theme-green animate-pulse">
-              Drag widgets to reorder · Click size badge to resize
+              Drag header to move · Drag corner to resize
             </span>
           ) : (
             <span>{widgets.length} widgets active</span>
@@ -303,43 +302,74 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
         </div>
       </div>
 
-      {/* Widget grid */}
-      <div className="flex-1 overflow-y-auto bg-background">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
+      {/* Grid workspace */}
+      <div
+        className={`flex-1 overflow-y-auto bg-background ${isEditMode ? '' : 'rgl-locked'}`}
+      >
+        <ResponsiveGridLayout
+          className="layout"
+          layout={visibleLayout}
+          cols={12}
+          rowHeight={60}
+          margin={[10, 10]}
+          containerPadding={[12, 12]}
+          isDraggable={isEditMode}
+          isResizable={isEditMode}
+          draggableHandle=".widget-drag-handle"
+          compactType="vertical"
+          preventCollision={false}
+          onLayoutChange={handleLayoutChange}
+          // Required for SSR safety - WidthProvider handles measurement
         >
-          <SortableContext
-            items={widgets.map((w) => w.id)}
-            strategy={rectSortingStrategy}
-          >
-            <div className="grid grid-cols-12 auto-rows-[80px] gap-3 p-3">
-              {widgets.map((widget) => (
-                <DraggableWidget
-                  key={widget.id}
-                  id={widget.id}
-                  title={widget.title}
-                  isEditMode={isEditMode}
-                  onRemove={removeWidget}
-                  className={SIZE_CLASSES[widget.size]}
-                >
-                  {/* Size cycler badge in edit mode */}
+          {widgets.map((widget) => (
+            <div
+              key={widget.id}
+              className={`relative bg-card/40 border rounded-lg overflow-hidden flex flex-col ${
+                isEditMode
+                  ? 'border-theme-green/40 border-dashed'
+                  : 'border-border'
+              }`}
+            >
+              {/* Header strip - drag handle in edit mode */}
+              <div
+                className={`widget-drag-handle flex items-center justify-between px-2 py-1 border-b transition-colors flex-shrink-0 ${
+                  isEditMode
+                    ? 'bg-theme-green/10 border-theme-green/30 cursor-grab active:cursor-grabbing'
+                    : 'bg-card/60 border-border'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold tracking-widest uppercase">
                   {isEditMode && (
-                    <button
-                      onClick={() => cycleSize(widget.id)}
-                      className="absolute bottom-2 right-2 z-20 px-2 py-0.5 bg-theme-gold/20 text-theme-gold text-[9px] font-mono font-bold tracking-widest uppercase border border-theme-gold/40 rounded hover:bg-theme-gold/30"
-                      title="Cycle widget size"
-                    >
-                      {widget.size}
-                    </button>
+                    <GripVertical className="w-3 h-3 text-theme-green" />
                   )}
-                  {renderWidget(widget)}
-                </DraggableWidget>
-              ))}
+                  <span
+                    className={isEditMode ? 'text-theme-green' : 'text-muted-foreground'}
+                  >
+                    {widget.title}
+                  </span>
+                </div>
+                {isEditMode && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeWidget(widget.id)
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="p-0.5 rounded text-theme-red hover:bg-theme-red/20 border border-transparent hover:border-theme-red/40"
+                    title="Remove widget"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                {renderWidgetContent(widget)}
+              </div>
             </div>
-          </SortableContext>
-        </DndContext>
+          ))}
+        </ResponsiveGridLayout>
       </div>
     </div>
   )
