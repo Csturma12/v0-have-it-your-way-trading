@@ -233,7 +233,7 @@ export function CrossSectorThemes({ onSelectTheme }: CrossSectorThemesProps) {
             <div
               key={theme.id}
               className={`
-                relative rounded-lg border bg-card p-5 cursor-pointer
+                relative rounded border bg-card/50 backdrop-blur-sm p-5 cursor-pointer
                 transition-all duration-200 group
                 ${styles.border}
               `}
@@ -258,15 +258,20 @@ export function CrossSectorThemes({ onSelectTheme }: CrossSectorThemesProps) {
               </p>
 
               {/* Ticker pills */}
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {theme.tickers_list.map((ticker) => (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {theme.tickers_list.slice(0, 6).map((ticker) => (
                   <span
                     key={ticker}
-                    className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold border ${styles.pill}`}
+                    className={`inline-flex items-center px-2.5 py-1 rounded-sm text-[10px] font-mono font-semibold border ${styles.pill}`}
                   >
                     {ticker}
                   </span>
                 ))}
+                {theme.tickers_list.length > 6 && (
+                  <span className="inline-flex items-center px-2.5 py-1 text-[10px] font-mono text-muted-foreground/60">
+                    +{theme.tickers_list.length - 6}
+                  </span>
+                )}
               </div>
 
               {/* Footer stats */}

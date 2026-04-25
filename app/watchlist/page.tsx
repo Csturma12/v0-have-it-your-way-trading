@@ -1,7 +1,7 @@
 'use client'
 
 import { WatchlistAnalyzer } from '@/components/watchlist-analyzer'
-import { CrossSectorThemes } from '@/components/cross-sector-themes'
+import { ThemesAndSectors } from '@/components/themes-and-sectors'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { BarChart3, AlertTriangle, ArrowLeft } from 'lucide-react'
@@ -74,9 +74,9 @@ export default function WatchlistPage() {
           </div>
         </div>
 
-        {/* Cross-Sector Themes */}
+        {/* Themes & Sectors Section */}
         <div className="max-w-7xl mx-auto mt-16 pb-16">
-          <CrossSectorThemes />
+          <ThemesAndSectors />
         </div>
       </main>
     </div>

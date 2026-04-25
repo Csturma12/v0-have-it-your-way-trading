@@ -7,7 +7,7 @@ import { SignalCard } from '@/components/signal-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TrendingUp, AlertTriangle, BarChart3 } from 'lucide-react'
-import { CrossSectorThemes } from '@/components/cross-sector-themes'
+import { ThemesAndSectors } from '@/components/themes-and-sectors'
 
 interface TradingSignal {
   ticker: string
@@ -144,11 +144,10 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Cross-Sector Themes */}
+        {/* Themes & Sectors Section */}
         <div className="max-w-7xl mx-auto mt-16 pb-16">
-          <CrossSectorThemes
+          <ThemesAndSectors
             onSelectTheme={(tickers) => {
-              // future: populate watchlist with theme tickers
               console.log('[v0] Theme tickers selected:', tickers)
             }}
           />
