@@ -21,6 +21,12 @@ interface TradingSignal {
 }
 
 interface AnalysisResult {
+  scanner_summary: {
+    market_bias: string
+    best_opportunity: string
+    risk_level: string
+    notes: string
+  }
   signals: TradingSignal[]
   total_analyzed: number
   total_returned: number
@@ -139,9 +145,33 @@ export function WatchlistAnalyzer() {
 
       {/* Results Section */}
       {result && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Market Summary */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="p-4 bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-lg">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Market Bias</p>
+              <p className="text-lg font-semibold text-blue-700 capitalize">
+                {result.scanner_summary.market_bias}
+              </p>
+            </div>
+            <div className="p-4 bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-lg">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Best Opportunity</p>
+              <p className="text-sm font-semibold text-green-700">{result.scanner_summary.best_opportunity}</p>
+            </div>
+            <div className="p-4 bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-lg">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Risk Level</p>
+              <p className="text-lg font-semibold text-orange-700 capitalize">
+                {result.scanner_summary.risk_level}
+              </p>
+            </div>
+            <div className="p-4 bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20 rounded-lg">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Scanner Notes</p>
+              <p className="text-sm text-purple-700">{result.scanner_summary.notes}</p>
+            </div>
+          </div>
+
           {/* Summary Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-muted/50 rounded-lg">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-muted/50 rounded-lg border border-border">
             <div>
               <p className="text-xs text-muted-foreground">Total Analyzed</p>
               <p className="text-lg font-semibold">{result.total_analyzed}</p>
@@ -175,7 +205,7 @@ export function WatchlistAnalyzer() {
             <div className="space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <Upload className="w-4 h-4" />
-                Ranked Trading Signals
+                Ranked Trading Signals ({result.signals.length})
               </h3>
               <div className="grid gap-3">
                 {result.signals.map((signal, idx) => (
