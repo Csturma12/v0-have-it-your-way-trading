@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout'
+import GridLayout, { type Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import { Lock, Unlock, RotateCcw, Plus, X, GripVertical } from 'lucide-react'
@@ -9,8 +9,6 @@ import { SectorPillBox } from './sector-pill-box'
 import { ThemesColumn } from './themes-column'
 import { TradingViewChart } from './tradingview-chart'
 import { WatchlistPanel } from './watchlist-panel'
-
-const ResponsiveGridLayout = WidthProvider(GridLayout)
 
 const STORAGE_KEY = 'trading-dashboard-rgl-v3'
 
@@ -319,7 +317,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
       <div
         className={`flex-1 overflow-y-auto bg-background ${isEditMode ? '' : 'rgl-locked'}`}
       >
-        <ResponsiveGridLayout
+        <GridLayout
           className="layout"
           layout={visibleLayout}
           cols={12}
@@ -333,7 +331,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           compactType="vertical"
           preventCollision={false}
           onLayoutChange={handleLayoutChange}
-          // Required for SSR safety - WidthProvider handles measurement
+          width={1200}
         >
           {widgets.map((widget) => (
             <div
@@ -383,7 +381,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
               </div>
             </div>
           ))}
-        </ResponsiveGridLayout>
+        </GridLayout>
       </div>
     </div>
   )
