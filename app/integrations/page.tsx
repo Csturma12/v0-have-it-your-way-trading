@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { MarketDataSelector } from '@/components/dashboard/market-data-selector'
 
 interface BrokerageConfig {
   id: string
@@ -438,6 +439,11 @@ export default function IntegrationsPage() {
               </p>
             </div>
           </div>
+        </section>
+
+        {/* Market Data Sources */}
+        <section className="mt-10 p-6 rounded-lg border border-border bg-card/30">
+          <MarketDataSelector />
         </section>
       </main>
     </div>
