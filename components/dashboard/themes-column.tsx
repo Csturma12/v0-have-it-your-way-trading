@@ -209,13 +209,13 @@ export function ThemesColumn({ onSelectTicker }: ThemesColumnProps) {
   })
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="p-2 h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-bold tracking-wide text-foreground font-mono uppercase">
+      <div className="flex items-center justify-between mb-2 px-1 sticky top-0 bg-card/95 backdrop-blur-sm py-1 z-10">
+        <h2 className="text-[11px] font-bold tracking-wide text-foreground font-mono uppercase">
           Themes
         </h2>
-        <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-[9px] font-mono tracking-widest text-muted-foreground">
           {(['ALL', 'CROSS-SECTOR', 'EVENT-DRIVEN'] as const).map((f) => (
             <button
               key={f}
@@ -230,8 +230,8 @@ export function ThemesColumn({ onSelectTicker }: ThemesColumnProps) {
         </div>
       </div>
 
-      {/* Theme cards (vertical stack) */}
-      <div className="space-y-3">
+      {/* Theme cards (responsive 2-col grid for bottom-left quadrant) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {filtered.map((theme) => (
           <ThemePillCard key={theme.id} theme={theme} onSelectTicker={onSelectTicker} />
         ))}
@@ -252,37 +252,37 @@ function ThemePillCard({
   const Icon = theme.icon
 
   return (
-    <div className={`rounded-lg border ${styles.border} ${styles.bg} overflow-hidden`}>
+    <div className={`rounded-md border ${styles.border} ${styles.bg} overflow-hidden`}>
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-white/5 transition-colors"
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <Icon className={`w-4 h-4 flex-shrink-0 ${styles.text}`} />
-          <span className="text-sm font-bold text-foreground truncate">{theme.name}</span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Icon className={`w-3 h-3 flex-shrink-0 ${styles.text}`} />
+          <span className="text-[11px] font-bold text-foreground truncate">{theme.name}</span>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={`text-[10px] font-mono font-semibold tracking-wider ${styles.text}`}>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className={`text-[9px] font-mono font-semibold tracking-wider ${styles.text}`}>
             {theme.tickers}
           </span>
           {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            <ChevronUp className="w-3 h-3 text-muted-foreground" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            <ChevronDown className="w-3 h-3 text-muted-foreground" />
           )}
         </div>
       </button>
 
       {isExpanded && (
-        <div className="px-3 pb-3 space-y-3">
+        <div className="px-2 pb-2 space-y-1.5">
           {/* Ticker pills */}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {theme.tickers_list.map((ticker) => (
               <button
                 key={ticker}
                 onClick={() => onSelectTicker?.(ticker)}
-                className={`px-2 py-1 rounded text-[11px] font-mono font-semibold border transition-colors cursor-pointer ${styles.pill}`}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border transition-colors cursor-pointer ${styles.pill}`}
               >
                 {ticker}
               </button>
@@ -290,26 +290,26 @@ function ThemePillCard({
           </div>
 
           {/* Alerts */}
-          <div className="border-t border-border/30 pt-2 space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <ArrowUpRight className={`w-3 h-3 ${styles.text}`} />
-              <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase">
-                Conviction Alerts
+          <div className="border-t border-border/30 pt-1.5 space-y-1">
+            <div className="flex items-center gap-1">
+              <ArrowUpRight className={`w-2.5 h-2.5 ${styles.text}`} />
+              <span className="text-[9px] font-mono tracking-wider text-muted-foreground uppercase">
+                Alerts
               </span>
             </div>
             {theme.alerts.map((alert, idx) => (
               <button
                 key={idx}
                 onClick={() => onSelectTicker?.(alert.ticker)}
-                className="w-full text-left p-2 rounded bg-card/50 border border-border/30 hover:border-border/60 transition-colors"
+                className="w-full text-left p-1.5 rounded bg-card/50 border border-border/30 hover:border-border/60 transition-colors"
               >
                 <div className="flex items-center justify-between mb-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-foreground">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[11px] font-mono font-bold text-foreground">
                       {alert.ticker}
                     </span>
                     <span
-                      className={`text-[9px] px-1.5 py-0 rounded font-mono font-bold ${
+                      className={`text-[8px] px-1 py-0 rounded font-mono font-bold ${
                         alert.signal === 'BUY'
                           ? 'bg-theme-green/15 text-theme-green'
                           : 'bg-theme-red/15 text-theme-red'
@@ -319,7 +319,7 @@ function ThemePillCard({
                     </span>
                   </div>
                   <span
-                    className={`text-[10px] font-mono font-bold ${
+                    className={`text-[9px] font-mono font-bold flex-shrink-0 ${
                       alert.confidence >= 0.85
                         ? 'text-theme-green'
                         : alert.confidence >= 0.75
@@ -330,7 +330,7 @@ function ThemePillCard({
                     {(alert.confidence * 100).toFixed(0)}%
                   </span>
                 </div>
-                <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-1">
+                <p className="text-[9px] text-muted-foreground leading-tight line-clamp-1">
                   {alert.reason}
                 </p>
               </button>
