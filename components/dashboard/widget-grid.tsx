@@ -12,7 +12,12 @@ import { WatchlistPanel } from './watchlist-panel'
 
 const ResponsiveGridLayout = WidthProvider(GridLayout)
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v2'
+const STORAGE_KEY = 'trading-dashboard-rgl-v3'
+
+// Resize from any side or corner: north, south, east, west + 4 corners
+const ALL_RESIZE_HANDLES: Array<'s' | 'w' | 'e' | 'n' | 'sw' | 'nw' | 'se' | 'ne'> = [
+  's', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne',
+]
 
 type WidgetType =
   | 'chart'
@@ -302,7 +307,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
         <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
           {isEditMode ? (
             <span className="text-theme-green animate-pulse">
-              Drag header to move · Drag corner to resize
+              Drag header to move · Drag any edge or corner to resize
             </span>
           ) : (
             <span>{widgets.length} widgets active</span>
@@ -323,6 +328,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           containerPadding={[10, 10]}
           isDraggable={isEditMode}
           isResizable={isEditMode}
+          resizeHandles={ALL_RESIZE_HANDLES}
           draggableHandle=".widget-drag-handle"
           compactType="vertical"
           preventCollision={false}
