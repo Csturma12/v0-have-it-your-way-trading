@@ -57,31 +57,31 @@ export function SectorPillBox({ title, accent, tickers, alerts, onSelectTicker }
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-white/5 transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${styles.text} bg-current`} />
-          <span className="text-sm font-bold font-mono tracking-wide text-foreground">{title}</span>
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-border/50 text-muted-foreground">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className={`w-1.5 h-1.5 rounded-full ${styles.text} bg-current flex-shrink-0`} />
+          <span className="text-[11px] font-bold font-mono tracking-wide text-foreground truncate">{title}</span>
+          <Badge variant="outline" className="text-[9px] px-1 py-0 border-border/50 text-muted-foreground flex-shrink-0">
             {tickers.length}
           </Badge>
         </div>
         {isExpanded ? (
-          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          <ChevronUp className="w-3 h-3 text-muted-foreground flex-shrink-0" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
         )}
       </button>
 
       {isExpanded && (
-        <div className="px-3 pb-3 space-y-3">
+        <div className="px-2 pb-2 space-y-2">
           {/* Trending Tickers */}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {tickers.map((ticker) => (
               <button
                 key={ticker}
                 onClick={() => onSelectTicker?.(ticker)}
-                className={`px-2 py-1 rounded text-[11px] font-mono font-semibold border transition-colors cursor-pointer ${styles.pill}`}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border transition-colors cursor-pointer ${styles.pill}`}
               >
                 {ticker}
               </button>
@@ -89,47 +89,47 @@ export function SectorPillBox({ title, accent, tickers, alerts, onSelectTicker }
           </div>
 
           {/* Alerts Section */}
-          <div className="border-t border-border/30 pt-3">
-            <div className="flex items-center gap-1.5 mb-2">
-              <AlertCircle className={`w-3 h-3 ${styles.text}`} />
-              <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase">
-                HIGH CONVICTION ALERTS
+          <div className="border-t border-border/30 pt-2">
+            <div className="flex items-center gap-1 mb-1.5">
+              <AlertCircle className={`w-2.5 h-2.5 ${styles.text}`} />
+              <span className="text-[9px] font-mono tracking-wider text-muted-foreground uppercase">
+                ALERTS
               </span>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {alerts.map((alert, idx) => (
                 <button
                   key={idx}
                   onClick={() => onSelectTicker?.(alert.ticker)}
-                  className="w-full text-left p-2 rounded bg-card/50 border border-border/30 hover:border-border/60 transition-colors"
+                  className="w-full text-left p-1.5 rounded bg-card/50 border border-border/30 hover:border-border/60 transition-colors"
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-foreground">{alert.ticker}</span>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[11px] font-mono font-bold text-foreground">{alert.ticker}</span>
                       <Badge
                         variant="outline"
-                        className={`text-[9px] px-1.5 py-0 ${
+                        className={`text-[8px] px-1 py-0 ${
                           alert.signal === 'BUY'
                             ? 'bg-green-500/10 text-green-400 border-green-500/30'
                             : 'bg-red-500/10 text-red-400 border-red-500/30'
                         }`}
                       >
                         {alert.signal === 'BUY' ? (
-                          <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
+                          <TrendingUp className="w-2 h-2 mr-0.5" />
                         ) : (
-                          <TrendingDown className="w-2.5 h-2.5 mr-0.5" />
+                          <TrendingDown className="w-2 h-2 mr-0.5" />
                         )}
                         {alert.signal}
                       </Badge>
                     </div>
-                    <span className={`text-[10px] font-mono font-bold ${
+                    <span className={`text-[9px] font-mono font-bold flex-shrink-0 ${
                       alert.confidence >= 0.85 ? 'text-green-400' :
                       alert.confidence >= 0.75 ? 'text-theme-gold' : 'text-orange-400'
                     }`}>
                       {(alert.confidence * 100).toFixed(0)}%
                     </span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-1">
+                  <p className="text-[9px] text-muted-foreground leading-tight line-clamp-1">
                     {alert.reason}
                   </p>
                 </button>

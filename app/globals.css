@@ -122,32 +122,134 @@
   user-select: none;
 }
 
-/* Resize handle - bottom-right corner */
+/* ============================================================
+   Resize handles — all 8 sides (n, s, e, w + 4 corners)
+   ============================================================ */
 .react-resizable-handle {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  bottom: 0;
-  right: 0;
-  cursor: se-resize;
   background-image: none;
   z-index: 10;
+  opacity: 0;
+  transition: opacity 150ms ease, background 150ms ease;
 }
-.react-resizable-handle::after {
+.react-grid-item:hover .react-resizable-handle {
+  opacity: 0.7;
+}
+.react-grid-item .react-resizable-handle:hover {
+  opacity: 1;
+}
+
+/* ---------- Edge handles (full length, thin) ---------- */
+.react-resizable-handle-n,
+.react-resizable-handle-s {
+  left: 12px;
+  right: 12px;
+  height: 8px;
+  cursor: ns-resize;
+}
+.react-resizable-handle-n { top: -2px; }
+.react-resizable-handle-s { bottom: -2px; }
+
+.react-resizable-handle-e,
+.react-resizable-handle-w {
+  top: 12px;
+  bottom: 12px;
+  width: 8px;
+  cursor: ew-resize;
+}
+.react-resizable-handle-e { right: -2px; }
+.react-resizable-handle-w { left: -2px; }
+
+/* Edge handle indicators (thin green line on hover) */
+.react-resizable-handle-n::after,
+.react-resizable-handle-s::after {
   content: '';
   position: absolute;
-  right: 4px;
-  bottom: 4px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--theme-green);
+  border-radius: 1px;
+}
+.react-resizable-handle-n::after { top: 3px; }
+.react-resizable-handle-s::after { bottom: 3px; }
+
+.react-resizable-handle-e::after,
+.react-resizable-handle-w::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--theme-green);
+  border-radius: 1px;
+}
+.react-resizable-handle-e::after { right: 3px; }
+.react-resizable-handle-w::after { left: 3px; }
+
+/* ---------- Corner handles (square, with diagonal cursor) ---------- */
+.react-resizable-handle-se,
+.react-resizable-handle-sw,
+.react-resizable-handle-ne,
+.react-resizable-handle-nw {
+  width: 16px;
+  height: 16px;
+  z-index: 11;
+}
+.react-resizable-handle-se { bottom: 0; right: 0; cursor: se-resize; }
+.react-resizable-handle-sw { bottom: 0; left: 0; cursor: sw-resize; }
+.react-resizable-handle-ne { top: 0; right: 0; cursor: ne-resize; }
+.react-resizable-handle-nw { top: 0; left: 0; cursor: nw-resize; }
+
+/* Corner handle indicators (small L-shaped corner brackets) */
+.react-resizable-handle-se::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
   width: 8px;
   height: 8px;
   border-right: 2px solid var(--theme-green);
   border-bottom: 2px solid var(--theme-green);
-  opacity: 0.6;
-  transition: opacity 150ms ease;
 }
-.react-grid-item:hover .react-resizable-handle::after {
-  opacity: 1;
+.react-resizable-handle-sw::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-left: 2px solid var(--theme-green);
+  border-bottom: 2px solid var(--theme-green);
 }
+.react-resizable-handle-ne::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--theme-green);
+  border-top: 2px solid var(--theme-green);
+}
+.react-resizable-handle-nw::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 8px;
+  height: 8px;
+  border-left: 2px solid var(--theme-green);
+  border-top: 2px solid var(--theme-green);
+}
+
+/* Active state - brighten when actively resizing */
+.react-grid-item.resizing .react-resizable-handle::after {
+  background: var(--theme-green);
+  border-color: var(--theme-green);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
 /* Hide handles when not in edit mode */
 .rgl-locked .react-resizable-handle {
   display: none;

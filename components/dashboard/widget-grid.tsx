@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout'
+import GridLayout, { type Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import { Lock, Unlock, RotateCcw, Plus, X, GripVertical } from 'lucide-react'
@@ -10,9 +10,12 @@ import { ThemesColumn } from './themes-column'
 import { TradingViewChart } from './tradingview-chart'
 import { WatchlistPanel } from './watchlist-panel'
 
-const ResponsiveGridLayout = WidthProvider(GridLayout)
+const STORAGE_KEY = 'trading-dashboard-rgl-v3'
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v1'
+// Resize from any side or corner: north, south, east, west + 4 corners
+const ALL_RESIZE_HANDLES: Array<'s' | 'w' | 'e' | 'n' | 'sw' | 'nw' | 'se' | 'ne'> = [
+  's', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne',
+]
 
 type WidgetType =
   | 'chart'
@@ -48,17 +51,25 @@ const ALL_WIDGETS: WidgetMeta[] = [
   { id: 'chart', type: 'chart', title: 'Chart' },
 ]
 
-// Default 12-col grid layout (rowHeight=60)
+// Default 12-col grid - 2x2 quadrant layout (rowHeight=48)
+// Top-left quarter: 2 cols x 2 sectors stacked (sectors 1-4)
+// Top-right quarter: 2 cols x sectors + watchlist (sectors 5-6 + watchlist)
+// Bottom-left quarter: themes (2-column internal grid)
+// Bottom-right quarter: chart
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'sector-ai', x: 0, y: 0, w: 3, h: 5, minW: 2, minH: 3 },
-  { i: 'themes', x: 3, y: 0, w: 6, h: 10, minW: 3, minH: 4 },
-  { i: 'watchlist', x: 9, y: 0, w: 3, h: 10, minW: 2, minH: 4 },
-  { i: 'sector-banking', x: 0, y: 5, w: 3, h: 5, minW: 2, minH: 3 },
-  { i: 'sector-healthcare', x: 0, y: 10, w: 3, h: 5, minW: 2, minH: 3 },
-  { i: 'sector-energy', x: 3, y: 10, w: 3, h: 5, minW: 2, minH: 3 },
-  { i: 'sector-consumer', x: 6, y: 10, w: 3, h: 5, minW: 2, minH: 3 },
-  { i: 'sector-semis', x: 9, y: 10, w: 3, h: 5, minW: 2, minH: 3 },
-  { i: 'chart', x: 0, y: 15, w: 12, h: 9, minW: 4, minH: 5 },
+  // === TOP-LEFT QUADRANT === (cols 0-5, rows 0-11)
+  { i: 'sector-ai', x: 0, y: 0, w: 3, h: 6, minW: 2, minH: 3 },
+  { i: 'sector-banking', x: 0, y: 6, w: 3, h: 6, minW: 2, minH: 3 },
+  { i: 'sector-energy', x: 3, y: 0, w: 3, h: 6, minW: 2, minH: 3 },
+  { i: 'sector-healthcare', x: 3, y: 6, w: 3, h: 6, minW: 2, minH: 3 },
+  // === TOP-RIGHT QUADRANT === (cols 6-11, rows 0-11)
+  { i: 'sector-consumer', x: 6, y: 0, w: 3, h: 6, minW: 2, minH: 3 },
+  { i: 'sector-semis', x: 6, y: 6, w: 3, h: 6, minW: 2, minH: 3 },
+  { i: 'watchlist', x: 9, y: 0, w: 3, h: 12, minW: 2, minH: 4 },
+  // === BOTTOM-LEFT QUADRANT === (cols 0-5, rows 12-23)
+  { i: 'themes', x: 0, y: 12, w: 6, h: 12, minW: 3, minH: 4 },
+  // === BOTTOM-RIGHT QUADRANT === (cols 6-11, rows 12-23)
+  { i: 'chart', x: 6, y: 12, w: 6, h: 12, minW: 4, minH: 5 },
 ]
 
 const DEFAULT_WIDGETS: WidgetMeta[] = ALL_WIDGETS.slice()
@@ -217,7 +228,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     const sector = SECTOR_DATA[widget.type as keyof typeof SECTOR_DATA]
     if (sector) {
       return (
-        <div className="p-3 h-full overflow-y-auto">
+        <div className="p-2 h-full overflow-y-auto">
           <SectorPillBox
             title={sector.title}
             accent={sector.accent}
@@ -294,7 +305,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
         <div className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
           {isEditMode ? (
             <span className="text-theme-green animate-pulse">
-              Drag header to move · Drag corner to resize
+              Drag header to move · Drag any edge or corner to resize
             </span>
           ) : (
             <span>{widgets.length} widgets active</span>
@@ -306,20 +317,21 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
       <div
         className={`flex-1 overflow-y-auto bg-background ${isEditMode ? '' : 'rgl-locked'}`}
       >
-        <ResponsiveGridLayout
+        <GridLayout
           className="layout"
           layout={visibleLayout}
           cols={12}
-          rowHeight={60}
-          margin={[10, 10]}
-          containerPadding={[12, 12]}
+          rowHeight={48}
+          margin={[8, 8]}
+          containerPadding={[10, 10]}
           isDraggable={isEditMode}
           isResizable={isEditMode}
+          resizeHandles={ALL_RESIZE_HANDLES}
           draggableHandle=".widget-drag-handle"
           compactType="vertical"
           preventCollision={false}
           onLayoutChange={handleLayoutChange}
-          // Required for SSR safety - WidthProvider handles measurement
+          width={1200}
         >
           {widgets.map((widget) => (
             <div
@@ -369,7 +381,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
               </div>
             </div>
           ))}
-        </ResponsiveGridLayout>
+        </GridLayout>
       </div>
     </div>
   )
