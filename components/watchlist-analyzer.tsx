@@ -3,35 +3,91 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { SignalCard } from '@/components/signal-card'
-import { AlertCircle, Upload } from 'lucide-react'
-
-interface TradingSignal {
-  ticker: string
-  action: 'BUY' | 'SELL' | 'NO TRADE'
-  setup: 'BREAKOUT' | 'PULLBACK' | 'REVERSAL' | 'MOMENTUM' | 'NO SETUP'
-  confidence: number
-  entry: number | null
-  stop: number | null
-  target: number | null
-  risk_reward: number | null
-  reason: string
-  invalid_if: string
-}
+import { SignalsList, type TradingSignal, type ScannerSummary } from '@/components/signals-list'
+import { AlertCircle, FileJson } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 
 interface AnalysisResult {
-  scanner_summary: {
-    market_bias: string
-    best_opportunity: string
-    risk_level: string
-    notes: string
-  }
+  scanner_summary: ScannerSummary
   signals: TradingSignal[]
   total_analyzed: number
-  total_returned: number
-  tradable_signals: number
-  no_trade_signals: number
+}
+
+const EXAMPLE_PAYLOAD = {
+  timeframe: '15m',
+  market_session: 'regular',
+  account_context: {
+    paper_trading: true,
+    buying_power: 10000,
+    max_risk_per_trade_pct: 1,
+    max_position_value: 1000,
+  },
+  tickers: [
+    {
+      ticker: 'AAPL',
+      current_price: 185.42,
+      rsi_14: 61.3,
+      ema_9: 184.8,
+      ema_21: 183.9,
+      ema_50: 181.7,
+      vwap: 184.6,
+      atr_14: 2.15,
+      volume: 74200000,
+      avg_volume_20: 61500000,
+      trend: 'bullish',
+      above_vwap: true,
+      support: [183.5, 181.8],
+      resistance: [186.2, 188.9],
+    },
+    {
+      ticker: 'NVDA',
+      current_price: 912.5,
+      rsi_14: 68.7,
+      ema_9: 905.2,
+      ema_21: 893.4,
+      ema_50: 862.1,
+      vwap: 908.3,
+      atr_14: 18.4,
+      volume: 47800000,
+      avg_volume_20: 38200000,
+      trend: 'bullish',
+      above_vwap: true,
+      support: [895.0, 880.5],
+      resistance: [925.0, 940.0],
+    },
+    {
+      ticker: 'TSLA',
+      current_price: 242.1,
+      rsi_14: 72.5,
+      ema_9: 238.4,
+      ema_21: 229.8,
+      ema_50: 215.6,
+      vwap: 240.2,
+      atr_14: 8.9,
+      volume: 98500000,
+      avg_volume_20: 81300000,
+      trend: 'bullish',
+      above_vwap: true,
+      support: [235.0, 228.5],
+      resistance: [248.0, 255.0],
+    },
+    {
+      ticker: 'META',
+      current_price: 505.7,
+      rsi_14: 48.1,
+      ema_9: 508.2,
+      ema_21: 511.4,
+      ema_50: 498.7,
+      vwap: 507.3,
+      atr_14: 9.2,
+      volume: 18300000,
+      avg_volume_20: 17900000,
+      trend: 'bearish',
+      above_vwap: false,
+      support: [498.0, 492.5],
+      resistance: [510.0, 518.0],
+    },
+  ],
 }
 
 export function WatchlistAnalyzer() {
@@ -50,26 +106,23 @@ export function WatchlistAnalyzer() {
     setError(null)
 
     try {
-      const data = JSON.parse(input)
+      const parsed = JSON.parse(input)
       const response = await fetch('/api/watchlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tickers: data.tickers || data,
-          max_results: 10,
-        }),
+        body: JSON.stringify(parsed),
       })
 
-      const result = await response.json()
+      const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to analyze watchlist')
+        throw new Error(data.error || 'Failed to analyze watchlist')
       }
 
-      setResult(result)
+      setResult(data)
     } catch (err) {
       if (err instanceof SyntaxError) {
-        setError('Invalid JSON format. Please check your watchlist data.')
+        setError('Invalid JSON. Please check your formatting and try again.')
       } else {
         setError(err instanceof Error ? err.message : 'Something went wrong')
       }
@@ -80,159 +133,79 @@ export function WatchlistAnalyzer() {
   }
 
   const loadExample = () => {
-    const exampleData = {
-      timeframe: '15m',
-      market_session: 'regular',
-      account_context: {
-        paper_trading: true,
-        buying_power: 10000,
-        max_risk_per_trade_pct: 1,
-        max_position_value: 1000,
-      },
-      tickers: [
-        {
-          ticker: 'AAPL',
-          current_price: 185.42,
-          rsi_14: 61.3,
-          ema_9: 184.8,
-          ema_21: 183.9,
-          ema_50: 181.7,
-          vwap: 184.6,
-          atr_14: 2.15,
-          volume: 74200000,
-          avg_volume_20: 61500000,
-          trend: 'bullish',
-          above_vwap: true,
-          support: [183.5, 181.8],
-          resistance: [186.2, 188.9],
-        },
-      ],
-    }
-    setInput(JSON.stringify(exampleData, null, 2))
+    setInput(JSON.stringify(EXAMPLE_PAYLOAD, null, 2))
     setError(null)
   }
 
   return (
     <div className="w-full space-y-6">
-      {/* Input Section */}
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">Watchlist Data (JSON)</label>
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Paste your watchlist JSON here..."
-            className="font-mono text-xs h-64"
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <Button onClick={handleAnalyze} disabled={isLoading || !input.trim()} className="flex-1">
-            {isLoading ? 'Analyzing...' : 'Analyze Watchlist'}
-          </Button>
-          <Button variant="outline" onClick={loadExample} disabled={isLoading}>
+      {/* Input */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium">Watchlist JSON</label>
+          <Button variant="ghost" size="sm" onClick={loadExample} disabled={isLoading} className="text-xs gap-1.5">
+            <FileJson className="w-3.5 h-3.5" />
             Load Example
           </Button>
         </div>
+        <Textarea
+          value={input}
+          onChange={(e) => { setInput(e.target.value); setError(null) }}
+          placeholder={'{\n  "timeframe": "15m",\n  "tickers": [...]\n}'}
+          className="font-mono text-xs h-64 resize-none"
+          spellCheck={false}
+        />
 
         {error && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex gap-2">
-            <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
             <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
+
+        <Button
+          onClick={handleAnalyze}
+          disabled={isLoading || !input.trim()}
+          className="w-full"
+          size="lg"
+        >
+          {isLoading ? (
+            <><Spinner className="mr-2" />Analyzing...</>
+          ) : (
+            'Analyze Watchlist'
+          )}
+        </Button>
       </div>
 
-      {/* Results Section */}
-      {result && (
-        <div className="space-y-6">
-          {/* Market Summary */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div className="p-4 bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Market Bias</p>
-              <p className="text-lg font-semibold text-blue-700 capitalize">
-                {result.scanner_summary.market_bias}
-              </p>
-            </div>
-            <div className="p-4 bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Best Opportunity</p>
-              <p className="text-sm font-semibold text-green-700">{result.scanner_summary.best_opportunity}</p>
-            </div>
-            <div className="p-4 bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Risk Level</p>
-              <p className="text-lg font-semibold text-orange-700 capitalize">
-                {result.scanner_summary.risk_level}
-              </p>
-            </div>
-            <div className="p-4 bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20 rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Scanner Notes</p>
-              <p className="text-sm text-purple-700">{result.scanner_summary.notes}</p>
-            </div>
+      {/* Loading skeleton */}
+      {isLoading && (
+        <div className="space-y-3 animate-pulse">
+          <div className="h-28 bg-muted rounded-xl" />
+          <div className="grid grid-cols-3 gap-3">
+            <div className="h-16 bg-muted rounded-lg" />
+            <div className="h-16 bg-muted rounded-lg" />
+            <div className="h-16 bg-muted rounded-lg" />
           </div>
-
-          {/* Summary Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-muted/50 rounded-lg border border-border">
-            <div>
-              <p className="text-xs text-muted-foreground">Total Analyzed</p>
-              <p className="text-lg font-semibold">{result.total_analyzed}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Signals Returned</p>
-              <p className="text-lg font-semibold">{result.total_returned}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Tradable</p>
-              <Badge
-                variant="default"
-                className="bg-green-500/20 text-green-700 border-green-500/30 mt-1"
-              >
-                {result.tradable_signals}
-              </Badge>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">No Trade</p>
-              <Badge
-                variant="default"
-                className="bg-gray-500/20 text-gray-700 border-gray-500/30 mt-1"
-              >
-                {result.no_trade_signals}
-              </Badge>
-            </div>
-          </div>
-
-          {/* Ranked Signals */}
-          {result.signals.length > 0 ? (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Upload className="w-4 h-4" />
-                Ranked Trading Signals ({result.signals.length})
-              </h3>
-              <div className="grid gap-3">
-                {result.signals.map((signal, idx) => (
-                  <div key={`${signal.ticker}-${idx}`} className="relative">
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-primary/30 rounded-l" />
-                    <SignalCard signal={signal} rank={idx + 1} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="p-8 text-center border border-dashed border-border rounded-lg">
-              <p className="text-muted-foreground">No tradable signals found in watchlist.</p>
-            </div>
-          )}
+          <div className="h-20 bg-muted rounded-xl" />
+          <div className="h-20 bg-muted rounded-xl" />
+          <div className="h-20 bg-muted rounded-xl" />
         </div>
       )}
 
-      {/* Empty State */}
-      {!result && !error && !isLoading && (
-        <div className="p-8 text-center border border-dashed border-border rounded-lg bg-muted/20">
-          <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <h3 className="font-medium text-muted-foreground mb-1">Paste Watchlist Data</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Include technical indicators and market data for each ticker
+      {/* Results */}
+      {!isLoading && result && (
+        <SignalsList signals={result.signals} scanner_summary={result.scanner_summary} />
+      )}
+
+      {/* Empty state */}
+      {!isLoading && !result && !error && (
+        <div className="flex flex-col items-center justify-center min-h-[260px] p-8 text-center border border-dashed border-border rounded-xl bg-muted/20">
+          <FileJson className="w-10 h-10 text-muted-foreground/40 mb-3" />
+          <h3 className="font-medium text-foreground">Paste Watchlist JSON</h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-xs text-balance">
+            Include technical indicators (RSI, EMA, VWAP, ATR) and support/resistance for best results.
           </p>
-          <Button variant="outline" onClick={loadExample} size="sm">
+          <Button variant="outline" size="sm" onClick={loadExample} className="mt-4">
             Load Example Data
           </Button>
         </div>
