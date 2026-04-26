@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import GridLayout, { type Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
-import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check } from 'lucide-react'
+import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check, Trash2 } from 'lucide-react'
 import { SectorPillBox } from './sector-pill-box'
 import { ThemePillBox } from './theme-pill-box'
 import { TradingViewChart } from './tradingview-chart'
@@ -328,9 +328,9 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'chart',     x: 0, y: 0,  w: 8, h: 14 },
-  { i: 'watchlist', x: 8, y: 0,  w: 4, h: 14 },
-  { i: 'news',      x: 0, y: 14, w: 12, h: 10 },
+  { i: 'chart',     x: 0, y: 0,  w: 8, h: 10 },
+  { i: 'watchlist', x: 8, y: 0,  w: 4, h: 10 },
+  { i: 'news',      x: 0, y: 10, w: 12, h: 6 },
 ]
 
 interface SavedState {
@@ -351,8 +351,12 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [rightWidgets, setRightWidgets] = useState<RightWidget[]>(DEFAULT_RIGHT_WIDGETS)
   const [isEditMode, setIsEditMode] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
   const [wrapperWidth, setWrapperWidth] = useState(1200)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [savedLayouts, setSavedLayouts] = useState<Array<{ name: string; layout: Layout[]; widgets: RightWidget[] }>>([])
+  const [newLayoutName, setNewLayoutName] = useState('')
 
   // Track wrapper width for responsive grid
   useEffect(() => {
@@ -367,7 +371,20 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     return () => resizeObserver.disconnect()
   }, [])
 
-  // On mount: restore the widget list (which panels are visible) but ALWAYS
+  // Load saved layouts from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('saved-layouts')
+      if (saved) setSavedLayouts(JSON.parse(saved))
+    } catch { /* ignore */ }
+  }, [])
+
+  // Save layouts to localStorage whenever savedLayouts changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('saved-layouts', JSON.stringify(savedLayouts))
+    } catch { /* ignore */ }
+  }, [savedLayouts])
   // reset positions to DEFAULT_LAYOUT so the grid never drifts between sessions.
   useEffect(() => {
     try {
@@ -392,6 +409,32 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
       setLayoutSaved(true)
       setTimeout(() => setLayoutSaved(false), 2000)
     } catch { /* ignore */ }
+  }
+
+  // Save current layout with a custom name
+  const saveLayoutWithName = () => {
+    if (!newLayoutName.trim()) return
+    try {
+      setSavedLayouts(prev => [...prev, { name: newLayoutName, layout, widgets: rightWidgets }])
+      setNewLayoutName('')
+      setLayoutSaved(true)
+      setTimeout(() => setLayoutSaved(false), 2000)
+    } catch { /* ignore */ }
+  }
+
+  // Load a saved layout
+  const loadSavedLayout = (savedLayout: { name: string; layout: Layout[]; widgets: RightWidget[] }) => {
+    try {
+      setLayout(savedLayout.layout)
+      setRightWidgets(savedLayout.widgets)
+      setIsEditMode(false)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ layout: savedLayout.layout, rightWidgets: savedLayout.widgets, userSaved: true } satisfies SavedState))
+    } catch { /* ignore */ }
+  }
+
+  // Delete a saved layout
+  const deleteSavedLayout = (name: string) => {
+    setSavedLayouts(prev => prev.filter(l => l.name !== name))
   }
 
   // Persist widget visibility changes automatically (not position/size)
@@ -440,9 +483,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className={`flex h-full overflow-hidden ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
 
       {/* ── LEFT SIDEBAR: sectors + themes, scrollable ── */}
+      {!isFullscreen && (
       <aside className="w-[280px] flex-shrink-0 border-r border-border overflow-y-auto bg-card/20">
         <div className="p-1.5 space-y-1">
           {/* Sectors Header */}
@@ -478,74 +522,141 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           ))}
         </div>
       </aside>
+      )}
 
       {/* ── RIGHT AREA: toolbar + draggable/resizable grid ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* Toolbar */}
-        <div className="flex items-center gap-3 px-3 py-1.5 border-b border-border bg-card/30 flex-shrink-0">
-          <button
-            onClick={() => setIsEditMode(v => !v)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-mono font-bold tracking-wider uppercase transition-colors border ${
-              isEditMode
-                ? 'bg-green-500/20 text-green-400 border-green-500/40'
-                : 'bg-muted/50 text-muted-foreground border-border hover:text-foreground'
-            }`}
-          >
-            {isEditMode ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-            {isEditMode ? 'Editing' : 'Edit Layout'}
-          </button>
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-card/30 flex-shrink-0">
+          
+          {/* Widgets Dropdown Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowLayoutMenu(v => !v)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-mono font-bold tracking-wider uppercase transition-colors border bg-muted/50 text-muted-foreground border-border hover:text-foreground"
+            >
+              ⚙ Widgets
+            </button>
+            
+            {showLayoutMenu && (
+              <div className="absolute top-full mt-1 left-0 z-30 w-64 bg-card border border-border rounded-lg shadow-2xl">
+                {/* Edit Layout Option */}
+                <button
+                  onClick={() => { setIsEditMode(v => !v); setShowLayoutMenu(false) }}
+                  className="w-full text-left px-3 py-2 text-[10px] font-mono hover:bg-primary/10 border-b border-border flex items-center gap-2"
+                >
+                  {isEditMode ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                  {isEditMode ? 'Stop Editing' : 'Edit Layout'}
+                </button>
 
-          {isEditMode && (
-            <>
-              <button
-                onClick={resetLayout}
-                className="flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-mono text-muted-foreground hover:text-foreground bg-muted/50 border border-border"
-              >
-                <RotateCcw className="w-3 h-3" /> Reset
-              </button>
+                {isEditMode && (
+                  <>
+                    {/* Reset */}
+                    <button
+                      onClick={() => { resetLayout(); setShowLayoutMenu(false) }}
+                      className="w-full text-left px-3 py-2 text-[10px] font-mono hover:bg-red-500/10 hover:text-red-400 border-b border-border flex items-center gap-2"
+                    >
+                      <RotateCcw className="w-3 h-3" /> Reset to Default
+                    </button>
 
-              {availableToAdd.length > 0 && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowAddMenu(v => !v)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-mono text-green-400 bg-green-500/10 border border-green-500/30"
-                  >
-                    <Plus className="w-3 h-3" /> Add Widget
-                  </button>
-                  {showAddMenu && (
-                    <div className="absolute top-full mt-1 left-0 z-30 w-48 bg-card border border-border rounded-lg shadow-2xl">
-                      {availableToAdd.map(w => (
+                    {/* Add Widget */}
+                    {availableToAdd.length > 0 && (
+                      <button
+                        onClick={() => setShowAddMenu(v => !v)}
+                        className="w-full text-left px-3 py-2 text-[10px] font-mono hover:bg-green-500/10 hover:text-green-400 border-b border-border flex items-center gap-2"
+                      >
+                        <Plus className="w-3 h-3" /> Add Widget
+                      </button>
+                    )}
+
+                    {showAddMenu && (
+                      <div className="pl-3 border-b border-border">
+                        {availableToAdd.map(w => (
+                          <button
+                            key={w.id}
+                            onClick={() => { addWidget(w); setShowAddMenu(false); setShowLayoutMenu(false) }}
+                            className="w-full text-left px-3 py-1.5 text-[9px] font-mono hover:bg-green-500/10 hover:text-green-400"
+                          >
+                            + {w.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Save Current Layout */}
+                    <div className="px-3 py-2 border-b border-border">
+                      <div className="flex gap-1 mb-1">
+                        <input
+                          type="text"
+                          placeholder="Layout name..."
+                          value={newLayoutName}
+                          onChange={(e) => setNewLayoutName(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && saveLayoutWithName()}
+                          className="flex-1 h-5 text-[9px] font-mono bg-muted/30 border border-border/50 rounded px-1.5"
+                        />
                         <button
-                          key={w.id}
-                          onClick={() => addWidget(w)}
-                          className="w-full text-left px-3 py-2 text-[10px] font-mono hover:bg-green-500/10 hover:text-green-400 border-b border-border last:border-b-0"
+                          onClick={saveLayoutWithName}
+                          className="px-2 py-1 text-[9px] font-mono bg-primary/20 hover:bg-primary/30 border border-primary/30 rounded"
                         >
-                          + {w.title}
+                          Save
                         </button>
-                      ))}
+                      </div>
                     </div>
-                  )}
+
+                    {/* Saved Layouts */}
+                    {savedLayouts.length > 0 && (
+                      <>
+                        <div className="px-3 py-1.5 text-[8px] font-mono font-bold text-muted-foreground uppercase">
+                          Saved Layouts
+                        </div>
+                        {savedLayouts.map(saved => (
+                          <div key={saved.name} className="flex items-center gap-1 px-3 py-1.5 border-b border-border hover:bg-muted/20">
+                            <button
+                              onClick={() => { loadSavedLayout(saved); setShowLayoutMenu(false) }}
+                              className="flex-1 text-left text-[10px] font-mono hover:text-primary"
+                            >
+                              {saved.name}
+                            </button>
+                            <button
+                              onClick={() => deleteSavedLayout(saved.name)}
+                              className="text-muted-foreground hover:text-red-400"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {/* System Layouts */}
+                    <div className="px-3 py-1.5 text-[8px] font-mono font-bold text-muted-foreground uppercase border-t border-border">
+                      System Layouts
+                    </div>
+                    <button
+                      onClick={() => { resetLayout(); setShowLayoutMenu(false) }}
+                      className="w-full text-left px-3 py-1.5 text-[10px] font-mono hover:bg-muted/20 hover:text-primary"
+                    >
+                      Default Layout
+                    </button>
+                  </>
+                )}
+
+                <div className="border-t border-border px-3 py-1.5">
+                  <button
+                    onClick={() => setIsFullscreen(v => !v)}
+                    className="w-full flex items-center gap-2 text-left text-[10px] font-mono hover:text-primary"
+                  >
+                    {isFullscreen ? '⛶' : '⛶'} {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
+          </div>
 
-              <span className="text-[9px] font-mono text-muted-foreground">
-                Drag header to move &nbsp;|&nbsp; Drag any edge or corner to resize
-              </span>
-
-              <button
-                onClick={saveLayout}
-                className={`ml-auto flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-mono font-bold border transition-all ${
-                  layoutSaved
-                    ? 'bg-green-500/20 text-green-400 border-green-500/40'
-                    : 'bg-muted/50 text-muted-foreground border-border hover:text-foreground'
-                }`}
-              >
-                {layoutSaved ? <Check className="w-3 h-3" /> : <Save className="w-3 h-3" />}
-                {layoutSaved ? 'Saved' : 'Save Layout'}
-              </button>
-            </>
-          )}
+          <span className="text-[9px] font-mono text-muted-foreground">
+            Layout locked
+          </span>
         </div>
 
         {/* Grid */}
@@ -581,7 +692,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           .react-resizable-handle-w::after, .react-resizable-handle-e::after,
           .react-resizable-handle-n::after, .react-resizable-handle-s::after { display: none; }
         `}</style>
-        <div ref={wrapperRef} className={`flex-1 overflow-auto p-2 ${isEditMode ? '' : 'rgl-locked'}`}>
+        <div ref={wrapperRef} className={`flex-1 overflow-hidden p-2 ${isEditMode ? '' : 'rgl-locked'}`}>
           <GridLayout
             className="layout"
             layout={visibleLayout}
@@ -601,7 +712,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             {rightWidgets.map(widget => (
               <div
                 key={widget.id}
-                className={`bg-card border border-border rounded-lg overflow-hidden flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
+                className={`h-full bg-card border border-border rounded-lg overflow-hidden flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
               >
                 {/* Resize handles - only visible in edit mode */}
                 {isEditMode && (
@@ -627,7 +738,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                   )}
                 </div>
                 {/* Widget content */}
-                <div className="flex-1 overflow-auto">
+                <div className="flex-1 min-h-0 overflow-hidden">
                   {renderRight(widget)}
                 </div>
               </div>
