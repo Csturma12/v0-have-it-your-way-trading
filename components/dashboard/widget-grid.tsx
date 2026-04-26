@@ -10,7 +10,7 @@ import { ThemesColumn } from './themes-column'
 import { TradingViewChart } from './tradingview-chart'
 import { WatchlistPanel } from './watchlist-panel'
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v3'
+const STORAGE_KEY = 'trading-dashboard-rgl-v4'
 
 // Resize from any side or corner: north, south, east, west + 4 corners
 const ALL_RESIZE_HANDLES: Array<'s' | 'w' | 'e' | 'n' | 'sw' | 'nw' | 'se' | 'ne'> = [
@@ -322,14 +322,14 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           layout={visibleLayout}
           cols={12}
           rowHeight={48}
-          margin={[8, 8]}
-          containerPadding={[10, 10]}
+          margin={[1, 1]}
+          containerPadding={[4, 4]}
           isDraggable={isEditMode}
           isResizable={isEditMode}
           resizeHandles={ALL_RESIZE_HANDLES}
           draggableHandle=".widget-drag-handle"
-          compactType="vertical"
-          preventCollision={false}
+          compactType={null}
+          preventCollision={true}
           onLayoutChange={handleLayoutChange}
           width={1200}
         >
