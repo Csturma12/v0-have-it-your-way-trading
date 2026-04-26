@@ -601,8 +601,17 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             {rightWidgets.map(widget => (
               <div
                 key={widget.id}
-                className="bg-card border border-border rounded-lg overflow-hidden flex flex-col"
+                className={`bg-card border border-border rounded-lg overflow-hidden flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
               >
+                {/* Resize handles - only visible in edit mode */}
+                {isEditMode && (
+                  <>
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary/50 cursor-n-resize hover:bg-primary rounded-b" title="Resize top" />
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary/50 cursor-s-resize hover:bg-primary rounded-t" title="Resize bottom" />
+                    <div className="absolute top-1/2 -translate-y-1/2 left-0 h-12 w-1 bg-primary/50 cursor-w-resize hover:bg-primary rounded-r" title="Resize left" />
+                    <div className="absolute top-1/2 -translate-y-1/2 right-0 h-12 w-1 bg-primary/50 cursor-e-resize hover:bg-primary rounded-l" title="Resize right" />
+                  </>
+                )}
                 {/* Widget header / drag bar */}
                 <div className={`widget-drag-handle flex items-center justify-between px-2 py-1 border-b border-border/50 bg-muted/30 ${isEditMode ? 'cursor-grab' : ''}`}>
                   <div className="flex items-center gap-1.5">
