@@ -141,7 +141,7 @@ interface Bar {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INDICATOR CALCULATION FUNCTIONS
-// ═════════════════════════════��════════════════════════════════════════════════
+// ═════���═══════════════════════��════════════════════════════════════════════════
 
 function calcSMA(data: number[], period: number): number[] {
   const result: number[] = []
@@ -722,7 +722,6 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
   // Initialize chart once
   useEffect(() => {
-    console.log('[v0] Chart init - containerRef:', !!containerRef.current)
     if (!containerRef.current) return
 
     const chart = createChart(containerRef.current, {
@@ -757,7 +756,6 @@ export function TradingViewChart({ ticker }: ChartProps) {
     candleRef.current = candleSeries
     volumeRef.current = volumeSeries
     setChartReady(true)
-    console.log('[v0] Chart initialized, refs set')
 
     return () => {
       chart.remove()
@@ -888,19 +886,12 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
   // Fetch bars whenever ticker or range changes (after chart is ready)
   useEffect(() => {
-    if (!chartReady) {
-      console.log('[v0] Chart not ready yet, skipping fetch')
-      return
-    }
-    console.log('[v0] Fetch bars effect - chartReady:', chartReady)
+    if (!chartReady) return
     let cancelled = false
     const candleSeries = candleRef.current
     const volumeSeries = volumeRef.current
     const chart = chartRef.current
-    if (!candleSeries || !volumeSeries || !chart) {
-      console.log('[v0] Chart refs still missing after chartReady')
-      return
-    }
+    if (!candleSeries || !volumeSeries || !chart) return
 
     setLoading(true)
     setError(null)
@@ -908,7 +899,6 @@ export function TradingViewChart({ ticker }: ChartProps) {
     fetch(`/api/polygon/bars?ticker=${ticker}&range=${range}`)
       .then((r) => r.json())
       .then((data) => {
-        console.log('[v0] Bars data received:', data.bars?.length ?? 0, 'bars', data.error ?? '')
         if (cancelled) return
         if (data.error) { setError(data.error); candleSeries.setData([]); volumeSeries.setData([]); return }
         const bars: Bar[] = data.bars || []
