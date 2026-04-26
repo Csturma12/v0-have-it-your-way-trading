@@ -728,7 +728,13 @@ export function TradingViewChart({ ticker }: ChartProps) {
       return
     }
 
-    const chart = createChart(containerRef.current, {
+    const container = containerRef.current
+    const { width, height } = container.getBoundingClientRect()
+    console.log('[v0] Initial container dimensions:', width, height)
+
+    const chart = createChart(container, {
+      width: width || 400,
+      height: height || 300,
       layout: {
         background: { color: '#0a0a0a' },
         textColor: '#a3a3a3',
@@ -742,7 +748,6 @@ export function TradingViewChart({ ticker }: ChartProps) {
       crosshair: { mode: 1 },
       rightPriceScale: { borderColor: '#222' },
       timeScale: { borderColor: '#222', timeVisible: true, secondsVisible: false },
-      autoSize: true,
     })
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -762,7 +767,20 @@ export function TradingViewChart({ ticker }: ChartProps) {
     setChartReady(true)
     console.log('[v0] Chart created, refs set, chartReady=true')
 
+    // Use ResizeObserver to handle dynamic sizing
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width: w, height: h } = entry.contentRect
+        console.log('[v0] ResizeObserver - new dimensions:', w, h)
+        if (w > 0 && h > 0 && chartRef.current) {
+          chartRef.current.resize(w, h)
+        }
+      }
+    })
+    resizeObserver.observe(container)
+
     return () => {
+      resizeObserver.disconnect()
       chart.remove()
       chartRef.current = null
       candleRef.current = null
@@ -1066,7 +1084,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
       )}
 
       {/* ── Main chart container ── */}
-      <div className="relative flex-1 min-h-0">
+      <div className="relative flex-1" style={{ minHeight: '200px' }}>
         <div ref={containerRef} className="absolute inset-0" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a]/70 backdrop-blur-sm">
