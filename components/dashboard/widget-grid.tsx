@@ -601,7 +601,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             {rightWidgets.map(widget => (
               <div
                 key={widget.id}
-                className={`bg-card border border-border rounded-lg overflow-hidden flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
+                className={`h-full bg-card border border-border rounded-lg overflow-hidden flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
               >
                 {/* Resize handles - only visible in edit mode */}
                 {isEditMode && (
@@ -627,7 +627,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                   )}
                 </div>
                 {/* Widget content */}
-                <div className="flex-1 overflow-auto">
+                <div className="flex-1 min-h-0 overflow-hidden">
                   {renderRight(widget)}
                 </div>
               </div>
