@@ -1,9 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import {
-  ArrowLeft,
   Briefcase,
   Brain,
   Sparkles,
@@ -18,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 
 type TradeType = 'options' | 'stocks' | 'hedges'
 type AIModel = 'claude' | 'openai'
@@ -159,23 +158,17 @@ export default function TradeDeskPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 sticky top-0 z-50">
-        <div className="px-6 py-4">
+      {/* Top Navigation */}
+      <TopNavBar />
+
+      {/* Sub-header with page title and filters */}
+      <header className="border-b border-border bg-card/30 sticky top-[49px] z-40">
+        <div className="px-6 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <ArrowLeft className="w-4 h-4" />
-                  Back
-                </Button>
-              </Link>
-              <div className="h-4 w-px bg-border" />
-              <div className="flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-primary" />
-                <h1 className="text-xl font-bold font-mono">TRADEDESK</h1>
-              </div>
-              <Badge variant="outline" className="bg-theme-gold/10 text-theme-gold border-theme-gold/30">
+            <div className="flex items-center gap-3">
+              <Briefcase className="w-5 h-5 text-primary" />
+              <h1 className="text-lg font-bold font-mono">TRADEDESK</h1>
+              <Badge variant="outline" className="bg-theme-gold/10 text-theme-gold border-theme-gold/30 text-[10px]">
                 Trading Floor
               </Badge>
             </div>

@@ -21,114 +21,275 @@ import {
   BarChart2,
 } from 'lucide-react'
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v6'
+const STORAGE_KEY = 'trading-dashboard-rgl-v7'
 
 const ALL_RESIZE_HANDLES: Array<'s' | 'w' | 'e' | 'n' | 'sw' | 'nw' | 'se' | 'ne'> = [
   's', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne',
 ]
 
-// ─── Sector ticker data ─────────────────────────────────────────────────────
+// ─── Sector ticker data (10-20 per sector) ──────────────────────────────────
 
 const SECTOR_DATA = {
   'sector-ai': {
     title: 'AI & Technology',
     accent: 'green' as const,
     tickers: [
-      { symbol: 'NVDA', price: 924.73, change: 4.21, signal: 'BUY' as const, conviction: 0.94, trending: 1 },
-      { symbol: 'META', price: 514.82, change: 2.87, signal: 'BUY' as const, conviction: 0.89, trending: 2 },
-      { symbol: 'MSFT', price: 415.30, change: 1.54, signal: 'BUY' as const, conviction: 0.86, trending: 3 },
-      { symbol: 'GOOGL', price: 175.20, change: 0.93, signal: 'BUY' as const, conviction: 0.82, trending: 4 },
-      { symbol: 'AMD',   price: 162.45, change: 3.14, signal: 'BUY' as const, conviction: 0.80, trending: 5 },
-      { symbol: 'AMZN', price: 189.34, change: 1.22, signal: 'BUY' as const, conviction: 0.78, trending: 6 },
-      { symbol: 'CRM',  price: 282.10, change: -0.44, signal: 'HOLD' as const, conviction: 0.65, trending: 7 },
-      { symbol: 'ORCL', price: 124.55, change: -0.91, signal: 'SELL' as const, conviction: 0.60, trending: 8 },
+      { symbol: 'NVDA', price: 924.73, change: 4.21, signal: 'BUY' as const, conviction: 0.94, trending: 1, isHolding: true },
+      { symbol: 'META', price: 514.82, change: 2.87, signal: 'BUY' as const, conviction: 0.91, trending: 2 },
+      { symbol: 'MSFT', price: 415.30, change: 1.54, signal: 'BUY' as const, conviction: 0.88, trending: 3 },
+      { symbol: 'GOOGL', price: 175.20, change: 1.93, signal: 'BUY' as const, conviction: 0.86, trending: 4 },
+      { symbol: 'AMD', price: 162.45, change: 3.14, signal: 'BUY' as const, conviction: 0.84, trending: 5 },
+      { symbol: 'AMZN', price: 189.34, change: 1.22, signal: 'BUY' as const, conviction: 0.82, trending: 6 },
+      { symbol: 'PLTR', price: 24.80, change: 3.88, signal: 'BUY' as const, conviction: 0.80, trending: 7, isHolding: true },
+      { symbol: 'NOW', price: 892.40, change: 1.65, signal: 'BUY' as const, conviction: 0.78, trending: 8 },
+      { symbol: 'CRM', price: 282.10, change: 0.94, signal: 'HOLD' as const, conviction: 0.72, trending: 9 },
+      { symbol: 'ADBE', price: 482.30, change: 0.55, signal: 'HOLD' as const, conviction: 0.68, trending: 10 },
+      { symbol: 'ORCL', price: 124.55, change: -0.44, signal: 'HOLD' as const, conviction: 0.65, trending: 11 },
+      { symbol: 'IBM', price: 192.80, change: -0.88, signal: 'HOLD' as const, conviction: 0.60, trending: 12 },
+      { symbol: 'SNOW', price: 142.30, change: -1.22, signal: 'SELL' as const, conviction: 0.72, trending: 13 },
+      { symbol: 'DDOG', price: 128.40, change: -1.55, signal: 'SELL' as const, conviction: 0.68, trending: 14 },
+      { symbol: 'ZS', price: 202.10, change: -2.10, signal: 'SELL' as const, conviction: 0.65, trending: 15 },
     ],
   },
   'sector-banking': {
     title: 'Banking & Finance',
     accent: 'gold' as const,
     tickers: [
-      { symbol: 'JPM',   price: 213.40, change: 2.10, signal: 'BUY' as const,  conviction: 0.91, trending: 1 },
-      { symbol: 'GS',    price: 472.15, change: 1.85, signal: 'BUY' as const,  conviction: 0.87, trending: 2 },
-      { symbol: 'MS',    price: 102.80, change: 1.40, signal: 'BUY' as const,  conviction: 0.84, trending: 3 },
-      { symbol: 'BAC',   price: 38.92,  change: 0.75, signal: 'BUY' as const,  conviction: 0.79, trending: 4 },
-      { symbol: 'AXP',   price: 229.60, change: -0.55, signal: 'SELL' as const, conviction: 0.74, trending: 5 },
-      { symbol: 'WFC',   price: 57.34,  change: 0.28, signal: 'HOLD' as const, conviction: 0.68, trending: 6 },
-      { symbol: 'C',     price: 64.10,  change: -0.32, signal: 'HOLD' as const, conviction: 0.62, trending: 7 },
-      { symbol: 'BRK.B', price: 412.20, change: 0.45, signal: 'BUY' as const,  conviction: 0.77, trending: 8 },
+      { symbol: 'JPM', price: 213.40, change: 2.10, signal: 'BUY' as const, conviction: 0.92, trending: 1 },
+      { symbol: 'GS', price: 472.15, change: 1.85, signal: 'BUY' as const, conviction: 0.89, trending: 2 },
+      { symbol: 'MS', price: 102.80, change: 1.40, signal: 'BUY' as const, conviction: 0.86, trending: 3 },
+      { symbol: 'V', price: 284.50, change: 1.22, signal: 'BUY' as const, conviction: 0.84, trending: 4 },
+      { symbol: 'MA', price: 472.30, change: 1.05, signal: 'BUY' as const, conviction: 0.82, trending: 5 },
+      { symbol: 'BAC', price: 38.92, change: 0.75, signal: 'BUY' as const, conviction: 0.79, trending: 6 },
+      { symbol: 'BRK.B', price: 412.20, change: 0.65, signal: 'BUY' as const, conviction: 0.77, trending: 7 },
+      { symbol: 'SCHW', price: 72.40, change: 0.42, signal: 'HOLD' as const, conviction: 0.70, trending: 8 },
+      { symbol: 'WFC', price: 57.34, change: 0.28, signal: 'HOLD' as const, conviction: 0.68, trending: 9 },
+      { symbol: 'BLK', price: 824.30, change: -0.18, signal: 'HOLD' as const, conviction: 0.65, trending: 10 },
+      { symbol: 'C', price: 64.10, change: -0.32, signal: 'HOLD' as const, conviction: 0.62, trending: 11 },
+      { symbol: 'AXP', price: 229.60, change: -0.55, signal: 'SELL' as const, conviction: 0.74, trending: 12 },
+      { symbol: 'USB', price: 42.80, change: -1.10, signal: 'SELL' as const, conviction: 0.70, trending: 13 },
+      { symbol: 'PNC', price: 162.40, change: -1.44, signal: 'SELL' as const, conviction: 0.66, trending: 14 },
     ],
   },
   'sector-energy': {
     title: 'Energy & Industrials',
     accent: 'red' as const,
     tickers: [
-      { symbol: 'XOM', price: 112.40, change: 2.44, signal: 'BUY' as const,  conviction: 0.88, trending: 1 },
-      { symbol: 'SLB', price: 43.20,  change: 3.10, signal: 'BUY' as const,  conviction: 0.85, trending: 2 },
-      { symbol: 'CVX', price: 154.30, change: 1.67, signal: 'BUY' as const,  conviction: 0.81, trending: 3 },
-      { symbol: 'COP', price: 122.80, change: 1.12, signal: 'BUY' as const,  conviction: 0.78, trending: 4 },
-      { symbol: 'HAL', price: 34.55,  change: 0.83, signal: 'HOLD' as const, conviction: 0.71, trending: 5 },
-      { symbol: 'OXY', price: 59.40,  change: -1.20, signal: 'SELL' as const, conviction: 0.72, trending: 6 },
-      { symbol: 'PSX', price: 143.20, change: 0.55, signal: 'HOLD' as const, conviction: 0.64, trending: 7 },
-      { symbol: 'VLO', price: 135.10, change: -0.38, signal: 'SELL' as const, conviction: 0.60, trending: 8 },
+      { symbol: 'XOM', price: 112.40, change: 2.44, signal: 'BUY' as const, conviction: 0.90, trending: 1 },
+      { symbol: 'SLB', price: 43.20, change: 3.10, signal: 'BUY' as const, conviction: 0.87, trending: 2 },
+      { symbol: 'CVX', price: 154.30, change: 1.67, signal: 'BUY' as const, conviction: 0.84, trending: 3 },
+      { symbol: 'COP', price: 122.80, change: 1.42, signal: 'BUY' as const, conviction: 0.81, trending: 4 },
+      { symbol: 'EOG', price: 128.50, change: 1.18, signal: 'BUY' as const, conviction: 0.78, trending: 5 },
+      { symbol: 'PXD', price: 224.30, change: 0.95, signal: 'BUY' as const, conviction: 0.75, trending: 6 },
+      { symbol: 'HAL', price: 34.55, change: 0.83, signal: 'HOLD' as const, conviction: 0.71, trending: 7 },
+      { symbol: 'DVN', price: 44.20, change: 0.55, signal: 'HOLD' as const, conviction: 0.68, trending: 8 },
+      { symbol: 'MPC', price: 172.40, change: 0.22, signal: 'HOLD' as const, conviction: 0.65, trending: 9 },
+      { symbol: 'PSX', price: 143.20, change: -0.38, signal: 'HOLD' as const, conviction: 0.62, trending: 10 },
+      { symbol: 'VLO', price: 135.10, change: -0.72, signal: 'SELL' as const, conviction: 0.70, trending: 11 },
+      { symbol: 'OXY', price: 59.40, change: -1.20, signal: 'SELL' as const, conviction: 0.72, trending: 12 },
+      { symbol: 'MRO', price: 26.80, change: -1.55, signal: 'SELL' as const, conviction: 0.68, trending: 13 },
     ],
   },
   'sector-healthcare': {
     title: 'Healthcare & BioPharma',
     accent: 'cyan' as const,
     tickers: [
-      { symbol: 'LLY',  price: 804.20, change: 3.54, signal: 'BUY' as const,  conviction: 0.96, trending: 1 },
-      { symbol: 'NVO',  price: 122.40, change: 2.90, signal: 'BUY' as const,  conviction: 0.93, trending: 2 },
-      { symbol: 'ABBV', price: 175.60, change: 1.72, signal: 'BUY' as const,  conviction: 0.88, trending: 3 },
-      { symbol: 'MRK',  price: 128.30, change: 0.88, signal: 'BUY' as const,  conviction: 0.82, trending: 4 },
-      { symbol: 'AMGN', price: 282.10, change: 0.42, signal: 'HOLD' as const, conviction: 0.70, trending: 5 },
-      { symbol: 'JNJ',  price: 152.40, change: -0.22, signal: 'HOLD' as const, conviction: 0.66, trending: 6 },
-      { symbol: 'BMY',  price: 52.80,  change: -0.94, signal: 'SELL' as const, conviction: 0.63, trending: 7 },
-      { symbol: 'PFE',  price: 26.10,  change: -1.44, signal: 'SELL' as const, conviction: 0.68, trending: 8 },
+      { symbol: 'LLY', price: 804.20, change: 3.54, signal: 'BUY' as const, conviction: 0.96, trending: 1, isHolding: true },
+      { symbol: 'NVO', price: 122.40, change: 2.90, signal: 'BUY' as const, conviction: 0.93, trending: 2 },
+      { symbol: 'UNH', price: 524.30, change: 1.88, signal: 'BUY' as const, conviction: 0.90, trending: 3 },
+      { symbol: 'ABBV', price: 175.60, change: 1.72, signal: 'BUY' as const, conviction: 0.88, trending: 4 },
+      { symbol: 'TMO', price: 582.40, change: 1.44, signal: 'BUY' as const, conviction: 0.85, trending: 5 },
+      { symbol: 'MRK', price: 128.30, change: 0.88, signal: 'BUY' as const, conviction: 0.82, trending: 6 },
+      { symbol: 'DHR', price: 252.10, change: 0.65, signal: 'BUY' as const, conviction: 0.79, trending: 7 },
+      { symbol: 'ABT', price: 112.40, change: 0.44, signal: 'HOLD' as const, conviction: 0.72, trending: 8 },
+      { symbol: 'AMGN', price: 282.10, change: 0.22, signal: 'HOLD' as const, conviction: 0.70, trending: 9 },
+      { symbol: 'JNJ', price: 152.40, change: -0.18, signal: 'HOLD' as const, conviction: 0.66, trending: 10 },
+      { symbol: 'GILD', price: 78.30, change: -0.55, signal: 'HOLD' as const, conviction: 0.63, trending: 11 },
+      { symbol: 'BMY', price: 52.80, change: -0.94, signal: 'SELL' as const, conviction: 0.68, trending: 12 },
+      { symbol: 'PFE', price: 26.10, change: -1.44, signal: 'SELL' as const, conviction: 0.72, trending: 13 },
+      { symbol: 'BIIB', price: 202.40, change: -2.10, signal: 'SELL' as const, conviction: 0.65, trending: 14 },
     ],
   },
   'sector-consumer': {
     title: 'Consumer & Retail',
     accent: 'green' as const,
     tickers: [
-      { symbol: 'COST', price: 882.40, change: 2.24, signal: 'BUY' as const,  conviction: 0.90, trending: 1 },
-      { symbol: 'WMT',  price: 68.20,  change: 1.55, signal: 'BUY' as const,  conviction: 0.86, trending: 2 },
-      { symbol: 'AMZN', price: 189.34, change: 1.22, signal: 'BUY' as const,  conviction: 0.83, trending: 3 },
-      { symbol: 'HD',   price: 344.10, change: 0.72, signal: 'BUY' as const,  conviction: 0.79, trending: 4 },
-      { symbol: 'MCD',  price: 278.50, change: 0.34, signal: 'HOLD' as const, conviction: 0.68, trending: 5 },
-      { symbol: 'SBUX', price: 78.30,  change: -0.88, signal: 'SELL' as const, conviction: 0.71, trending: 6 },
-      { symbol: 'NKE',  price: 85.20,  change: -1.10, signal: 'SELL' as const, conviction: 0.67, trending: 7 },
-      { symbol: 'TGT',  price: 142.60, change: -1.55, signal: 'SELL' as const, conviction: 0.70, trending: 8 },
+      { symbol: 'COST', price: 882.40, change: 2.24, signal: 'BUY' as const, conviction: 0.92, trending: 1 },
+      { symbol: 'WMT', price: 68.20, change: 1.55, signal: 'BUY' as const, conviction: 0.88, trending: 2 },
+      { symbol: 'AMZN', price: 189.34, change: 1.22, signal: 'BUY' as const, conviction: 0.85, trending: 3 },
+      { symbol: 'HD', price: 344.10, change: 0.92, signal: 'BUY' as const, conviction: 0.82, trending: 4 },
+      { symbol: 'LOW', price: 228.40, change: 0.78, signal: 'BUY' as const, conviction: 0.79, trending: 5 },
+      { symbol: 'TJX', price: 104.20, change: 0.65, signal: 'BUY' as const, conviction: 0.76, trending: 6 },
+      { symbol: 'PG', price: 168.30, change: 0.44, signal: 'HOLD' as const, conviction: 0.72, trending: 7 },
+      { symbol: 'KO', price: 62.40, change: 0.28, signal: 'HOLD' as const, conviction: 0.68, trending: 8 },
+      { symbol: 'PEP', price: 172.80, change: 0.15, signal: 'HOLD' as const, conviction: 0.65, trending: 9 },
+      { symbol: 'MCD', price: 278.50, change: -0.34, signal: 'HOLD' as const, conviction: 0.62, trending: 10 },
+      { symbol: 'SBUX', price: 78.30, change: -0.88, signal: 'SELL' as const, conviction: 0.71, trending: 11 },
+      { symbol: 'NKE', price: 85.20, change: -1.10, signal: 'SELL' as const, conviction: 0.68, trending: 12 },
+      { symbol: 'TGT', price: 142.60, change: -1.55, signal: 'SELL' as const, conviction: 0.72, trending: 13 },
+      { symbol: 'DG', price: 128.40, change: -2.20, signal: 'SELL' as const, conviction: 0.75, trending: 14 },
     ],
   },
   'sector-semis': {
     title: 'Semiconductors',
     accent: 'gold' as const,
     tickers: [
-      { symbol: 'NVDA', price: 924.73, change: 4.21, signal: 'BUY' as const,  conviction: 0.94, trending: 1 },
-      { symbol: 'AVGO', price: 1422.10, change: 3.20, signal: 'BUY' as const, conviction: 0.92, trending: 2 },
-      { symbol: 'AMD',  price: 162.45, change: 3.14, signal: 'BUY' as const,  conviction: 0.88, trending: 3 },
-      { symbol: 'MU',   price: 128.40, change: 2.44, signal: 'BUY' as const,  conviction: 0.86, trending: 4 },
-      { symbol: 'AMAT', price: 202.30, change: 1.32, signal: 'BUY' as const,  conviction: 0.80, trending: 5 },
-      { symbol: 'KLAC', price: 762.50, change: 0.94, signal: 'HOLD' as const, conviction: 0.72, trending: 6 },
-      { symbol: 'QCOM', price: 174.20, change: -0.65, signal: 'HOLD' as const, conviction: 0.66, trending: 7 },
-      { symbol: 'INTC', price: 31.40,  change: -2.10, signal: 'SELL' as const, conviction: 0.75, trending: 8 },
+      { symbol: 'NVDA', price: 924.73, change: 4.21, signal: 'BUY' as const, conviction: 0.96, trending: 1, isHolding: true },
+      { symbol: 'AVGO', price: 1422.10, change: 3.20, signal: 'BUY' as const, conviction: 0.93, trending: 2 },
+      { symbol: 'AMD', price: 162.45, change: 3.14, signal: 'BUY' as const, conviction: 0.90, trending: 3 },
+      { symbol: 'TSM', price: 142.80, change: 2.55, signal: 'BUY' as const, conviction: 0.88, trending: 4 },
+      { symbol: 'MU', price: 128.40, change: 2.44, signal: 'BUY' as const, conviction: 0.86, trending: 5 },
+      { symbol: 'AMAT', price: 202.30, change: 1.82, signal: 'BUY' as const, conviction: 0.83, trending: 6 },
+      { symbol: 'LRCX', price: 984.20, change: 1.55, signal: 'BUY' as const, conviction: 0.80, trending: 7 },
+      { symbol: 'MRVL', price: 72.40, change: 1.22, signal: 'BUY' as const, conviction: 0.77, trending: 8 },
+      { symbol: 'KLAC', price: 762.50, change: 0.94, signal: 'HOLD' as const, conviction: 0.72, trending: 9 },
+      { symbol: 'SNPS', price: 582.30, change: 0.55, signal: 'HOLD' as const, conviction: 0.68, trending: 10 },
+      { symbol: 'CDNS', price: 292.40, change: 0.22, signal: 'HOLD' as const, conviction: 0.65, trending: 11 },
+      { symbol: 'QCOM', price: 174.20, change: -0.65, signal: 'HOLD' as const, conviction: 0.62, trending: 12 },
+      { symbol: 'ON', price: 72.80, change: -1.10, signal: 'SELL' as const, conviction: 0.70, trending: 13 },
+      { symbol: 'INTC', price: 31.40, change: -2.10, signal: 'SELL' as const, conviction: 0.78, trending: 14 },
+      { symbol: 'TXN', price: 172.30, change: -1.44, signal: 'SELL' as const, conviction: 0.65, trending: 15 },
     ],
   },
 }
 
-// ─── Theme ticker data (same format as sectors) ─────────────────────────────
+// ─── Theme ticker data (10-20 per theme) ────────────────────────────────────
 
 const THEME_DATA = {
   'theme-ai': {
     title: 'AI Industry',
     icon: Cpu,
     tickers: [
-      { symbol: 'NVDA', price: 924.73, change: 4.21, signal: 'BUY' as const, conviction: 0.94, trending: 1 },
-      { symbol: 'SMCI', price: 744.20, change: 5.12, signal: 'BUY' as const, conviction: 0.91, trending: 2 },
-      { symbol: 'MSFT', price: 415.30, change: 1.54, signal: 'BUY' as const, conviction: 0.88, trending: 3 },
-      { symbol: 'ORCL', price: 124.55, change: 2.33, signal: 'BUY' as const, conviction: 0.85, trending: 4 },
-      { symbol: 'GOOGL', price: 175.20, change: 0.93, signal: 'HOLD' as const, conviction: 0.72, trending: 5 },
-      { symbol: 'META', price: 514.82, change: -0.44, signal: 'HOLD' as const, conviction: 0.68, trending: 6 },
+      { symbol: 'NVDA', price: 924.73, change: 4.21, signal: 'BUY' as const, conviction: 0.96, trending: 1, isHolding: true },
+      { symbol: 'SMCI', price: 744.20, change: 5.12, signal: 'BUY' as const, conviction: 0.93, trending: 2 },
+      { symbol: 'MSFT', price: 415.30, change: 1.54, signal: 'BUY' as const, conviction: 0.90, trending: 3 },
+      { symbol: 'GOOGL', price: 175.20, change: 1.93, signal: 'BUY' as const, conviction: 0.87, trending: 4 },
+      { symbol: 'META', price: 514.82, change: 2.87, signal: 'BUY' as const, conviction: 0.85, trending: 5 },
+      { symbol: 'PLTR', price: 24.80, change: 3.88, signal: 'BUY' as const, conviction: 0.83, trending: 6, isHolding: true },
+      { symbol: 'AMD', price: 162.45, change: 3.14, signal: 'BUY' as const, conviction: 0.80, trending: 7 },
+      { symbol: 'ORCL', price: 124.55, change: 2.33, signal: 'BUY' as const, conviction: 0.78, trending: 8 },
+      { symbol: 'NOW', price: 892.40, change: 1.65, signal: 'BUY' as const, conviction: 0.75, trending: 9 },
+      { symbol: 'CRM', price: 282.10, change: 0.94, signal: 'HOLD' as const, conviction: 0.70, trending: 10 },
+      { symbol: 'SNOW', price: 142.30, change: -0.44, signal: 'HOLD' as const, conviction: 0.65, trending: 11 },
+      { symbol: 'PATH', price: 12.40, change: -1.22, signal: 'SELL' as const, conviction: 0.68, trending: 12 },
+    ],
+  },
+  'theme-infra': {
+    title: 'AI Infrastructure',
+    icon: Server,
+    tickers: [
+      { symbol: 'VST', price: 89.40, change: 6.22, signal: 'BUY' as const, conviction: 0.95, trending: 1, isHolding: true },
+      { symbol: 'AVGO', price: 1422.10, change: 3.20, signal: 'BUY' as const, conviction: 0.92, trending: 2 },
+      { symbol: 'CEG', price: 224.80, change: 4.10, signal: 'BUY' as const, conviction: 0.90, trending: 3 },
+      { symbol: 'ANET', price: 312.50, change: 2.44, signal: 'BUY' as const, conviction: 0.87, trending: 4 },
+      { symbol: 'NXT', price: 52.40, change: 2.10, signal: 'BUY' as const, conviction: 0.84, trending: 5 },
+      { symbol: 'DELL', price: 142.80, change: 1.88, signal: 'BUY' as const, conviction: 0.81, trending: 6 },
+      { symbol: 'HPE', price: 18.40, change: 1.22, signal: 'BUY' as const, conviction: 0.78, trending: 7 },
+      { symbol: 'EQIX', price: 892.30, change: 0.77, signal: 'HOLD' as const, conviction: 0.72, trending: 8 },
+      { symbol: 'DLR', price: 142.20, change: 0.44, signal: 'HOLD' as const, conviction: 0.68, trending: 9 },
+      { symbol: 'ETN', price: 312.40, change: -0.22, signal: 'HOLD' as const, conviction: 0.65, trending: 10 },
+      { symbol: 'AME', price: 172.80, change: -0.55, signal: 'SELL' as const, conviction: 0.62, trending: 11 },
+    ],
+  },
+  'theme-defense': {
+    title: 'Defense & Govt',
+    icon: Shield,
+    tickers: [
+      { symbol: 'PLTR', price: 24.80, change: 3.88, signal: 'BUY' as const, conviction: 0.93, trending: 1, isHolding: true },
+      { symbol: 'RTX', price: 112.40, change: 1.55, signal: 'BUY' as const, conviction: 0.88, trending: 2 },
+      { symbol: 'LMT', price: 482.30, change: 1.22, signal: 'BUY' as const, conviction: 0.85, trending: 3 },
+      { symbol: 'GD', price: 292.80, change: 0.92, signal: 'BUY' as const, conviction: 0.82, trending: 4 },
+      { symbol: 'NOC', price: 512.10, change: 0.65, signal: 'BUY' as const, conviction: 0.79, trending: 5 },
+      { symbol: 'LHX', price: 224.40, change: 0.44, signal: 'HOLD' as const, conviction: 0.72, trending: 6 },
+      { symbol: 'HII', price: 272.30, change: 0.22, signal: 'HOLD' as const, conviction: 0.68, trending: 7 },
+      { symbol: 'LDOS', price: 152.40, change: -0.18, signal: 'HOLD' as const, conviction: 0.65, trending: 8 },
+      { symbol: 'SAIC', price: 124.80, change: -0.55, signal: 'HOLD' as const, conviction: 0.62, trending: 9 },
+      { symbol: 'BA', price: 178.40, change: -2.33, signal: 'SELL' as const, conviction: 0.74, trending: 10 },
+    ],
+  },
+  'theme-energy': {
+    title: 'Energy Transition',
+    icon: Flame,
+    tickers: [
+      { symbol: 'XOM', price: 112.40, change: 2.44, signal: 'BUY' as const, conviction: 0.90, trending: 1 },
+      { symbol: 'SLB', price: 43.20, change: 3.10, signal: 'BUY' as const, conviction: 0.87, trending: 2 },
+      { symbol: 'CVX', price: 154.30, change: 1.67, signal: 'BUY' as const, conviction: 0.84, trending: 3 },
+      { symbol: 'NEE', price: 72.40, change: 1.44, signal: 'BUY' as const, conviction: 0.81, trending: 4 },
+      { symbol: 'COP', price: 122.80, change: 1.12, signal: 'BUY' as const, conviction: 0.78, trending: 5 },
+      { symbol: 'FSLR', price: 172.30, change: 0.88, signal: 'BUY' as const, conviction: 0.75, trending: 6 },
+      { symbol: 'ENPH', price: 112.40, change: 0.55, signal: 'HOLD' as const, conviction: 0.70, trending: 7 },
+      { symbol: 'VST', price: 89.40, change: 0.22, signal: 'HOLD' as const, conviction: 0.67, trending: 8 },
+      { symbol: 'CEG', price: 224.80, change: -0.44, signal: 'HOLD' as const, conviction: 0.64, trending: 9 },
+      { symbol: 'OXY', price: 59.40, change: -1.20, signal: 'SELL' as const, conviction: 0.72, trending: 10 },
+      { symbol: 'RUN', price: 12.80, change: -2.55, signal: 'SELL' as const, conviction: 0.68, trending: 11 },
+    ],
+  },
+  'theme-health': {
+    title: 'Healthcare Innovation',
+    icon: Stethoscope,
+    tickers: [
+      { symbol: 'LLY', price: 804.20, change: 3.54, signal: 'BUY' as const, conviction: 0.97, trending: 1, isHolding: true },
+      { symbol: 'NVO', price: 122.40, change: 2.90, signal: 'BUY' as const, conviction: 0.94, trending: 2 },
+      { symbol: 'ABBV', price: 175.60, change: 1.72, signal: 'BUY' as const, conviction: 0.90, trending: 3 },
+      { symbol: 'VRTX', price: 424.30, change: 1.55, signal: 'BUY' as const, conviction: 0.87, trending: 4 },
+      { symbol: 'REGN', price: 982.40, change: 1.22, signal: 'BUY' as const, conviction: 0.84, trending: 5 },
+      { symbol: 'ISRG', price: 412.80, change: 0.88, signal: 'BUY' as const, conviction: 0.81, trending: 6 },
+      { symbol: 'DXCM', price: 72.40, change: 0.55, signal: 'HOLD' as const, conviction: 0.74, trending: 7 },
+      { symbol: 'AMGN', price: 282.10, change: 0.22, signal: 'HOLD' as const, conviction: 0.70, trending: 8 },
+      { symbol: 'MRNA', price: 102.30, change: -0.88, signal: 'HOLD' as const, conviction: 0.65, trending: 9 },
+      { symbol: 'PFE', price: 26.10, change: -1.44, signal: 'SELL' as const, conviction: 0.72, trending: 10 },
+      { symbol: 'BNTX', price: 82.40, change: -2.10, signal: 'SELL' as const, conviction: 0.68, trending: 11 },
+    ],
+  },
+  'theme-semis': {
+    title: 'Chip Cycle',
+    icon: Zap,
+    tickers: [
+      { symbol: 'NVDA', price: 924.73, change: 4.21, signal: 'BUY' as const, conviction: 0.96, trending: 1, isHolding: true },
+      { symbol: 'AMD', price: 162.45, change: 3.14, signal: 'BUY' as const, conviction: 0.92, trending: 2 },
+      { symbol: 'MU', price: 128.40, change: 2.44, signal: 'BUY' as const, conviction: 0.89, trending: 3 },
+      { symbol: 'AVGO', price: 1422.10, change: 3.20, signal: 'BUY' as const, conviction: 0.86, trending: 4 },
+      { symbol: 'TSM', price: 142.80, change: 2.55, signal: 'BUY' as const, conviction: 0.83, trending: 5 },
+      { symbol: 'AMAT', price: 202.30, change: 1.82, signal: 'BUY' as const, conviction: 0.80, trending: 6 },
+      { symbol: 'LRCX', price: 984.20, change: 1.44, signal: 'BUY' as const, conviction: 0.77, trending: 7 },
+      { symbol: 'MRVL', price: 72.40, change: 0.88, signal: 'HOLD' as const, conviction: 0.72, trending: 8 },
+      { symbol: 'KLAC', price: 762.50, change: 0.55, signal: 'HOLD' as const, conviction: 0.68, trending: 9 },
+      { symbol: 'QCOM', price: 174.20, change: -0.65, signal: 'HOLD' as const, conviction: 0.64, trending: 10 },
+      { symbol: 'INTC', price: 31.40, change: -2.10, signal: 'SELL' as const, conviction: 0.78, trending: 11 },
+      { symbol: 'ARM', price: 142.30, change: -1.55, signal: 'SELL' as const, conviction: 0.65, trending: 12 },
+    ],
+  },
+  'theme-macro': {
+    title: 'Macro & Global',
+    icon: Globe,
+    tickers: [
+      { symbol: 'GLD', price: 214.30, change: 1.88, signal: 'BUY' as const, conviction: 0.85, trending: 1 },
+      { symbol: 'SLV', price: 28.40, change: 2.44, signal: 'BUY' as const, conviction: 0.80, trending: 2 },
+      { symbol: 'UUP', price: 28.20, change: 0.55, signal: 'HOLD' as const, conviction: 0.68, trending: 3 },
+      { symbol: 'SPY', price: 542.80, change: 0.45, signal: 'HOLD' as const, conviction: 0.65, trending: 4 },
+      { symbol: 'QQQ', price: 482.10, change: 0.88, signal: 'HOLD' as const, conviction: 0.62, trending: 5 },
+      { symbol: 'IWM', price: 202.30, change: -0.22, signal: 'HOLD' as const, conviction: 0.60, trending: 6 },
+      { symbol: 'EFA', price: 82.40, change: -0.55, signal: 'HOLD' as const, conviction: 0.58, trending: 7 },
+      { symbol: 'EEM', price: 42.10, change: -0.88, signal: 'SELL' as const, conviction: 0.70, trending: 8 },
+      { symbol: 'TLT', price: 92.40, change: -1.10, signal: 'SELL' as const, conviction: 0.72, trending: 9 },
+      { symbol: 'HYG', price: 78.30, change: -0.44, signal: 'SELL' as const, conviction: 0.65, trending: 10 },
+    ],
+  },
+  'theme-earnings': {
+    title: 'Earnings Momentum',
+    icon: BarChart2,
+    tickers: [
+      { symbol: 'META', price: 514.82, change: 2.87, signal: 'BUY' as const, conviction: 0.94, trending: 1 },
+      { symbol: 'AMZN', price: 189.34, change: 1.22, signal: 'BUY' as const, conviction: 0.90, trending: 2 },
+      { symbol: 'GOOGL', price: 175.20, change: 1.93, signal: 'BUY' as const, conviction: 0.87, trending: 3 },
+      { symbol: 'NFLX', price: 624.30, change: 1.55, signal: 'BUY' as const, conviction: 0.84, trending: 4 },
+      { symbol: 'MSFT', price: 415.30, change: 1.54, signal: 'BUY' as const, conviction: 0.81, trending: 5 },
+      { symbol: 'NOW', price: 892.40, change: 1.22, signal: 'BUY' as const, conviction: 0.78, trending: 6 },
+      { symbol: 'CRM', price: 282.10, change: 0.94, signal: 'HOLD' as const, conviction: 0.72, trending: 7 },
+      { symbol: 'AAPL', price: 182.50, change: -0.22, signal: 'HOLD' as const, conviction: 0.68, trending: 8 },
+      { symbol: 'ADBE', price: 482.30, change: -0.55, signal: 'HOLD' as const, conviction: 0.65, trending: 9 },
+      { symbol: 'TSLA', price: 178.20, change: -2.44, signal: 'SELL' as const, conviction: 0.72, trending: 10 },
+      { symbol: 'PYPL', price: 62.40, change: -1.88, signal: 'SELL' as const, conviction: 0.68, trending: 11 },
     ],
   },
   'theme-political': {
@@ -137,90 +298,12 @@ const THEME_DATA = {
     tickers: [
       { symbol: 'GLD', price: 214.30, change: 1.88, signal: 'BUY' as const, conviction: 0.86, trending: 1 },
       { symbol: 'XLF', price: 42.15, change: 1.22, signal: 'BUY' as const, conviction: 0.79, trending: 2 },
-      { symbol: 'SPY', price: 542.80, change: 0.45, signal: 'HOLD' as const, conviction: 0.65, trending: 3 },
-      { symbol: 'TLT', price: 92.40, change: -1.10, signal: 'SELL' as const, conviction: 0.72, trending: 4 },
-      { symbol: 'DXY', price: 104.20, change: -0.33, signal: 'HOLD' as const, conviction: 0.58, trending: 5 },
-    ],
-  },
-  'theme-infra': {
-    title: 'AI Infrastructure',
-    icon: Server,
-    tickers: [
-      { symbol: 'VST', price: 89.40, change: 6.22, signal: 'BUY' as const, conviction: 0.93, trending: 1, isHolding: true },
-      { symbol: 'AVGO', price: 1422.10, change: 3.20, signal: 'BUY' as const, conviction: 0.90, trending: 2 },
-      { symbol: 'CEG', price: 224.80, change: 4.10, signal: 'BUY' as const, conviction: 0.88, trending: 3 },
-      { symbol: 'ANET', price: 312.50, change: 2.44, signal: 'BUY' as const, conviction: 0.84, trending: 4 },
-      { symbol: 'EQIX', price: 892.30, change: 0.77, signal: 'HOLD' as const, conviction: 0.70, trending: 5 },
-      { symbol: 'ETN', price: 312.40, change: -0.22, signal: 'HOLD' as const, conviction: 0.62, trending: 6 },
-    ],
-  },
-  'theme-defense': {
-    title: 'Defense & Govt',
-    icon: Shield,
-    tickers: [
-      { symbol: 'PLTR', price: 24.80, change: 3.88, signal: 'BUY' as const, conviction: 0.91, trending: 1, isHolding: true },
-      { symbol: 'RTX', price: 112.40, change: 1.55, signal: 'BUY' as const, conviction: 0.82, trending: 2 },
-      { symbol: 'LMT', price: 482.30, change: 0.92, signal: 'BUY' as const, conviction: 0.78, trending: 3 },
-      { symbol: 'NOC', price: 512.10, change: 0.44, signal: 'HOLD' as const, conviction: 0.68, trending: 4 },
-      { symbol: 'GD', price: 292.80, change: -0.18, signal: 'HOLD' as const, conviction: 0.62, trending: 5 },
-      { symbol: 'BA', price: 178.40, change: -2.33, signal: 'SELL' as const, conviction: 0.74, trending: 6 },
-    ],
-  },
-  'theme-energy': {
-    title: 'Energy Transition',
-    icon: Flame,
-    tickers: [
-      { symbol: 'XOM', price: 112.40, change: 2.44, signal: 'BUY' as const, conviction: 0.88, trending: 1 },
-      { symbol: 'SLB', price: 43.20, change: 3.10, signal: 'BUY' as const, conviction: 0.85, trending: 2 },
-      { symbol: 'CVX', price: 154.30, change: 1.67, signal: 'BUY' as const, conviction: 0.81, trending: 3 },
-      { symbol: 'COP', price: 122.80, change: 1.12, signal: 'HOLD' as const, conviction: 0.71, trending: 4 },
-      { symbol: 'OXY', price: 59.40, change: -1.20, signal: 'SELL' as const, conviction: 0.72, trending: 5 },
-    ],
-  },
-  'theme-health': {
-    title: 'Healthcare Innovation',
-    icon: Stethoscope,
-    tickers: [
-      { symbol: 'LLY', price: 804.20, change: 3.54, signal: 'BUY' as const, conviction: 0.96, trending: 1, isHolding: true },
-      { symbol: 'NVO', price: 122.40, change: 2.90, signal: 'BUY' as const, conviction: 0.93, trending: 2 },
-      { symbol: 'ABBV', price: 175.60, change: 1.72, signal: 'BUY' as const, conviction: 0.88, trending: 3 },
-      { symbol: 'AMGN', price: 282.10, change: 0.42, signal: 'HOLD' as const, conviction: 0.70, trending: 4 },
-      { symbol: 'PFE', price: 26.10, change: -1.44, signal: 'SELL' as const, conviction: 0.68, trending: 5 },
-    ],
-  },
-  'theme-semis': {
-    title: 'Chip Cycle',
-    icon: Zap,
-    tickers: [
-      { symbol: 'NVDA', price: 924.73, change: 4.21, signal: 'BUY' as const, conviction: 0.94, trending: 1 },
-      { symbol: 'AMD', price: 162.45, change: 3.14, signal: 'BUY' as const, conviction: 0.90, trending: 2 },
-      { symbol: 'MU', price: 128.40, change: 2.44, signal: 'BUY' as const, conviction: 0.86, trending: 3 },
-      { symbol: 'AVGO', price: 1422.10, change: 3.20, signal: 'BUY' as const, conviction: 0.84, trending: 4 },
-      { symbol: 'QCOM', price: 174.20, change: -0.65, signal: 'HOLD' as const, conviction: 0.66, trending: 5 },
-      { symbol: 'INTC', price: 31.40, change: -2.10, signal: 'SELL' as const, conviction: 0.75, trending: 6 },
-    ],
-  },
-  'theme-macro': {
-    title: 'Macro & Global',
-    icon: Globe,
-    tickers: [
-      { symbol: 'GLD', price: 214.30, change: 1.88, signal: 'BUY' as const, conviction: 0.82, trending: 1 },
-      { symbol: 'VIX', price: 14.20, change: 8.44, signal: 'BUY' as const, conviction: 0.71, trending: 2 },
-      { symbol: 'SPY', price: 542.80, change: 0.45, signal: 'HOLD' as const, conviction: 0.65, trending: 3 },
-      { symbol: 'QQQ', price: 482.10, change: 0.88, signal: 'HOLD' as const, conviction: 0.60, trending: 4 },
-      { symbol: 'TLT', price: 92.40, change: -1.10, signal: 'SELL' as const, conviction: 0.66, trending: 5 },
-    ],
-  },
-  'theme-earnings': {
-    title: 'Earnings Momentum',
-    icon: BarChart2,
-    tickers: [
-      { symbol: 'META', price: 514.82, change: 2.87, signal: 'BUY' as const, conviction: 0.92, trending: 1 },
-      { symbol: 'AMZN', price: 189.34, change: 1.22, signal: 'BUY' as const, conviction: 0.88, trending: 2 },
-      { symbol: 'GOOGL', price: 175.20, change: 0.93, signal: 'BUY' as const, conviction: 0.84, trending: 3 },
-      { symbol: 'MSFT', price: 415.30, change: 1.54, signal: 'HOLD' as const, conviction: 0.72, trending: 4 },
-      { symbol: 'AAPL', price: 182.50, change: -0.22, signal: 'HOLD' as const, conviction: 0.65, trending: 5 },
-      { symbol: 'TSLA', price: 178.20, change: -2.44, signal: 'SELL' as const, conviction: 0.69, trending: 6 },
+      { symbol: 'DJT', price: 32.40, change: 8.44, signal: 'BUY' as const, conviction: 0.72, trending: 3 },
+      { symbol: 'SPY', price: 542.80, change: 0.45, signal: 'HOLD' as const, conviction: 0.65, trending: 4 },
+      { symbol: 'XLE', price: 92.30, change: 0.22, signal: 'HOLD' as const, conviction: 0.62, trending: 5 },
+      { symbol: 'XLV', price: 142.10, change: -0.18, signal: 'HOLD' as const, conviction: 0.60, trending: 6 },
+      { symbol: 'TLT', price: 92.40, change: -1.10, signal: 'SELL' as const, conviction: 0.72, trending: 7 },
+      { symbol: 'UUP', price: 28.20, change: -0.33, signal: 'SELL' as const, conviction: 0.65, trending: 8 },
     ],
   },
 }
@@ -322,7 +405,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     <div className="flex h-full overflow-hidden">
 
       {/* ── LEFT SIDEBAR: sectors + themes, scrollable ── */}
-      <aside className="w-[260px] flex-shrink-0 border-r border-border overflow-y-auto bg-card/20">
+      <aside className="w-[280px] flex-shrink-0 border-r border-border overflow-y-auto bg-card/20">
         <div className="p-1.5 space-y-1">
           {/* Sectors Header */}
           <div className="px-2 pt-1 pb-0.5">
@@ -408,15 +491,15 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                 </div>
               )}
 
-              <span className="text-[10px] font-mono text-green-400 animate-pulse ml-2">
-                Drag header · Drag any edge or corner to resize
+              <span className="text-[9px] font-mono text-muted-foreground ml-auto">
+                Drag header to move | Drag any edge or corner to resize
               </span>
             </>
           )}
         </div>
 
-        {/* Resizable/Draggable Grid */}
-        <div className={`flex-1 overflow-y-auto bg-background ${isEditMode ? '' : 'rgl-locked'}`}>
+        {/* Grid */}
+        <div className={`flex-1 overflow-auto p-2 ${isEditMode ? '' : 'rgl-locked'}`}>
           <GridLayout
             className="layout"
             layout={visibleLayout}
@@ -430,43 +513,30 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             draggableHandle=".widget-drag-handle"
             compactType={null}
             preventCollision={true}
-            onLayoutChange={setLayout}
+            onLayoutChange={(newLayout) => setLayout(newLayout)}
             width={1200}
           >
             {rightWidgets.map(widget => (
               <div
                 key={widget.id}
-                className={`relative bg-card/40 border rounded-lg overflow-hidden flex flex-col ${
-                  isEditMode ? 'border-green-500/40 border-dashed' : 'border-border'
-                }`}
+                className="bg-card border border-border rounded-lg overflow-hidden flex flex-col"
               >
-                {/* Drag handle header */}
-                <div
-                  className={`widget-drag-handle flex items-center justify-between px-2 py-1 border-b flex-shrink-0 ${
-                    isEditMode
-                      ? 'bg-green-500/10 border-green-500/30 cursor-grab active:cursor-grabbing'
-                      : 'bg-card/60 border-border'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold tracking-widest uppercase">
-                    {isEditMode && <GripVertical className="w-3 h-3 text-green-400" />}
-                    <span className={isEditMode ? 'text-green-400' : 'text-muted-foreground'}>
+                {/* Widget header / drag bar */}
+                <div className={`widget-drag-handle flex items-center justify-between px-2 py-1 border-b border-border/50 bg-muted/30 ${isEditMode ? 'cursor-grab' : ''}`}>
+                  <div className="flex items-center gap-1.5">
+                    {isEditMode && <GripVertical className="w-3 h-3 text-green-500" />}
+                    <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
                       {widget.title}
                     </span>
                   </div>
                   {isEditMode && (
-                    <button
-                      onClick={e => { e.stopPropagation(); removeWidget(widget.id) }}
-                      onMouseDown={e => e.stopPropagation()}
-                      className="p-0.5 rounded text-red-400 hover:bg-red-500/20 border border-transparent hover:border-red-500/40"
-                    >
+                    <button onClick={() => removeWidget(widget.id)} className="text-muted-foreground hover:text-red-400">
                       <X className="w-3 h-3" />
                     </button>
                   )}
                 </div>
-
                 {/* Widget content */}
-                <div className="flex-1 min-h-0 overflow-hidden">
+                <div className="flex-1 overflow-auto">
                   {renderRight(widget)}
                 </div>
               </div>
