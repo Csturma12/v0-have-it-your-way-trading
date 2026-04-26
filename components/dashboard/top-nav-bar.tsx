@@ -62,6 +62,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Trading Floor', href: '/tradedesk', icon: Briefcase },
       { label: 'Stocks', href: '/tradedesk/stocks', icon: TrendingUp, accent: 'green' },
       { label: 'Options', href: '/tradedesk/options', icon: BarChart3, accent: 'gold' },
+      { label: 'Multi Leg', href: '/tradedesk/multileg', icon: Layers, accent: 'cyan' },
       { label: 'Hedges', href: '/tradedesk/hedges', icon: Shield, accent: 'red' },
     ],
   },
