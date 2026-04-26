@@ -1246,20 +1246,18 @@ export function TradingViewChart({ ticker }: ChartProps) {
       </div>
 
       {/* ── Sub-chart pane (oscillators / volume / volatility / trend) ── */}
-      {hasSubIndicators && (
-        <div className="flex-[1] min-h-0 relative border-t border-border/40">
-          {/* Label strip showing which sub-chart indicators are active */}
-          <div className="absolute top-1 left-2 z-10 flex items-center gap-2 flex-wrap pointer-events-none">
-            {INDICATORS.filter(i => SUBCHART_CATEGORIES.includes(i.category) && activeIndicators.has(i.id)).map(ind => (
-              <span key={ind.id} className="flex items-center gap-1 text-[9px] font-mono bg-black/60 px-1.5 py-0.5 rounded border border-border/30">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ind.color }} />
-                {ind.label}
-              </span>
-            ))}
-          </div>
-          <div ref={subContainerRef} className="absolute inset-0" />
+      <div className={`min-h-0 relative border-t border-border/40 ${hasSubIndicators ? 'flex-[1]' : 'hidden'}`}>
+        {/* Label strip showing which sub-chart indicators are active */}
+        <div className="absolute top-1 left-2 z-10 flex items-center gap-2 flex-wrap pointer-events-none">
+          {INDICATORS.filter(i => SUBCHART_CATEGORIES.includes(i.category) && activeIndicators.has(i.id)).map(ind => (
+            <span key={ind.id} className="flex items-center gap-1 text-[9px] font-mono bg-black/60 px-1.5 py-0.5 rounded border border-border/30">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ind.color }} />
+              {ind.label}
+            </span>
+          ))}
         </div>
-      )}
+        <div ref={subContainerRef} className="absolute inset-0" />
+      </div>
 
       {/* ── Active indicator legend ── */}
       {activeIndicators.size > 0 && !showIndicators && (
