@@ -6,11 +6,22 @@ import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import { Lock, Unlock, RotateCcw, Plus, X, GripVertical } from 'lucide-react'
 import { SectorPillBox } from './sector-pill-box'
-import { ThemesColumn } from './themes-column'
+import { ThemePillBox } from './theme-pill-box'
 import { TradingViewChart } from './tradingview-chart'
 import { WatchlistPanel } from './watchlist-panel'
+import {
+  Cpu,
+  Scale,
+  Server,
+  Shield,
+  Flame,
+  Stethoscope,
+  Zap,
+  Globe,
+  BarChart2,
+} from 'lucide-react'
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v5'
+const STORAGE_KEY = 'trading-dashboard-rgl-v6'
 
 const ALL_RESIZE_HANDLES: Array<'s' | 'w' | 'e' | 'n' | 'sw' | 'nw' | 'se' | 'ne'> = [
   's', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne',
@@ -105,9 +116,118 @@ const SECTOR_DATA = {
   },
 }
 
+// ─── Theme ticker data (same format as sectors) ─────────────────────────────
+
+const THEME_DATA = {
+  'theme-ai': {
+    title: 'AI Industry',
+    icon: Cpu,
+    tickers: [
+      { symbol: 'NVDA', price: 924.73, change: 4.21, signal: 'BUY' as const, conviction: 0.94, trending: 1 },
+      { symbol: 'SMCI', price: 744.20, change: 5.12, signal: 'BUY' as const, conviction: 0.91, trending: 2 },
+      { symbol: 'MSFT', price: 415.30, change: 1.54, signal: 'BUY' as const, conviction: 0.88, trending: 3 },
+      { symbol: 'ORCL', price: 124.55, change: 2.33, signal: 'BUY' as const, conviction: 0.85, trending: 4 },
+      { symbol: 'GOOGL', price: 175.20, change: 0.93, signal: 'HOLD' as const, conviction: 0.72, trending: 5 },
+      { symbol: 'META', price: 514.82, change: -0.44, signal: 'HOLD' as const, conviction: 0.68, trending: 6 },
+    ],
+  },
+  'theme-political': {
+    title: 'Political & M&A',
+    icon: Scale,
+    tickers: [
+      { symbol: 'GLD', price: 214.30, change: 1.88, signal: 'BUY' as const, conviction: 0.86, trending: 1 },
+      { symbol: 'XLF', price: 42.15, change: 1.22, signal: 'BUY' as const, conviction: 0.79, trending: 2 },
+      { symbol: 'SPY', price: 542.80, change: 0.45, signal: 'HOLD' as const, conviction: 0.65, trending: 3 },
+      { symbol: 'TLT', price: 92.40, change: -1.10, signal: 'SELL' as const, conviction: 0.72, trending: 4 },
+      { symbol: 'DXY', price: 104.20, change: -0.33, signal: 'HOLD' as const, conviction: 0.58, trending: 5 },
+    ],
+  },
+  'theme-infra': {
+    title: 'AI Infrastructure',
+    icon: Server,
+    tickers: [
+      { symbol: 'VST', price: 89.40, change: 6.22, signal: 'BUY' as const, conviction: 0.93, trending: 1, isHolding: true },
+      { symbol: 'AVGO', price: 1422.10, change: 3.20, signal: 'BUY' as const, conviction: 0.90, trending: 2 },
+      { symbol: 'CEG', price: 224.80, change: 4.10, signal: 'BUY' as const, conviction: 0.88, trending: 3 },
+      { symbol: 'ANET', price: 312.50, change: 2.44, signal: 'BUY' as const, conviction: 0.84, trending: 4 },
+      { symbol: 'EQIX', price: 892.30, change: 0.77, signal: 'HOLD' as const, conviction: 0.70, trending: 5 },
+      { symbol: 'ETN', price: 312.40, change: -0.22, signal: 'HOLD' as const, conviction: 0.62, trending: 6 },
+    ],
+  },
+  'theme-defense': {
+    title: 'Defense & Govt',
+    icon: Shield,
+    tickers: [
+      { symbol: 'PLTR', price: 24.80, change: 3.88, signal: 'BUY' as const, conviction: 0.91, trending: 1, isHolding: true },
+      { symbol: 'RTX', price: 112.40, change: 1.55, signal: 'BUY' as const, conviction: 0.82, trending: 2 },
+      { symbol: 'LMT', price: 482.30, change: 0.92, signal: 'BUY' as const, conviction: 0.78, trending: 3 },
+      { symbol: 'NOC', price: 512.10, change: 0.44, signal: 'HOLD' as const, conviction: 0.68, trending: 4 },
+      { symbol: 'GD', price: 292.80, change: -0.18, signal: 'HOLD' as const, conviction: 0.62, trending: 5 },
+      { symbol: 'BA', price: 178.40, change: -2.33, signal: 'SELL' as const, conviction: 0.74, trending: 6 },
+    ],
+  },
+  'theme-energy': {
+    title: 'Energy Transition',
+    icon: Flame,
+    tickers: [
+      { symbol: 'XOM', price: 112.40, change: 2.44, signal: 'BUY' as const, conviction: 0.88, trending: 1 },
+      { symbol: 'SLB', price: 43.20, change: 3.10, signal: 'BUY' as const, conviction: 0.85, trending: 2 },
+      { symbol: 'CVX', price: 154.30, change: 1.67, signal: 'BUY' as const, conviction: 0.81, trending: 3 },
+      { symbol: 'COP', price: 122.80, change: 1.12, signal: 'HOLD' as const, conviction: 0.71, trending: 4 },
+      { symbol: 'OXY', price: 59.40, change: -1.20, signal: 'SELL' as const, conviction: 0.72, trending: 5 },
+    ],
+  },
+  'theme-health': {
+    title: 'Healthcare Innovation',
+    icon: Stethoscope,
+    tickers: [
+      { symbol: 'LLY', price: 804.20, change: 3.54, signal: 'BUY' as const, conviction: 0.96, trending: 1, isHolding: true },
+      { symbol: 'NVO', price: 122.40, change: 2.90, signal: 'BUY' as const, conviction: 0.93, trending: 2 },
+      { symbol: 'ABBV', price: 175.60, change: 1.72, signal: 'BUY' as const, conviction: 0.88, trending: 3 },
+      { symbol: 'AMGN', price: 282.10, change: 0.42, signal: 'HOLD' as const, conviction: 0.70, trending: 4 },
+      { symbol: 'PFE', price: 26.10, change: -1.44, signal: 'SELL' as const, conviction: 0.68, trending: 5 },
+    ],
+  },
+  'theme-semis': {
+    title: 'Chip Cycle',
+    icon: Zap,
+    tickers: [
+      { symbol: 'NVDA', price: 924.73, change: 4.21, signal: 'BUY' as const, conviction: 0.94, trending: 1 },
+      { symbol: 'AMD', price: 162.45, change: 3.14, signal: 'BUY' as const, conviction: 0.90, trending: 2 },
+      { symbol: 'MU', price: 128.40, change: 2.44, signal: 'BUY' as const, conviction: 0.86, trending: 3 },
+      { symbol: 'AVGO', price: 1422.10, change: 3.20, signal: 'BUY' as const, conviction: 0.84, trending: 4 },
+      { symbol: 'QCOM', price: 174.20, change: -0.65, signal: 'HOLD' as const, conviction: 0.66, trending: 5 },
+      { symbol: 'INTC', price: 31.40, change: -2.10, signal: 'SELL' as const, conviction: 0.75, trending: 6 },
+    ],
+  },
+  'theme-macro': {
+    title: 'Macro & Global',
+    icon: Globe,
+    tickers: [
+      { symbol: 'GLD', price: 214.30, change: 1.88, signal: 'BUY' as const, conviction: 0.82, trending: 1 },
+      { symbol: 'VIX', price: 14.20, change: 8.44, signal: 'BUY' as const, conviction: 0.71, trending: 2 },
+      { symbol: 'SPY', price: 542.80, change: 0.45, signal: 'HOLD' as const, conviction: 0.65, trending: 3 },
+      { symbol: 'QQQ', price: 482.10, change: 0.88, signal: 'HOLD' as const, conviction: 0.60, trending: 4 },
+      { symbol: 'TLT', price: 92.40, change: -1.10, signal: 'SELL' as const, conviction: 0.66, trending: 5 },
+    ],
+  },
+  'theme-earnings': {
+    title: 'Earnings Momentum',
+    icon: BarChart2,
+    tickers: [
+      { symbol: 'META', price: 514.82, change: 2.87, signal: 'BUY' as const, conviction: 0.92, trending: 1 },
+      { symbol: 'AMZN', price: 189.34, change: 1.22, signal: 'BUY' as const, conviction: 0.88, trending: 2 },
+      { symbol: 'GOOGL', price: 175.20, change: 0.93, signal: 'BUY' as const, conviction: 0.84, trending: 3 },
+      { symbol: 'MSFT', price: 415.30, change: 1.54, signal: 'HOLD' as const, conviction: 0.72, trending: 4 },
+      { symbol: 'AAPL', price: 182.50, change: -0.22, signal: 'HOLD' as const, conviction: 0.65, trending: 5 },
+      { symbol: 'TSLA', price: 178.20, change: -2.44, signal: 'SELL' as const, conviction: 0.69, trending: 6 },
+    ],
+  },
+}
+
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'themes'
+type RightWidgetType = 'chart' | 'watchlist'
 
 interface RightWidget {
   id: string
@@ -118,13 +238,11 @@ interface RightWidget {
 const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
   { id: 'chart',     type: 'chart',     title: 'Chart' },
   { id: 'watchlist', type: 'watchlist', title: 'Watchlist' },
-  { id: 'themes',    type: 'themes',    title: 'Themes' },
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'chart',     x: 0, y: 0,  w: 8, h: 14 },
-  { i: 'watchlist', x: 8, y: 0,  w: 4, h: 14 },
-  { i: 'themes',    x: 0, y: 14, w: 12, h: 10 },
+  { i: 'chart',     x: 0, y: 0,  w: 8, h: 16 },
+  { i: 'watchlist', x: 8, y: 0,  w: 4, h: 16 },
 ]
 
 interface SavedState {
@@ -197,22 +315,43 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const renderRight = (widget: RightWidget) => {
     if (widget.type === 'chart')     return <TradingViewChart ticker={selectedTicker} />
     if (widget.type === 'watchlist') return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
-    if (widget.type === 'themes')    return <ThemesColumn onSelectTicker={onSelectTicker} />
     return null
   }
 
   return (
     <div className="flex h-full overflow-hidden">
 
-      {/* ── LEFT SIDEBAR: all sector pill boxes, scrollable ── */}
-      <aside className="w-[220px] flex-shrink-0 border-r border-border overflow-y-auto bg-card/20">
+      {/* ── LEFT SIDEBAR: sectors + themes, scrollable ── */}
+      <aside className="w-[260px] flex-shrink-0 border-r border-border overflow-y-auto bg-card/20">
         <div className="p-1.5 space-y-1">
+          {/* Sectors Header */}
+          <div className="px-2 pt-1 pb-0.5">
+            <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-muted-foreground">
+              SECTORS
+            </span>
+          </div>
           {Object.entries(SECTOR_DATA).map(([key, sector]) => (
             <SectorPillBox
               key={key}
               title={sector.title}
               accent={sector.accent}
               tickers={sector.tickers}
+              onSelectTicker={onSelectTicker}
+            />
+          ))}
+
+          {/* Themes Header */}
+          <div className="px-2 pt-3 pb-0.5 border-t border-border/30 mt-2">
+            <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-muted-foreground">
+              THEMES
+            </span>
+          </div>
+          {Object.entries(THEME_DATA).map(([key, theme]) => (
+            <ThemePillBox
+              key={key}
+              title={theme.title}
+              icon={theme.icon}
+              tickers={theme.tickers}
               onSelectTicker={onSelectTicker}
             />
           ))}
