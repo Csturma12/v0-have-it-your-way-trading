@@ -18,6 +18,7 @@ import {
 const OVERLAY_CATEGORIES: IndicatorCategory[] = ['overlay']
 const SUBCHART_CATEGORIES: IndicatorCategory[] = ['oscillator', 'volume', 'volatility', 'trend']
 import { TrendingUp, Maximize2, Loader2, Settings2, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { ChartSubPane, type Bar as SubPaneBar } from './chart-sub-pane'
 
 interface ChartProps {
   ticker: string
@@ -140,7 +141,7 @@ interface Bar {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INDICATOR CALCULATION FUNCTIONS
-// ══════════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════��════════════════════════════════════════════════
 
 function calcSMA(data: number[], period: number): number[] {
   const result: number[] = []
@@ -698,12 +699,11 @@ type AreaSeries_t = ISeriesApi<'Area'>
 export function TradingViewChart({ ticker }: ChartProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const subContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
-  const subChartRef = useRef<IChartApi | null>(null)
   const candleRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volumeRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   const indicatorRefs = useRef<Record<string, (LineSeries_t | HistoSeries_t | AreaSeries_t)[]>>({})
+  const barsRef = useRef<SubPaneBar[]>([])
 
   const [range, setRange] = useState('1D')
   const [loading, setLoading] = useState(true)
@@ -712,12 +712,12 @@ export function TradingViewChart({ ticker }: ChartProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<IndicatorCategory>>(new Set(['overlay']))
   const [activeIndicators, setActiveIndicators] = useState<Set<string>>(new Set(['ema9', 'ema21']))
   const [quote, setQuote] = useState<{ last: number; change: number; changePct: number } | null>(null)
-  const [activeSubLabel, setActiveSubLabel] = useState<string | null>(null)
+  const [loadedBars, setLoadedBars] = useState<SubPaneBar[]>([])
 
-  // Determine if any sub-chart indicators are active
-  const hasSubIndicators = INDICATORS.some(
-    (i) => SUBCHART_CATEGORIES.includes(i.category) && activeIndicators.has(i.id)
-  )
+  // Sub-chart indicator IDs that are active (each gets its own pane)
+  const activeSubIds = INDICATORS.filter(
+    i => SUBCHART_CATEGORIES.includes(i.category) && activeIndicators.has(i.id)
+  ).map(i => i.id)
 
   // Initialize chart once
   useEffect(() => {
@@ -755,32 +755,9 @@ export function TradingViewChart({ ticker }: ChartProps) {
     candleRef.current = candleSeries
     volumeRef.current = volumeSeries
 
-    // Sub-chart for oscillators / non-overlay indicators
-    if (subContainerRef.current) {
-      const subChart = createChart(subContainerRef.current, {
-        layout: {
-          background: { color: '#0a0a0a' },
-          textColor: '#a3a3a3',
-          fontFamily: 'var(--font-mono), monospace',
-          fontSize: 10,
-        },
-        grid: {
-          vertLines: { color: 'rgba(255,255,255,0.04)' },
-          horzLines: { color: 'rgba(255,255,255,0.04)' },
-        },
-        crosshair: { mode: 1 },
-        rightPriceScale: { borderColor: '#222' },
-        timeScale: { borderColor: '#222', timeVisible: true, secondsVisible: false, visible: false },
-        autoSize: true,
-      })
-      subChartRef.current = subChart
-    }
-
     return () => {
       chart.remove()
-      subChartRef.current?.remove()
       chartRef.current = null
-      subChartRef.current = null
       candleRef.current = null
       volumeRef.current = null
       indicatorRefs.current = {}
@@ -789,18 +766,13 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
   const clearIndicators = useCallback(() => {
     const chart = chartRef.current
-    const subChart = subChartRef.current
-    Object.entries(indicatorRefs.current).forEach(([id, series]) => {
-      const cat = INDICATORS.find(i => i.id === id)?.category
-      const targetChart = cat && SUBCHART_CATEGORIES.includes(cat) ? subChart : chart
-      series.forEach(s => { try { targetChart?.removeSeries(s) } catch {} })
-    })
+    if (!chart) return
+    Object.values(indicatorRefs.current).flat().forEach(s => { try { chart.removeSeries(s) } catch {} })
     indicatorRefs.current = {}
   }, [])
 
   const drawIndicators = useCallback((bars: Bar[], active: Set<string>) => {
     const chart = chartRef.current
-    const subChart = subChartRef.current
     if (!chart || bars.length === 0) return
     clearIndicators()
 
@@ -810,91 +782,81 @@ export function TradingViewChart({ ticker }: ChartProps) {
     const toLineData = (values: number[]): LineData[] =>
       values.map((v, i) => ({ time: times[i] as UTCTimestamp, value: v })).filter(d => !isNaN(d.value))
 
-    // addLine routes to main or sub chart based on indicator category
-    const addLine = (id: string, color: string, lineWidth: 1 | 2 | 3 = 1, dashed = false) => {
-      const cat = INDICATORS.find(i => i.id === id)?.category
-      const target = cat && SUBCHART_CATEGORIES.includes(cat) && subChart ? subChart : chart
-      return target.addSeries(LineSeries, { color, lineWidth, lineStyle: dashed ? 2 : 0, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false })
-    }
-
-    const addHistogram = (id: string, color: string) => {
-      const cat = INDICATORS.find(i => i.id === id)?.category
-      const target = cat && SUBCHART_CATEGORIES.includes(cat) && subChart ? subChart : chart
-      return target.addSeries(HistogramSeries, { color, priceLineVisible: false, lastValueVisible: false })
-    }
+    // Only overlay indicators go on the main chart
+    const addLine = (color: string, lineWidth: 1 | 2 | 3 = 1, dashed = false) =>
+      chart.addSeries(LineSeries, { color, lineWidth, lineStyle: dashed ? 2 : 0, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false })
 
     const store = (id: string, s: LineSeries_t | HistoSeries_t | AreaSeries_t) => {
       if (!indicatorRefs.current[id]) indicatorRefs.current[id] = []
       indicatorRefs.current[id].push(s)
     }
 
-    // ─── OVERLAY INDICATORS (main chart) ───
-    if (active.has('sma9'))   { const s = addLine('sma9',   '#f97316', 1); s.setData(toLineData(calcSMA(closes, 9)));   store('sma9', s) }
-    if (active.has('sma20'))  { const s = addLine('sma20',  '#eab308', 1); s.setData(toLineData(calcSMA(closes, 20)));  store('sma20', s) }
-    if (active.has('sma50'))  { const s = addLine('sma50',  '#84cc16', 1); s.setData(toLineData(calcSMA(closes, 50)));  store('sma50', s) }
-    if (active.has('sma100')) { const s = addLine('sma100', '#22c55e', 2); s.setData(toLineData(calcSMA(closes, 100))); store('sma100', s) }
-    if (active.has('sma200')) { const s = addLine('sma200', '#14b8a6', 2); s.setData(toLineData(calcSMA(closes, 200))); store('sma200', s) }
-    if (active.has('ema9'))   { const s = addLine('ema9',   '#f59e0b', 1); s.setData(toLineData(calcEMA(closes, 9)));   store('ema9', s) }
-    if (active.has('ema12'))  { const s = addLine('ema12',  '#fbbf24', 1); s.setData(toLineData(calcEMA(closes, 12)));  store('ema12', s) }
-    if (active.has('ema21'))  { const s = addLine('ema21',  '#3b82f6', 1); s.setData(toLineData(calcEMA(closes, 21)));  store('ema21', s) }
-    if (active.has('ema26'))  { const s = addLine('ema26',  '#60a5fa', 1); s.setData(toLineData(calcEMA(closes, 26)));  store('ema26', s) }
-    if (active.has('ema50'))  { const s = addLine('ema50',  '#a855f7', 2); s.setData(toLineData(calcEMA(closes, 50)));  store('ema50', s) }
-    if (active.has('ema100')) { const s = addLine('ema100', '#c084fc', 2); s.setData(toLineData(calcEMA(closes, 100))); store('ema100', s) }
-    if (active.has('ema200')) { const s = addLine('ema200', '#e879f9', 2); s.setData(toLineData(calcEMA(closes, 200))); store('ema200', s) }
-    if (active.has('wma20'))  { const s = addLine('wma20',  '#06b6d4', 1); s.setData(toLineData(calcWMA(closes, 20)));  store('wma20', s) }
-    if (active.has('hma20'))  { const s = addLine('hma20',  '#0ea5e9', 1); s.setData(toLineData(calcHMA(closes, 20)));  store('hma20', s) }
-    if (active.has('vwap'))   { const s = addLine('vwap',   '#22c55e', 1, true); s.setData(toLineData(calcVWAP(bars))); store('vwap', s) }
-    if (active.has('vwma20')) { const s = addLine('vwma20', '#10b981', 1); s.setData(toLineData(calcVWMA(bars, 20)));   store('vwma20', s) }
+    // ─── OVERLAY INDICATORS (main chart only) ───
+    if (active.has('sma9'))   { const s = addLine('#f97316', 1); s.setData(toLineData(calcSMA(closes, 9)));   store('sma9', s) }
+    if (active.has('sma20'))  { const s = addLine('#eab308', 1); s.setData(toLineData(calcSMA(closes, 20)));  store('sma20', s) }
+    if (active.has('sma50'))  { const s = addLine('#84cc16', 1); s.setData(toLineData(calcSMA(closes, 50)));  store('sma50', s) }
+    if (active.has('sma100')) { const s = addLine('#22c55e', 2); s.setData(toLineData(calcSMA(closes, 100))); store('sma100', s) }
+    if (active.has('sma200')) { const s = addLine('#14b8a6', 2); s.setData(toLineData(calcSMA(closes, 200))); store('sma200', s) }
+    if (active.has('ema9'))   { const s = addLine('#f59e0b', 1); s.setData(toLineData(calcEMA(closes, 9)));   store('ema9', s) }
+    if (active.has('ema12'))  { const s = addLine('#fbbf24', 1); s.setData(toLineData(calcEMA(closes, 12)));  store('ema12', s) }
+    if (active.has('ema21'))  { const s = addLine('#3b82f6', 1); s.setData(toLineData(calcEMA(closes, 21)));  store('ema21', s) }
+    if (active.has('ema26'))  { const s = addLine('#60a5fa', 1); s.setData(toLineData(calcEMA(closes, 26)));  store('ema26', s) }
+    if (active.has('ema50'))  { const s = addLine('#a855f7', 2); s.setData(toLineData(calcEMA(closes, 50)));  store('ema50', s) }
+    if (active.has('ema100')) { const s = addLine('#c084fc', 2); s.setData(toLineData(calcEMA(closes, 100))); store('ema100', s) }
+    if (active.has('ema200')) { const s = addLine('#e879f9', 2); s.setData(toLineData(calcEMA(closes, 200))); store('ema200', s) }
+    if (active.has('wma20'))  { const s = addLine('#06b6d4', 1); s.setData(toLineData(calcWMA(closes, 20)));  store('wma20', s) }
+    if (active.has('hma20'))  { const s = addLine('#0ea5e9', 1); s.setData(toLineData(calcHMA(closes, 20)));  store('hma20', s) }
+    if (active.has('vwap'))   { const s = addLine('#22c55e', 1, true); s.setData(toLineData(calcVWAP(bars))); store('vwap', s) }
+    if (active.has('vwma20')) { const s = addLine('#10b981', 1); s.setData(toLineData(calcVWMA(bars, 20)));   store('vwma20', s) }
     
     if (active.has('bb')) {
       const { upper, mid, lower } = calcBB(closes)
-      const sU = addLine('bb', '#64748b', 1, true); sU.setData(toLineData(upper)); store('bb', sU)
-      const sM = addLine('bb', '#64748b', 1);        sM.setData(toLineData(mid));   store('bb', sM)
-      const sL = addLine('bb', '#64748b', 1, true); sL.setData(toLineData(lower)); store('bb', sL)
+      const sU = addLine('#64748b', 1, true); sU.setData(toLineData(upper)); store('bb', sU)
+      const sM = addLine('#64748b', 1);       sM.setData(toLineData(mid));   store('bb', sM)
+      const sL = addLine('#64748b', 1, true); sL.setData(toLineData(lower)); store('bb', sL)
     }
     if (active.has('kc')) {
       const { upper, mid, lower } = calcKeltner(bars)
-      const sU = addLine('kc', '#8b5cf6', 1, true); sU.setData(toLineData(upper)); store('kc', sU)
-      const sM = addLine('kc', '#8b5cf6', 1);        sM.setData(toLineData(mid));   store('kc', sM)
-      const sL = addLine('kc', '#8b5cf6', 1, true); sL.setData(toLineData(lower)); store('kc', sL)
+      const sU = addLine('#8b5cf6', 1, true); sU.setData(toLineData(upper)); store('kc', sU)
+      const sM = addLine('#8b5cf6', 1);       sM.setData(toLineData(mid));   store('kc', sM)
+      const sL = addLine('#8b5cf6', 1, true); sL.setData(toLineData(lower)); store('kc', sL)
     }
     if (active.has('dc')) {
       const { upper, mid, lower } = calcDonchian(bars)
-      const sU = addLine('dc', '#ec4899', 1);        sU.setData(toLineData(upper)); store('dc', sU)
-      const sM = addLine('dc', '#ec4899', 1, true);  sM.setData(toLineData(mid));   store('dc', sM)
-      const sL = addLine('dc', '#ec4899', 1);        sL.setData(toLineData(lower)); store('dc', sL)
+      const sU = addLine('#ec4899', 1);       sU.setData(toLineData(upper)); store('dc', sU)
+      const sM = addLine('#ec4899', 1, true); sM.setData(toLineData(mid));   store('dc', sM)
+      const sL = addLine('#ec4899', 1);       sL.setData(toLineData(lower)); store('dc', sL)
     }
     if (active.has('env')) {
       const { upper, mid, lower } = calcEnvelope(closes)
-      const sU = addLine('env', '#f472b6', 1, true); sU.setData(toLineData(upper)); store('env', sU)
-      const sM = addLine('env', '#f472b6', 1);        sM.setData(toLineData(mid));   store('env', sM)
-      const sL = addLine('env', '#f472b6', 1, true); sL.setData(toLineData(lower)); store('env', sL)
+      const sU = addLine('#f472b6', 1, true); sU.setData(toLineData(upper)); store('env', sU)
+      const sM = addLine('#f472b6', 1);       sM.setData(toLineData(mid));   store('env', sM)
+      const sL = addLine('#f472b6', 1, true); sL.setData(toLineData(lower)); store('env', sL)
     }
     if (active.has('psar')) {
-      const data = calcParabolicSAR(bars)
       const s = chart.addSeries(LineSeries, { color: '#fcd34d', lineWidth: 0, pointMarkersVisible: true, pointMarkersRadius: 2, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false })
-      s.setData(toLineData(data)); store('psar', s)
+      s.setData(toLineData(calcParabolicSAR(bars))); store('psar', s)
     }
     if (active.has('supertrend')) {
       const { line, direction } = calcSuperTrend(bars)
       const upData   = line.map((v, i) => ({ time: times[i] as UTCTimestamp, value: direction[i] === 1  ? v : NaN })).filter(d => !isNaN(d.value))
       const downData = line.map((v, i) => ({ time: times[i] as UTCTimestamp, value: direction[i] === -1 ? v : NaN })).filter(d => !isNaN(d.value))
-      const sUp   = addLine('supertrend', '#22c55e', 2); sUp.setData(upData);   store('supertrend', sUp)
-      const sDown = addLine('supertrend', '#dc2626', 2); sDown.setData(downData); store('supertrend', sDown)
+      const sUp = addLine('#22c55e', 2); sUp.setData(upData);   store('supertrend', sUp)
+      const sDn = addLine('#dc2626', 2); sDn.setData(downData); store('supertrend', sDn)
     }
     if (active.has('ichimoku')) {
       const { tenkan, kijun, senkouA, senkouB } = calcIchimoku(bars)
-      const sT = addLine('ichimoku', '#2563eb', 1); sT.setData(toLineData(tenkan));   store('ichimoku', sT)
-      const sK = addLine('ichimoku', '#dc2626', 1); sK.setData(toLineData(kijun));    store('ichimoku', sK)
-      const sA = addLine('ichimoku', '#22c55e', 1); sA.setData(toLineData(senkouA));  store('ichimoku', sA)
-      const sB = addLine('ichimoku', '#ec4899', 1); sB.setData(toLineData(senkouB));  store('ichimoku', sB)
+      const sT = addLine('#2563eb', 1); sT.setData(toLineData(tenkan));  store('ichimoku', sT)
+      const sK = addLine('#dc2626', 1); sK.setData(toLineData(kijun));   store('ichimoku', sK)
+      const sA = addLine('#22c55e', 1); sA.setData(toLineData(senkouA)); store('ichimoku', sA)
+      const sB = addLine('#ec4899', 1); sB.setData(toLineData(senkouB)); store('ichimoku', sB)
     }
     if (active.has('pivot')) {
       const pp = calcPivotPoints(bars)
       if (pp) {
         const addH = (val: number, color: string) => {
-          const s = addLine('pivot', color, 1, true)
-          s.setData([{ time: times[0] as UTCTimestamp, value: val }, { time: times[times.length-1] as UTCTimestamp, value: val }])
+          const s = addLine(color, 1, true)
+          s.setData([{ time: times[0] as UTCTimestamp, value: val }, { time: times[times.length - 1] as UTCTimestamp, value: val }])
           store('pivot', s)
         }
         addH(pp.pivot, '#a78bfa')
@@ -906,146 +868,14 @@ export function TradingViewChart({ ticker }: ChartProps) {
       const fib = calcFibRetracement(bars)
       if (fib) {
         fib.levels.forEach(({ price }) => {
-          const s = addLine('fib', '#fb923c', 1, true)
-          s.setData([{ time: times[0] as UTCTimestamp, value: price }, { time: times[times.length-1] as UTCTimestamp, value: price }])
-          store('fib', s)
-        })
-      }
-    }
-    if (active.has('kc')) {
-      const { upper, mid, lower } = calcKeltner(bars)
-      const sU = addLine('#8b5cf6', 1, true); sU.setData(toLineData(upper)); store('kc', sU)
-      const sM = addLine('#8b5cf6', 1); sM.setData(toLineData(mid)); store('kc', sM)
-      const sL = addLine('#8b5cf6', 1, true); sL.setData(toLineData(lower)); store('kc', sL)
-    }
-    if (active.has('dc')) {
-      const { upper, mid, lower } = calcDonchian(bars)
-      const sU = addLine('#ec4899', 1); sU.setData(toLineData(upper)); store('dc', sU)
-      const sM = addLine('#ec4899', 1, true); sM.setData(toLineData(mid)); store('dc', sM)
-      const sL = addLine('#ec4899', 1); sL.setData(toLineData(lower)); store('dc', sL)
-    }
-    if (active.has('env')) {
-      const { upper, mid, lower } = calcEnvelope(closes)
-      const sU = addLine('#f472b6', 1, true); sU.setData(toLineData(upper)); store('env', sU)
-      const sM = addLine('#f472b6', 1); sM.setData(toLineData(mid)); store('env', sM)
-      const sL = addLine('#f472b6', 1, true); sL.setData(toLineData(lower)); store('env', sL)
-    }
-    if (active.has('psar')) {
-      const data = calcParabolicSAR(bars)
-      const s = chart.addSeries(LineSeries, { color: '#fcd34d', lineWidth: 0, pointMarkersVisible: true, pointMarkersRadius: 2, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false })
-      s.setData(toLineData(data))
-      store('psar', s)
-    }
-    if (active.has('supertrend')) {
-      const { line, direction } = calcSuperTrend(bars)
-      // Two separate lines for up/down trends
-      const upData = line.map((v, i) => ({ time: times[i] as UTCTimestamp, value: direction[i] === 1 ? v : NaN })).filter(d => !isNaN(d.value))
-      const downData = line.map((v, i) => ({ time: times[i] as UTCTimestamp, value: direction[i] === -1 ? v : NaN })).filter(d => !isNaN(d.value))
-      const sUp = addLine('#22c55e', 2); sUp.setData(upData); store('supertrend', sUp)
-      const sDown = addLine('#dc2626', 2); sDown.setData(downData); store('supertrend', sDown)
-    }
-    if (active.has('ichimoku')) {
-      const { tenkan, kijun, senkouA, senkouB } = calcIchimoku(bars)
-      const sTenkan = addLine('#2563eb', 1); sTenkan.setData(toLineData(tenkan)); store('ichimoku', sTenkan)
-      const sKijun = addLine('#dc2626', 1); sKijun.setData(toLineData(kijun)); store('ichimoku', sKijun)
-      const sSenkouA = addLine('#22c55e', 1); sSenkouA.setData(toLineData(senkouA)); store('ichimoku', sSenkouA)
-      const sSenkouB = addLine('#ec4899', 1); sSenkouB.setData(toLineData(senkouB)); store('ichimoku', sSenkouB)
-    }
-    if (active.has('pivot')) {
-      const pp = calcPivotPoints(bars)
-      if (pp) {
-        const addHorizLine = (val: number, color: string) => {
-          const s = addLine(color, 1, true)
-          s.setData([{ time: times[0] as UTCTimestamp, value: val }, { time: times[times.length-1] as UTCTimestamp, value: val }])
-          store('pivot', s)
-        }
-        addHorizLine(pp.pivot, '#a78bfa')
-        addHorizLine(pp.r1, '#4ade80'); addHorizLine(pp.r2, '#22c55e'); addHorizLine(pp.r3, '#16a34a')
-        addHorizLine(pp.s1, '#f87171'); addHorizLine(pp.s2, '#dc2626'); addHorizLine(pp.s3, '#b91c1c')
-      }
-    }
-    if (active.has('fib')) {
-      const fib = calcFibRetracement(bars)
-      if (fib) {
-        fib.levels.forEach(({ price }) => {
           const s = addLine('#fb923c', 1, true)
-          s.setData([{ time: times[0] as UTCTimestamp, value: price }, { time: times[times.length-1] as UTCTimestamp, value: price }])
+          s.setData([{ time: times[0] as UTCTimestamp, value: price }, { time: times[times.length - 1] as UTCTimestamp, value: price }])
           store('fib', s)
         })
       }
     }
-
-    // ─── OSCILLATORS (sub-chart) ───
-    if (active.has('rsi'))      { const s = addLine('rsi',      '#a855f7', 1); s.setData(toLineData(calcRSI(closes))); store('rsi', s) }
-    if (active.has('stoch')) {
-      const { k, d } = calcStochastic(bars)
-      const sK = addLine('stoch', '#3b82f6', 1); sK.setData(toLineData(k)); store('stoch', sK)
-      const sD = addLine('stoch', '#f59e0b', 1); sD.setData(toLineData(d)); store('stoch', sD)
-    }
-    if (active.has('stochrsi')) {
-      const { k, d } = calcStochRSI(closes)
-      const sK = addLine('stochrsi', '#8b5cf6', 1); sK.setData(toLineData(k)); store('stochrsi', sK)
-      const sD = addLine('stochrsi', '#ec4899', 1); sD.setData(toLineData(d)); store('stochrsi', sD)
-    }
-    if (active.has('macd')) {
-      const { macd, signal, histogram } = calcMACD(closes)
-      const sM = addLine('macd',    '#22c55e', 1); sM.setData(toLineData(macd));   store('macd', sM)
-      const sS = addLine('macd',    '#f59e0b', 1); sS.setData(toLineData(signal)); store('macd', sS)
-      const sH = addHistogram('macd', '#60a5fa');   sH.setData(
-        histogram.map((v, i) => ({ time: times[i] as UTCTimestamp, value: v, color: v >= 0 ? 'rgba(34,197,94,0.6)' : 'rgba(220,38,38,0.6)' })).filter(d => !isNaN(d.value))
-      ); store('macd', sH)
-    }
-    if (active.has('cci'))      { const s = addLine('cci',      '#f59e0b', 1); s.setData(toLineData(calcCCI(bars)));              store('cci', s) }
-    if (active.has('williams')) { const s = addLine('williams', '#ec4899', 1); s.setData(toLineData(calcWilliamsR(bars)));         store('williams', s) }
-    if (active.has('roc'))      { const s = addLine('roc',      '#06b6d4', 1); s.setData(toLineData(calcROC(closes)));            store('roc', s) }
-    if (active.has('momentum')) { const s = addLine('momentum', '#14b8a6', 1); s.setData(toLineData(calcMomentum(closes)));       store('momentum', s) }
-    if (active.has('trix'))     { const s = addLine('trix',     '#f97316', 1); s.setData(toLineData(calcTRIX(closes)));           store('trix', s) }
-    if (active.has('uo'))       { const s = addLine('uo',       '#84cc16', 1); s.setData(toLineData(calcUltimateOscillator(bars))); store('uo', s) }
-    if (active.has('ao'))       { const s = addLine('ao',       '#22c55e', 1); s.setData(toLineData(calcAwesomeOscillator(bars))); store('ao', s) }
-    if (active.has('dpo'))      { const s = addLine('dpo',      '#0ea5e9', 1); s.setData(toLineData(calcDPO(closes)));            store('dpo', s) }
-
-    // ─── VOLUME INDICATORS (sub-chart) ───
-    if (active.has('obv')) { const s = addLine('obv', '#3b82f6', 1); s.setData(toLineData(calcOBV(bars)));          store('obv', s) }
-    if (active.has('mfi')) { const s = addLine('mfi', '#22c55e', 1); s.setData(toLineData(calcMFI(bars)));          store('mfi', s) }
-    if (active.has('cmf')) { const s = addLine('cmf', '#f59e0b', 1); s.setData(toLineData(calcCMF(bars)));          store('cmf', s) }
-    if (active.has('ad'))  { const s = addLine('ad',  '#a855f7', 1); s.setData(toLineData(calcAD(bars)));           store('ad',  s) }
-    if (active.has('vpt')) { const s = addLine('vpt', '#ec4899', 1); s.setData(toLineData(calcVPT(bars)));          store('vpt', s) }
-    if (active.has('eom')) { const s = addLine('eom', '#14b8a6', 1); s.setData(toLineData(calcEOM(bars)));          store('eom', s) }
-    if (active.has('fi'))  { const s = addLine('fi',  '#f97316', 1); s.setData(toLineData(calcForceIndex(bars)));   store('fi',  s) }
-
-    // ─── VOLATILITY INDICATORS (sub-chart) ───
-    if (active.has('atr'))    { const s = addLine('atr',    '#f59e0b', 1); s.setData(toLineData(calcATR(bars)));                  store('atr',    s) }
-    if (active.has('natr'))   { const s = addLine('natr',   '#fbbf24', 1); s.setData(toLineData(calcNATR(bars)));                 store('natr',   s) }
-    if (active.has('tr'))     { const s = addLine('tr',     '#f97316', 1); s.setData(toLineData(calcTrueRange(bars)));            store('tr',     s) }
-    if (active.has('stddev')) { const s = addLine('stddev', '#a855f7', 1); s.setData(toLineData(calcStdDev(closes)));             store('stddev', s) }
-    if (active.has('hv'))     { const s = addLine('hv',     '#8b5cf6', 1); s.setData(toLineData(calcHistoricalVolatility(closes))); store('hv',   s) }
-
-    // ─── TREND INDICATORS (sub-chart) ───
-    if (active.has('adx')) {
-      const { adx } = calcADX(bars)
-      const s = addLine('adx', '#22c55e', 1); s.setData(toLineData(adx)); store('adx', s)
-    }
-    if (active.has('dmi')) {
-      const { pdi, ndi } = calcADX(bars)
-      const sP = addLine('dmi', '#22c55e', 1); sP.setData(toLineData(pdi)); store('dmi', sP)
-      const sN = addLine('dmi', '#dc2626', 1); sN.setData(toLineData(ndi)); store('dmi', sN)
-    }
-    if (active.has('aroon')) {
-      const { up, down } = calcAroon(bars)
-      const sU = addLine('aroon', '#22c55e', 1); sU.setData(toLineData(up));   store('aroon', sU)
-      const sD = addLine('aroon', '#dc2626', 1); sD.setData(toLineData(down)); store('aroon', sD)
-    }
-    if (active.has('aroonosc')) { const s = addLine('aroonosc', '#fbbf24', 1); s.setData(toLineData(calcAroonOsc(bars))); store('aroonosc', s) }
-    if (active.has('vi')) {
-      const { vip, vim } = calcVortex(bars)
-      const sP = addLine('vi', '#22c55e', 1); sP.setData(toLineData(vip)); store('vi', sP)
-      const sM = addLine('vi', '#dc2626', 1); sM.setData(toLineData(vim)); store('vi', sM)
-    }
-
-    // Sync sub-chart time scale after drawing
-    if (subChart && bars.length > 0) {
-      subChart.timeScale().fitContent()
-    }
+    // Sub-chart indicators (oscillators, volume, volatility, trend) are handled
+    // by ChartSubPane components rendered in JSX below — nothing to do here.
 
   }, [clearIndicators])
 
@@ -1078,19 +908,9 @@ export function TradingViewChart({ ticker }: ChartProps) {
         chart.timeScale().fitContent()
 
         lastBarsRef.current = bars
+        barsRef.current = bars
+        setLoadedBars([...bars])
         drawIndicators(bars, activeIndicators)
-
-        // Sync sub-chart scroll/zoom with main chart
-        const subChart = subChartRef.current
-        if (subChart) {
-          subChart.timeScale().fitContent()
-          chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-            if (range) subChart.timeScale().setVisibleLogicalRange(range)
-          })
-          subChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-            if (range) chart.timeScale().setVisibleLogicalRange(range)
-          })
-        }
       })
       .catch((err) => { if (!cancelled) setError(err.message || 'Failed to load chart data') })
       .finally(() => { if (!cancelled) setLoading(false) })
@@ -1225,7 +1045,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
       )}
 
       {/* ── Main chart container ── */}
-      <div className={`relative min-h-0 ${hasSubIndicators ? 'flex-[3]' : 'flex-1'}`}>
+      <div className="relative flex-1 min-h-0">
         <div ref={containerRef} className="absolute inset-0" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a]/70 backdrop-blur-sm">
@@ -1245,21 +1065,23 @@ export function TradingViewChart({ ticker }: ChartProps) {
         )}
       </div>
 
-      {/* ── Sub-chart pane (oscillators / volume / volatility / trend) ── */}
-      {hasSubIndicators && (
-        <div className="flex-[1] min-h-0 relative border-t border-border/40 bg-[#0a0a0a]">
-          {/* Label strip showing which sub-chart indicators are active */}
-          <div className="absolute top-2 left-3 z-20 flex items-center gap-2 flex-wrap pointer-events-none">
-            {INDICATORS.filter(i => SUBCHART_CATEGORIES.includes(i.category) && activeIndicators.has(i.id)).map(ind => (
-              <span key={ind.id} className="flex items-center gap-1 text-[8px] font-mono font-semibold bg-black/70 px-1.5 py-0.5 rounded border border-border/50">
-                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: ind.color }} />
-                <span className="whitespace-nowrap">{ind.label}</span>
-              </span>
-            ))}
-          </div>
-          <div ref={subContainerRef} className="absolute inset-0" />
-        </div>
-      )}
+      {/* ── Per-indicator sub-panes (Webull-style, each gets own labeled row) ── */}
+      {loadedBars.length > 0 && activeSubIds.map(id => {
+        const ind = INDICATORS.find(i => i.id === id)!
+        const times = loadedBars.map(b => b.time as UTCTimestamp)
+        return (
+          <ChartSubPane
+            key={id}
+            indicatorId={id}
+            label={ind.label}
+            color={ind.color}
+            bars={loadedBars as SubPaneBar[]}
+            times={times}
+            mainChartRef={chartRef}
+            onRemove={(rmId) => toggleIndicator(rmId)}
+          />
+        )
+      })}
     </div>
   )
 }
