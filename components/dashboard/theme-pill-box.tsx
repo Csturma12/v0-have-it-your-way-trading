@@ -1,17 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Flame } from 'lucide-react'
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Star } from 'lucide-react'
 
 /**
  * Color System:
  * - GREEN  = Positive signal (BUY)
  * - RED    = Negative signal (SELL)
  * - YELLOW = Neutral signal (HOLD)
- * - BLUE/CYAN = Current holding OR high conviction alert (>=90%)
+ * - BLUE   = Current holding OR high conviction alert (>=90%)
  */
-
-type AccentColor = 'green' | 'gold' | 'red' | 'cyan'
 
 interface Ticker {
   symbol: string
@@ -23,68 +21,30 @@ interface Ticker {
   isHolding?: boolean // user currently holds this
 }
 
-interface SectorPillBoxProps {
+interface ThemePillBoxProps {
   title: string
-  accent: AccentColor
+  icon: React.ElementType
   tickers: Ticker[]
   onSelectTicker?: (ticker: string) => void
 }
 
-const accentStyles: Record<AccentColor, {
-  border: string
-  headerBg: string
-  dot: string
-  text: string
-  headerText: string
-}> = {
-  green: {
-    border: 'border-green-500/30',
-    headerBg: 'bg-green-500/10',
-    dot: 'bg-green-400',
-    text: 'text-green-400',
-    headerText: 'text-green-400',
-  },
-  gold: {
-    border: 'border-yellow-500/30',
-    headerBg: 'bg-yellow-500/10',
-    dot: 'bg-yellow-400',
-    text: 'text-yellow-400',
-    headerText: 'text-yellow-400',
-  },
-  red: {
-    border: 'border-red-500/30',
-    headerBg: 'bg-red-500/10',
-    dot: 'bg-red-400',
-    text: 'text-red-400',
-    headerText: 'text-red-400',
-  },
-  cyan: {
-    border: 'border-cyan-500/30',
-    headerBg: 'bg-cyan-500/10',
-    dot: 'bg-cyan-400',
-    text: 'text-cyan-400',
-    headerText: 'text-cyan-400',
-  },
-}
-
-export function SectorPillBox({ title, accent, tickers, onSelectTicker }: SectorPillBoxProps) {
-  const [isExpanded, setIsExpanded] = useState(true)
-  const s = accentStyles[accent]
+export function ThemePillBox({ title, icon: Icon, tickers, onSelectTicker }: ThemePillBoxProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // Sort by trending rank (1 = hottest)
   const sorted = [...tickers].sort((a, b) => a.trending - b.trending)
 
   return (
-    <div className={`rounded-md border ${s.border} overflow-hidden`}>
+    <div className="rounded-md border border-border/40 overflow-hidden bg-card/20">
 
       {/* Collapse / Expand Header */}
       <button
         onClick={() => setIsExpanded(v => !v)}
-        className={`w-full flex items-center justify-between px-2.5 py-1.5 ${s.headerBg} hover:brightness-110 transition-all`}
+        className="w-full flex items-center justify-between px-2.5 py-1.5 bg-muted/20 hover:bg-muted/30 transition-all"
       >
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className={`w-1.5 h-1.5 rounded-full ${s.dot} flex-shrink-0`} />
-          <span className={`text-[11px] font-mono font-bold tracking-widest uppercase truncate ${s.headerText}`}>
+          <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          <span className="text-[11px] font-mono font-bold tracking-widest uppercase truncate text-foreground">
             {title}
           </span>
           <span className="text-[9px] font-mono text-muted-foreground ml-1">
@@ -97,7 +57,7 @@ export function SectorPillBox({ title, accent, tickers, onSelectTicker }: Sector
         }
       </button>
 
-      {/* Ticker Table — expands to fit all rows naturally */}
+      {/* Ticker Table — auto-expands to fit all rows */}
       {isExpanded && (
         <div className="w-full">
           {/* Column headers */}
@@ -119,7 +79,7 @@ export function SectorPillBox({ title, accent, tickers, onSelectTicker }: Sector
               t.signal === 'SELL' ? 'text-red-400 bg-red-500/10 border-red-500/30' :
                                     'text-yellow-400 bg-yellow-500/10 border-yellow-500/30'
 
-            // Conviction color: BLUE/CYAN for high conviction (>=90%) or holding
+            // Conviction color: BLUE for high conviction (>=90%) or holding, else graduated
             const isHighConviction = t.conviction >= 0.90 || t.isHolding
             const convColor = isHighConviction
               ? 'text-cyan-400'
@@ -136,10 +96,10 @@ export function SectorPillBox({ title, accent, tickers, onSelectTicker }: Sector
                 onClick={() => onSelectTicker?.(t.symbol)}
                 className={`w-full grid grid-cols-[16px_1fr_56px_44px_36px] gap-x-1.5 px-2 py-1 hover:bg-white/5 transition-colors border-b border-border/10 last:border-b-0 text-left ${rowBg}`}
               >
-                {/* Rank */}
+                {/* Rank - star for #1 */}
                 <span className="text-[9px] font-mono text-muted-foreground/40 self-center">
                   {t.trending === 1 ? (
-                    <Flame className="w-2.5 h-2.5 text-orange-400" />
+                    <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
                   ) : (
                     t.trending
                   )}
