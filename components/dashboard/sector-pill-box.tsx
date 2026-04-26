@@ -68,7 +68,7 @@ const accentStyles: Record<AccentColor, {
 }
 
 export function SectorPillBox({ title, accent, tickers, onSelectTicker }: SectorPillBoxProps) {
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
   const s = accentStyles[accent]
 
   // Sort by trending rank (1 = hottest)
