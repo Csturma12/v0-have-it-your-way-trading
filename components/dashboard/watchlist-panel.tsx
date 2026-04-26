@@ -5,6 +5,7 @@ import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2 } from 'lucide-rea
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { QuickTradeBox } from './quick-trade-box'
+import { QuickTradeIdeas } from './quick-trade-ideas'
 
 interface WatchlistItem {
   ticker: string
@@ -226,7 +227,15 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
         </div>
       </div>
 
-      {/* Footer / Quick Trade */}
+      {/* Quick Trade Ideas */}
+      <QuickTradeIdeas 
+        onSelectIdea={(ticker, action) => {
+          onSelectTicker?.(ticker)
+          // The action (buy/sell) would be passed to QuickTradeBox if we add state management
+        }} 
+      />
+
+      {/* Quick Trade */}
       <QuickTradeBox selectedTicker={selectedTicker} price={watchlist.find(w => w.ticker === selectedTicker)?.price ?? null} />
       
       <div className="px-2 py-1 border-t border-border bg-card/50">
