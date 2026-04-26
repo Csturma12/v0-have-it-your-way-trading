@@ -141,7 +141,7 @@ interface Bar {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INDICATOR CALCULATION FUNCTIONS
-// ═════════════════════════════��════════════════════════════════════════════════
+// ═════���═══════════════════════��════════════════════════════════════════════════
 
 function calcSMA(data: number[], period: number): number[] {
   const result: number[] = []
@@ -706,6 +706,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
   const barsRef = useRef<SubPaneBar[]>([])
 
   const [range, setRange] = useState('1D')
+  const [chartReady, setChartReady] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showIndicators, setShowIndicators] = useState(false)
@@ -754,6 +755,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
     chartRef.current = chart
     candleRef.current = candleSeries
     volumeRef.current = volumeSeries
+    setChartReady(true)
 
     return () => {
       chart.remove()
@@ -761,6 +763,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
       candleRef.current = null
       volumeRef.current = null
       indicatorRefs.current = {}
+      setChartReady(false)
     }
   }, [])
 
@@ -881,8 +884,9 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
   const lastBarsRef = useRef<Bar[]>([])
 
-  // Fetch bars whenever ticker or range changes
+  // Fetch bars whenever ticker or range changes (after chart is ready)
   useEffect(() => {
+    if (!chartReady) return
     let cancelled = false
     const candleSeries = candleRef.current
     const volumeSeries = volumeRef.current
@@ -917,7 +921,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticker, range])
+  }, [ticker, range, chartReady])
 
   // Redraw indicators when active set changes
   useEffect(() => {
