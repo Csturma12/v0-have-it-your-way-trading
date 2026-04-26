@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { 
   Star, 
   Plus, 
@@ -8,9 +8,13 @@ import {
   Edit2, 
   TrendingUp, 
   TrendingDown,
-  MoreVertical,
   Eye,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  Download,
+  Check,
+  AlertCircle,
+  FileText,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -87,6 +91,9 @@ export default function WatchlistsPage() {
   const [selectedList, setSelectedList] = useState<string | null>('1')
   const [newListName, setNewListName] = useState('')
   const [showNewForm, setShowNewForm] = useState(false)
+  const [importStatus, setImportStatus] = useState<{ show: boolean; success: boolean; message: string }>({ show: false, success: false, message: '' })
+  const [addTickerValue, setAddTickerValue] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const selected = watchlists.find(w => w.id === selectedList)
 
@@ -104,6 +111,160 @@ export default function WatchlistsPage() {
     setShowNewForm(false)
   }
 
+  // IMPORT WATCHLIST
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string
+        let tickers: string[] = []
+
+        // Try parsing as JSON first
+        if (file.name.endsWith('.json')) {
+          const json = JSON.parse(content)
+          if (Array.isArray(json)) {
+            tickers = json.map((item: string | { ticker?: string; symbol?: string }) => 
+              typeof item === 'string' ? item : item.ticker || item.symbol || ''
+            ).filter(Boolean)
+          } else if (json.tickers) {
+            tickers = json.tickers
+          } else if (json.symbols) {
+            tickers = json.symbols
+          } else if (json.watchlist) {
+            tickers = json.watchlist
+          }
+        } else {
+          // Parse as CSV/TXT - one ticker per line or comma-separated
+          tickers = content
+            .split(/[\n,;]/)
+            .map(t => t.trim().toUpperCase().replace(/[^A-Z]/g, ''))
+            .filter(t => t && /^[A-Z]{1,5}$/.test(t))
+        }
+
+        if (tickers.length === 0) {
+          setImportStatus({ show: true, success: false, message: 'No valid tickers found in file' })
+          setTimeout(() => setImportStatus({ show: false, success: false, message: '' }), 3000)
+          return
+        }
+
+        // Dedupe tickers
+        tickers = [...new Set(tickers)]
+
+        // Create new watchlist with imported tickers
+        const importedTickers = tickers.slice(0, 100).map(symbol => ({
+          symbol,
+          price: Math.random() * 500 + 50,
+          change: (Math.random() - 0.5) * 20,
+          changePercent: (Math.random() - 0.5) * 10,
+        }))
+
+        const listName = file.name.replace(/\.[^.]+$/, '').slice(0, 30)
+        const newList: Watchlist = {
+          id: Date.now().toString(),
+          name: `Import: ${listName}`,
+          color: ['cyan', 'green', 'gold', 'red'][Math.floor(Math.random() * 4)],
+          tickers: importedTickers,
+        }
+
+        setWatchlists([...watchlists, newList])
+        setSelectedList(newList.id)
+        setImportStatus({ show: true, success: true, message: `Imported ${importedTickers.length} tickers from ${file.name}` })
+
+        setTimeout(() => setImportStatus({ show: false, success: false, message: '' }), 4000)
+      } catch (err) {
+        console.error('[Watchlist Import] Error:', err)
+        setImportStatus({ show: true, success: false, message: 'Failed to parse file. Use JSON, CSV, or TXT format.' })
+        setTimeout(() => setImportStatus({ show: false, success: false, message: '' }), 3000)
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = '' // Reset input
+  }
+
+  // EXPORT WATCHLIST
+  const handleExport = (format: 'json' | 'csv') => {
+    if (!selected) return
+    
+    if (format === 'json') {
+      const data = {
+        name: selected.name,
+        exportedAt: new Date().toISOString(),
+        tickers: selected.tickers.map(t => ({
+          symbol: t.symbol,
+          price: t.price,
+          change: t.change,
+          changePercent: t.changePercent,
+        })),
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${selected.name.replace(/\s+/g, '_')}_watchlist.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } else {
+      const csv = ['Symbol,Price,Change,ChangePercent']
+        .concat(selected.tickers.map(t => `${t.symbol},${t.price.toFixed(2)},${t.change.toFixed(2)},${t.changePercent.toFixed(2)}`))
+        .join('\n')
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${selected.name.replace(/\s+/g, '_')}_watchlist.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  // ADD TICKER
+  const handleAddTicker = () => {
+    if (!addTickerValue.trim() || !selected) return
+    const symbol = addTickerValue.toUpperCase().replace(/[^A-Z]/g, '')
+    if (!symbol || selected.tickers.some(t => t.symbol === symbol)) {
+      setAddTickerValue('')
+      return
+    }
+    
+    const newTicker = {
+      symbol,
+      price: Math.random() * 500 + 50,
+      change: (Math.random() - 0.5) * 20,
+      changePercent: (Math.random() - 0.5) * 10,
+    }
+    
+    setWatchlists(watchlists.map(w => 
+      w.id === selected.id 
+        ? { ...w, tickers: [...w.tickers, newTicker] }
+        : w
+    ))
+    setAddTickerValue('')
+  }
+
+  // DELETE TICKER
+  const handleDeleteTicker = (symbol: string) => {
+    if (!selected) return
+    setWatchlists(watchlists.map(w => 
+      w.id === selected.id 
+        ? { ...w, tickers: w.tickers.filter(t => t.symbol !== symbol) }
+        : w
+    ))
+  }
+
+  // DELETE LIST
+  const handleDeleteList = () => {
+    if (!selected) return
+    setWatchlists(watchlists.filter(w => w.id !== selected.id))
+    setSelectedList(watchlists[0]?.id || null)
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <TopNavBar />
@@ -117,16 +278,43 @@ export default function WatchlistsPage() {
               {watchlists.length} lists
             </Badge>
           </div>
-          <Button
-            onClick={() => setShowNewForm(true)}
-            size="sm"
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            New List
-          </Button>
-        </div>
-      </header>
+          <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileImport}
+              accept=".json,.csv,.txt"
+              className="hidden"
+            />
+            <Button variant="outline" size="sm" onClick={handleImportClick} className="gap-1.5">
+              <Upload className="w-3.5 h-3.5" />
+              Import
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('json')} disabled={!selected} className="gap-1.5">
+              <Download className="w-3.5 h-3.5" />
+              Export
+            </Button>
+            <Button
+              onClick={() => setShowNewForm(true)}
+              size="sm"
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              New List
+            </Button>
+          </div>
+        </header>
+
+        {/* Import Status Toast */}
+        {importStatus.show && (
+          <div className={`mx-6 mt-4 p-3 rounded-lg border flex items-center gap-2 text-sm ${
+            importStatus.success
+              ? 'bg-green-500/10 border-green-500/30 text-green-400'
+              : 'bg-red-500/10 border-red-500/30 text-red-400'
+          }`}>
+            {importStatus.success ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+            {importStatus.message}
+          </div>
+        )}
 
       <div className="flex-1 flex">
         {/* Sidebar */}
@@ -194,7 +382,7 @@ export default function WatchlistsPage() {
                   <Button variant="ghost" size="sm">
                     <Edit2 className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300">
+                  <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300" onClick={handleDeleteList}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -242,7 +430,7 @@ export default function WatchlistsPage() {
                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
                               <Eye className="w-3.5 h-3.5" />
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-400 hover:text-red-300">
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-400 hover:text-red-300" onClick={() => handleDeleteTicker(ticker.symbol)}>
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </div>
@@ -255,12 +443,27 @@ export default function WatchlistsPage() {
 
               {/* Add Ticker */}
               <div className="mt-4 flex gap-2">
-                <Input placeholder="Add ticker (e.g. TSLA)" className="max-w-xs font-mono uppercase" />
-                <Button variant="outline" size="sm" className="gap-1">
+                <Input 
+                  placeholder="Add ticker (e.g. TSLA)" 
+                  className="max-w-xs font-mono uppercase" 
+                  value={addTickerValue}
+                  onChange={(e) => setAddTickerValue(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddTicker()}
+                />
+                <Button variant="outline" size="sm" className="gap-1" onClick={handleAddTicker}>
                   <Plus className="w-4 h-4" />
                   Add
                 </Button>
               </div>
+
+              {/* Empty State */}
+              {selected.tickers.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border border-dashed border-border rounded-lg mt-4">
+                  <FileText className="w-8 h-8 mb-2" />
+                  <p className="text-sm font-mono">No tickers in this watchlist</p>
+                  <p className="text-xs mt-1">Add tickers manually or import from a file</p>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
