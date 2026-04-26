@@ -345,6 +345,8 @@ interface WidgetGridProps {
 }
 
 export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  
   const [layout, setLayout] = useState<Layout[]>(DEFAULT_LAYOUT)
   const [rightWidgets, setRightWidgets] = useState<RightWidget[]>(DEFAULT_RIGHT_WIDGETS)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -579,7 +581,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           .react-resizable-handle-w::after, .react-resizable-handle-e::after,
           .react-resizable-handle-n::after, .react-resizable-handle-s::after { display: none; }
         `}</style>
-        <div className={`flex-1 overflow-auto p-2 ${isEditMode ? '' : 'rgl-locked'}`}>
+        <div ref={wrapperRef} className={`flex-1 overflow-auto p-2 ${isEditMode ? '' : 'rgl-locked'}`}>
           <GridLayout
             className="layout"
             layout={visibleLayout}
