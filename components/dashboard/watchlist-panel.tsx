@@ -128,41 +128,41 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-border">
-        <h2 className="text-sm font-bold font-mono tracking-wide text-foreground mb-3">WATCHLIST</h2>
-
-        <div className="relative mb-3">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search tickers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-xs bg-muted/30 border-border/50"
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            placeholder="Add ticker..."
-            value={newTicker}
-            onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === 'Enter' && addTicker()}
-            className="h-8 text-xs bg-muted/30 border-border/50 font-mono"
-          />
-          <Button
-            onClick={addTicker}
-            className="h-8 w-8 p-0 bg-primary/20 hover:bg-primary/30 border-primary/30"
-          >
-            <Plus className="w-3.5 h-3.5 text-primary" />
-          </Button>
+      <div className="p-2 border-b border-border">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-7 h-6 text-[10px] bg-muted/30 border-border/50"
+            />
+          </div>
+          <div className="relative flex-1">
+            <Input
+              type="text"
+              placeholder="Add..."
+              value={newTicker}
+              onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && addTicker()}
+              className="h-6 text-[10px] bg-muted/30 border-border/50 font-mono pr-7"
+            />
+            <Button
+              onClick={addTicker}
+              size="sm"
+              className="absolute right-0.5 top-1/2 -translate-y-1/2 h-5 w-5 p-0 bg-primary/20 hover:bg-primary/30 border-primary/30"
+            >
+              <Plus className="w-3 h-3 text-primary" />
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Watchlist Items */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-2 space-y-1">
+        <div className="p-1 space-y-0.5">
           {filtered.map((item) => {
             const isPositive = item.change >= 0
             const isSelected = item.ticker === selectedTicker
@@ -174,83 +174,51 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
                 tabIndex={0}
                 onClick={() => onSelectTicker?.(item.ticker)}
                 onKeyDown={(e) => e.key === 'Enter' && onSelectTicker?.(item.ticker)}
-                className={`w-full text-left p-2.5 rounded-lg transition-colors cursor-pointer group ${
+                className={`w-full text-left p-1.5 rounded transition-colors cursor-pointer group ${
                   isSelected
                     ? 'bg-primary/10 border border-primary/30'
                     : 'hover:bg-muted/30 border border-transparent'
                 }`}
               >
-                {/* Row 1 — ticker / trash */}
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleStar(item.ticker) }}
-                      className="opacity-60 hover:opacity-100 transition-opacity"
-                    >
-                      <Star className={`w-3 h-3 ${item.starred ? 'text-theme-gold fill-theme-gold' : 'text-muted-foreground'}`} />
-                    </button>
-                    <span className="text-sm font-mono font-bold text-foreground">{item.ticker}</span>
+                {/* Top row — star | ticker | price | change% | trash */}
+                <div className="flex items-center gap-1.5 mb-1">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleStar(item.ticker) }}
+                    className="opacity-60 hover:opacity-100 transition-opacity flex-shrink-0"
+                  >
+                    <Star className={`w-2.5 h-2.5 ${item.starred ? 'text-theme-gold fill-theme-gold' : 'text-muted-foreground'}`} />
+                  </button>
+                  <span className="text-[11px] font-mono font-bold text-foreground min-w-[36px]">{item.ticker}</span>
+                  <span className="text-[11px] font-mono text-foreground flex-1">
+                    {item.price > 0 ? `$${item.price.toFixed(2)}` : '—'}
+                  </span>
+                  <div className={`flex items-center gap-0.5 text-[10px] font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                    {isPositive ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+                    <span>{isPositive ? '+' : ''}{item.changePercent.toFixed(2)}%</span>
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); removeTicker(item.ticker) }}
-                    className="opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity"
+                    className="opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity flex-shrink-0 ml-1"
                   >
-                    <Trash2 className="w-3 h-3 text-destructive" />
+                    <Trash2 className="w-2.5 h-2.5 text-destructive" />
                   </button>
                 </div>
 
-                {/* Row 2 — price / change% */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-mono text-foreground">
-                    {item.price > 0 ? `$${item.price.toFixed(2)}` : '—'}
-                  </span>
-                  <div className={`flex items-center gap-1 text-xs font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                    {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    <span>{isPositive ? '+' : ''}{item.changePercent.toFixed(2)}%</span>
+                {/* Middle row — centered stats in 3 columns */}
+                <div className="grid grid-cols-3 gap-1 text-center text-[9px] font-mono">
+                  <div>
+                    <div className="text-muted-foreground/70 uppercase tracking-wide">Open/Close</div>
+                    <div className="text-foreground">{fmtDollar(item.prevOpen)} / {fmtDollar(item.prevClose)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground/70 uppercase tracking-wide">52W H/L</div>
+                    <div><span className="text-green-400">{fmtDollar(item.week52High)}</span> / <span className="text-red-400">{fmtDollar(item.week52Low)}</span></div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground/70 uppercase tracking-wide">DP %/Amt</div>
+                    <div className="text-blue-400">{item.darkPoolPct !== null ? `${item.darkPoolPct}%` : '—'} / {fmtAmt(item.darkPoolAmt)}</div>
                   </div>
                 </div>
-
-                {/* Divider */}
-                <div className="border-t border-border/30 mb-2" />
-
-                {/* Row 3 — Prev Open / Prev Close */}
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wide">Prev Open</span>
-                    <span className="text-[11px] font-mono text-foreground">{fmtDollar(item.prevOpen)}</span>
-                  </div>
-                  <div className="flex flex-col gap-0.5 items-end">
-                    <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wide">Prev Close</span>
-                    <span className="text-[11px] font-mono text-foreground">{fmtDollar(item.prevClose)}</span>
-                  </div>
-                </div>
-
-                {/* Row 4 — 52W High / 52W Low */}
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wide">52W High</span>
-                    <span className="text-[11px] font-mono text-green-400">{fmtDollar(item.week52High)}</span>
-                  </div>
-                  <div className="flex flex-col gap-0.5 items-end">
-                    <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wide">52W Low</span>
-                    <span className="text-[11px] font-mono text-red-400">{fmtDollar(item.week52Low)}</span>
-                  </div>
-                </div>
-
-                {/* Row 5 — Dark Pool % / Amount */}
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wide">Dark Pool %</span>
-                    <span className="text-[11px] font-mono text-blue-400">
-                      {item.darkPoolPct !== null ? `${item.darkPoolPct}%` : '—'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-0.5 items-end">
-                    <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wide">DP Amount</span>
-                    <span className="text-[11px] font-mono text-blue-400">{fmtAmt(item.darkPoolAmt)}</span>
-                  </div>
-                </div>
-
               </div>
             )
           })}
@@ -258,10 +226,10 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-border bg-card/50">
-        <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
-          <span>{watchlist.length} TICKERS</span>
-          <span>{watchlist.filter(i => i.starred).length} STARRED</span>
+      <div className="px-2 py-1 border-t border-border bg-card/50">
+        <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground">
+          <span>{watchlist.length} tickers</span>
+          <span>{watchlist.filter(i => i.starred).length} starred</span>
         </div>
       </div>
     </div>

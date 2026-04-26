@@ -756,7 +756,6 @@ export function TradingViewChart({ ticker }: ChartProps) {
     candleRef.current = candleSeries
     volumeRef.current = volumeSeries
     setChartReady(true)
-    console.log('[v0] Chart initialized, chartReady set to true')
 
     return () => {
       chart.remove()
@@ -887,11 +886,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
   // Fetch bars whenever ticker or range changes (after chart is ready)
   useEffect(() => {
-    console.log('[v0] Fetch bars effect - chartReady:', chartReady, 'ticker:', ticker)
-    if (!chartReady) {
-      console.log('[v0] chartReady is false, skipping fetch')
-      return
-    }
+    if (!chartReady) return
     let cancelled = false
     const candleSeries = candleRef.current
     const volumeSeries = volumeRef.current
@@ -1054,7 +1049,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
       )}
 
       {/* ── Main chart container ── */}
-      <div className="relative flex-1 min-h-0" style={{ minHeight: '200px' }}>
+      <div className="relative flex-1 min-h-0">
         <div ref={containerRef} className="absolute inset-0" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a]/70 backdrop-blur-sm">
