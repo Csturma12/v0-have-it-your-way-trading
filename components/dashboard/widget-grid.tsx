@@ -589,12 +589,12 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             containerPadding={[4, 4]}
             isDraggable={isEditMode}
             isResizable={isEditMode}
-            resizeHandles={ALL_RESIZE_HANDLES}
+            resizeHandles={['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}
             draggableHandle=".widget-drag-handle"
             compactType={null}
             preventCollision={true}
             onLayoutChange={(newLayout) => setLayout(newLayout)}
-            width={1200}
+            width={wrapperWidth}
           >
             {rightWidgets.map(widget => (
               <div
