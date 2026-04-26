@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { QuickTradeBox } from './quick-trade-box'
 
 interface WatchlistItem {
   ticker: string
@@ -225,7 +226,9 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Footer / Quick Trade */}
+      <QuickTradeBox selectedTicker={selectedTicker} price={watchlist.find(w => w.ticker === selectedTicker)?.price ?? null} />
+      
       <div className="px-2 py-1 border-t border-border bg-card/50">
         <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground">
           <span>{watchlist.length} tickers</span>
