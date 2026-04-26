@@ -487,7 +487,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
 
       {/* ── LEFT SIDEBAR: sectors + themes, scrollable ── */}
       {!isFullscreen && (
-      <aside className="w-[280px] flex-shrink-0 border-r border-border overflow-y-auto bg-card/20">
+        <aside className="w-[280px] flex-shrink-0 border-r border-border overflow-y-auto bg-card/20">
         <div className="p-1.5 space-y-1">
           {/* Sectors Header */}
           <div className="px-2 pt-1 pb-0.5">
@@ -521,7 +521,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             />
           ))}
         </div>
-      </aside>
+        </aside>
       )}
 
       {/* ── RIGHT AREA: toolbar + draggable/resizable grid ── */}

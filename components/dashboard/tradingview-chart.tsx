@@ -722,7 +722,11 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
   // Initialize chart once
   useEffect(() => {
-    if (!containerRef.current) return
+    console.log('[v0] Chart init useEffect running, containerRef:', !!containerRef.current)
+    if (!containerRef.current) {
+      console.log('[v0] No containerRef, skipping')
+      return
+    }
 
     const chart = createChart(containerRef.current, {
       layout: {
@@ -756,6 +760,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
     candleRef.current = candleSeries
     volumeRef.current = volumeSeries
     setChartReady(true)
+    console.log('[v0] Chart created, refs set, chartReady=true')
 
     return () => {
       chart.remove()
@@ -886,19 +891,29 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
   // Fetch bars whenever ticker or range changes (after chart is ready)
   useEffect(() => {
-    if (!chartReady) return
+    console.log('[v0] Fetch bars useEffect - chartReady:', chartReady, 'ticker:', ticker)
+    if (!chartReady) {
+      console.log('[v0] Chart not ready, skipping fetch')
+      return
+    }
     let cancelled = false
     const candleSeries = candleRef.current
     const volumeSeries = volumeRef.current
     const chart = chartRef.current
-    if (!candleSeries || !volumeSeries || !chart) return
+    console.log('[v0] Refs check - candle:', !!candleSeries, 'volume:', !!volumeSeries, 'chart:', !!chart)
+    if (!candleSeries || !volumeSeries || !chart) {
+      console.log('[v0] Missing refs, skipping fetch')
+      return
+    }
 
     setLoading(true)
     setError(null)
+    console.log('[v0] Fetching bars for', ticker, range)
 
     fetch(`/api/polygon/bars?ticker=${ticker}&range=${range}`)
       .then((r) => r.json())
       .then((data) => {
+        console.log('[v0] Bars response:', data.bars?.length, 'bars', data.error || '')
         if (cancelled) return
         if (data.error) { setError(data.error); candleSeries.setData([]); volumeSeries.setData([]); return }
         const bars: Bar[] = data.bars || []
@@ -907,16 +922,18 @@ export function TradingViewChart({ ticker }: ChartProps) {
         const candles: CandlestickData[] = bars.map((b) => ({ time: b.time as CandlestickData['time'], open: b.open, high: b.high, low: b.low, close: b.close }))
         const volumes: HistogramData[] = bars.map((b) => ({ time: b.time as HistogramData['time'], value: b.volume, color: b.close >= b.open ? 'rgba(34,197,94,0.35)' : 'rgba(220,38,38,0.35)' }))
 
+        console.log('[v0] Setting candles:', candles.length, 'volumes:', volumes.length)
         candleSeries.setData(candles)
         volumeSeries.setData(volumes)
         chart.timeScale().fitContent()
+        console.log('[v0] Chart data set successfully')
 
         lastBarsRef.current = bars
         barsRef.current = bars
         setLoadedBars([...bars])
         drawIndicators(bars, activeIndicators)
       })
-      .catch((err) => { if (!cancelled) setError(err.message || 'Failed to load chart data') })
+      .catch((err) => { console.log('[v0] Fetch error:', err); if (!cancelled) setError(err.message || 'Failed to load chart data') })
       .finally(() => { if (!cancelled) setLoading(false) })
 
     return () => { cancelled = true }
