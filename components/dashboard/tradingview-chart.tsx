@@ -706,6 +706,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
   const barsRef = useRef<SubPaneBar[]>([])
 
   const [range, setRange] = useState('1D')
+  const [chartReady, setChartReady] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showIndicators, setShowIndicators] = useState(false)
@@ -721,6 +722,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
   // Initialize chart once
   useEffect(() => {
+    console.log('[v0] Chart init - containerRef:', !!containerRef.current)
     if (!containerRef.current) return
 
     const chart = createChart(containerRef.current, {
@@ -754,6 +756,8 @@ export function TradingViewChart({ ticker }: ChartProps) {
     chartRef.current = chart
     candleRef.current = candleSeries
     volumeRef.current = volumeSeries
+    setChartReady(true)
+    console.log('[v0] Chart initialized, refs set')
 
     return () => {
       chart.remove()
@@ -761,6 +765,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
       candleRef.current = null
       volumeRef.current = null
       indicatorRefs.current = {}
+      setChartReady(false)
     }
   }, [])
 
@@ -881,13 +886,21 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
   const lastBarsRef = useRef<Bar[]>([])
 
-  // Fetch bars whenever ticker or range changes
+  // Fetch bars whenever ticker or range changes (after chart is ready)
   useEffect(() => {
+    if (!chartReady) {
+      console.log('[v0] Chart not ready yet, skipping fetch')
+      return
+    }
+    console.log('[v0] Fetch bars effect - chartReady:', chartReady)
     let cancelled = false
     const candleSeries = candleRef.current
     const volumeSeries = volumeRef.current
     const chart = chartRef.current
-    if (!candleSeries || !volumeSeries || !chart) return
+    if (!candleSeries || !volumeSeries || !chart) {
+      console.log('[v0] Chart refs still missing after chartReady')
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -895,6 +908,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
     fetch(`/api/polygon/bars?ticker=${ticker}&range=${range}`)
       .then((r) => r.json())
       .then((data) => {
+        console.log('[v0] Bars data received:', data.bars?.length ?? 0, 'bars', data.error ?? '')
         if (cancelled) return
         if (data.error) { setError(data.error); candleSeries.setData([]); volumeSeries.setData([]); return }
         const bars: Bar[] = data.bars || []
@@ -917,7 +931,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticker, range])
+  }, [ticker, range, chartReady])
 
   // Redraw indicators when active set changes
   useEffect(() => {
