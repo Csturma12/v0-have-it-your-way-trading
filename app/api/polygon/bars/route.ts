@@ -24,16 +24,16 @@ const RANGE_CONFIG: Record<
   string,
   { multiplier: number; timespan: string; daysBack: number }
 > = {
-  '5m':  { multiplier: 5,  timespan: 'minute', daysBack: 2 },
+  '5m':  { multiplier: 5,  timespan: 'minute', daysBack: 3 },
   '15m': { multiplier: 15, timespan: 'minute', daysBack: 5 },
   '1H':  { multiplier: 1,  timespan: 'hour',   daysBack: 14 },
   '4H':  { multiplier: 4,  timespan: 'hour',   daysBack: 60 },
-  '1D':  { multiplier: 5,  timespan: 'minute', daysBack: 1 },
-  '5D':  { multiplier: 15, timespan: 'minute', daysBack: 5 },
-  '1M':  { multiplier: 1,  timespan: 'hour',   daysBack: 30 },
-  '3M':  { multiplier: 1,  timespan: 'day',    daysBack: 90 },
-  '6M':  { multiplier: 1,  timespan: 'day',    daysBack: 180 },
-  '1Y':  { multiplier: 1,  timespan: 'day',    daysBack: 365 },
+  '1D':  { multiplier: 5,  timespan: 'minute', daysBack: 3 },  // 3 days to cover weekends
+  '5D':  { multiplier: 15, timespan: 'minute', daysBack: 7 },  // 7 days to cover weekends
+  '1M':  { multiplier: 1,  timespan: 'hour',   daysBack: 35 },
+  '3M':  { multiplier: 1,  timespan: 'day',    daysBack: 95 },
+  '6M':  { multiplier: 1,  timespan: 'day',    daysBack: 185 },
+  '1Y':  { multiplier: 1,  timespan: 'day',    daysBack: 370 },
   '5Y':  { multiplier: 1,  timespan: 'week',   daysBack: 365 * 5 },
 }
 
@@ -75,8 +75,11 @@ export async function GET(request: Request) {
     }
 
     const data: PolygonResponse = await res.json()
+    
+    console.log('[v0] Polygon bars response:', ticker, range, 'resultsCount:', data.resultsCount, 'status:', data.status)
 
     if (!data.results || data.results.length === 0) {
+      console.log('[v0] No bars returned, message:', data.message)
       return NextResponse.json({
         ticker,
         range,
