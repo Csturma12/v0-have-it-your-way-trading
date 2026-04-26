@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
+import { QuickTradeIdeas } from '@/components/dashboard/quick-trade-ideas'
 
 export default function QuickTradePage() {
   const [ticker, setTicker] = useState('NVDA')
@@ -24,6 +25,15 @@ export default function QuickTradePage() {
   const [quantity, setQuantity] = useState('10')
   const [limitPrice, setLimitPrice] = useState('')
   const [stopPrice, setStopPrice] = useState('')
+  
+  const handleTradeIdeaSelect = (ideaTicker: string, action: 'buy' | 'sell') => {
+    setTicker(ideaTicker)
+    setSide(action)
+    setQuantity('10')
+    setOrderType('market')
+    setLimitPrice('')
+    setStopPrice('')
+  }
   
   // Mock quote data
   const quote = {
@@ -222,6 +232,12 @@ export default function QuickTradePage() {
                 {side === 'buy' ? 'Buy' : 'Sell'} {ticker}
               </Button>
             </div>
+          </div>
+
+          {/* Trade Ideas Section */}
+          <div className="mt-6 p-6 rounded-lg border border-border bg-card/50">
+            <h2 className="text-sm font-mono font-bold text-foreground mb-4 uppercase tracking-wide">Ideas for You</h2>
+            <QuickTradeIdeas onSelectIdea={handleTradeIdeaSelect} />
           </div>
         </div>
       </main>
