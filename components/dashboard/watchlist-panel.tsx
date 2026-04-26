@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,9 +33,14 @@ interface WatchlistPanelProps {
 }
 
 export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPanelProps) {
+  const [hydrated, setHydrated] = useState(false)
   const [watchlist, setWatchlist] = useState(INITIAL_WATCHLIST)
   const [searchQuery, setSearchQuery] = useState('')
   const [newTicker, setNewTicker] = useState('')
+
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
 
   const filtered = watchlist.filter((item) =>
     item.ticker.toLowerCase().includes(searchQuery.toLowerCase())
@@ -74,8 +79,10 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-border">
+      {!hydrated ? null : (
+        <>
+          {/* Header */}
+          <div className="p-4 border-b border-border">
         <h2 className="text-sm font-bold font-mono tracking-wide text-foreground mb-3">WATCHLIST</h2>
         
         {/* Search */}
@@ -195,6 +202,8 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
           <span>{watchlist.filter((i) => i.starred).length} STARRED</span>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }
