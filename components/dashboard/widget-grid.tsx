@@ -9,6 +9,7 @@ import { SectorPillBox } from './sector-pill-box'
 import { ThemePillBox } from './theme-pill-box'
 import { TradingViewChart } from './tradingview-chart'
 import { WatchlistPanel } from './watchlist-panel'
+import { NewsWidget } from './news-widget'
 import {
   Cpu,
   Scale,
@@ -21,7 +22,7 @@ import {
   BarChart2,
 } from 'lucide-react'
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v7'
+const STORAGE_KEY = 'trading-dashboard-rgl-v8'
 
 const ALL_RESIZE_HANDLES: Array<'s' | 'w' | 'e' | 'n' | 'sw' | 'nw' | 'se' | 'ne'> = [
   's', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne',
@@ -310,7 +311,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist'
+type RightWidgetType = 'chart' | 'watchlist' | 'news'
 
 interface RightWidget {
   id: string
@@ -321,11 +322,13 @@ interface RightWidget {
 const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
   { id: 'chart',     type: 'chart',     title: 'Chart' },
   { id: 'watchlist', type: 'watchlist', title: 'Watchlist' },
+  { id: 'news',      type: 'news',      title: 'Market News' },
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'chart',     x: 0, y: 0,  w: 8, h: 16 },
-  { i: 'watchlist', x: 8, y: 0,  w: 4, h: 16 },
+  { i: 'chart',     x: 0, y: 0,  w: 8, h: 14 },
+  { i: 'watchlist', x: 8, y: 0,  w: 4, h: 14 },
+  { i: 'news',      x: 0, y: 14, w: 12, h: 10 },
 ]
 
 interface SavedState {
@@ -398,6 +401,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const renderRight = (widget: RightWidget) => {
     if (widget.type === 'chart')     return <TradingViewChart ticker={selectedTicker} />
     if (widget.type === 'watchlist') return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
+    if (widget.type === 'news')      return <NewsWidget onSelectTicker={onSelectTicker} />
     return null
   }
 
