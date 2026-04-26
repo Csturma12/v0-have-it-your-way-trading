@@ -1,141 +1,167 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Flame } from 'lucide-react'
 
 type AccentColor = 'green' | 'gold' | 'red' | 'cyan'
 
-interface Alert {
-  ticker: string
-  signal: 'BUY' | 'SELL'
-  confidence: number
-  reason: string
+interface Ticker {
+  symbol: string
+  price: number
+  change: number
+  signal: 'BUY' | 'SELL' | 'HOLD'
+  conviction: number // 0-1
+  trending: number   // rank 1 = hottest
 }
 
 interface SectorPillBoxProps {
   title: string
   accent: AccentColor
-  tickers: string[]
-  alerts: Alert[]
+  tickers: Ticker[]
   onSelectTicker?: (ticker: string) => void
 }
 
-const accentStyles: Record<AccentColor, { border: string; bg: string; text: string; pill: string }> = {
+const accentStyles: Record<AccentColor, {
+  border: string
+  headerBg: string
+  dot: string
+  text: string
+  headerText: string
+}> = {
   green: {
-    border: 'border-theme-green/40',
-    bg: 'bg-theme-green/5',
-    text: 'text-theme-green',
-    pill: 'bg-theme-green/15 text-theme-green border-theme-green/30 hover:bg-theme-green/25',
+    border: 'border-green-500/30',
+    headerBg: 'bg-green-500/10',
+    dot: 'bg-green-400',
+    text: 'text-green-400',
+    headerText: 'text-green-400',
   },
   gold: {
-    border: 'border-theme-gold/40',
-    bg: 'bg-theme-gold/5',
-    text: 'text-theme-gold',
-    pill: 'bg-theme-gold/15 text-theme-gold border-theme-gold/30 hover:bg-theme-gold/25',
+    border: 'border-yellow-500/30',
+    headerBg: 'bg-yellow-500/10',
+    dot: 'bg-yellow-400',
+    text: 'text-yellow-400',
+    headerText: 'text-yellow-400',
   },
   red: {
-    border: 'border-theme-red/40',
-    bg: 'bg-theme-red/5',
-    text: 'text-theme-red',
-    pill: 'bg-theme-red/15 text-theme-red border-theme-red/30 hover:bg-theme-red/25',
+    border: 'border-red-500/30',
+    headerBg: 'bg-red-500/10',
+    dot: 'bg-red-400',
+    text: 'text-red-400',
+    headerText: 'text-red-400',
   },
   cyan: {
-    border: 'border-theme-cyan/40',
-    bg: 'bg-theme-cyan/5',
-    text: 'text-theme-cyan',
-    pill: 'bg-theme-cyan/15 text-theme-cyan border-theme-cyan/30 hover:bg-theme-cyan/25',
+    border: 'border-cyan-500/30',
+    headerBg: 'bg-cyan-500/10',
+    dot: 'bg-cyan-400',
+    text: 'text-cyan-400',
+    headerText: 'text-cyan-400',
   },
 }
 
-export function SectorPillBox({ title, accent, tickers, alerts, onSelectTicker }: SectorPillBoxProps) {
+export function SectorPillBox({ title, accent, tickers, onSelectTicker }: SectorPillBoxProps) {
   const [isExpanded, setIsExpanded] = useState(true)
-  const styles = accentStyles[accent]
+  const s = accentStyles[accent]
+
+  // Sort by trending rank (1 = hottest)
+  const sorted = [...tickers].sort((a, b) => a.trending - b.trending)
 
   return (
-    <div className={`rounded-lg border ${styles.border} ${styles.bg} overflow-hidden`}>
-      {/* Header */}
+    <div className={`rounded-md border ${s.border} overflow-hidden`}>
+
+      {/* Collapse / Expand Header */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-white/5 transition-colors"
+        onClick={() => setIsExpanded(v => !v)}
+        className={`w-full flex items-center justify-between px-2.5 py-1.5 ${s.headerBg} hover:brightness-110 transition-all`}
       >
         <div className="flex items-center gap-1.5 min-w-0">
-          <div className={`w-1.5 h-1.5 rounded-full ${styles.text} bg-current flex-shrink-0`} />
-          <span className="text-[11px] font-bold font-mono tracking-wide text-foreground truncate">{title}</span>
-          <Badge variant="outline" className="text-[9px] px-1 py-0 border-border/50 text-muted-foreground flex-shrink-0">
+          <span className={`w-1.5 h-1.5 rounded-full ${s.dot} flex-shrink-0`} />
+          <span className={`text-[11px] font-mono font-bold tracking-widest uppercase truncate ${s.headerText}`}>
+            {title}
+          </span>
+          <span className="text-[9px] font-mono text-muted-foreground ml-1">
             {tickers.length}
-          </Badge>
+          </span>
         </div>
-        {isExpanded ? (
-          <ChevronUp className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-        ) : (
-          <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-        )}
+        {isExpanded
+          ? <ChevronUp className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          : <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+        }
       </button>
 
+      {/* Ticker Table — expands to fit all rows naturally */}
       {isExpanded && (
-        <div className="px-2 pb-2 space-y-2">
-          {/* Trending Tickers */}
-          <div className="flex flex-wrap gap-1">
-            {tickers.map((ticker) => (
-              <button
-                key={ticker}
-                onClick={() => onSelectTicker?.(ticker)}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border transition-colors cursor-pointer ${styles.pill}`}
-              >
-                {ticker}
-              </button>
-            ))}
+        <div className="w-full">
+          {/* Column headers */}
+          <div className="grid grid-cols-[16px_1fr_56px_44px_36px] gap-x-1.5 px-2 py-1 border-b border-border/20">
+            <span className="text-[8px] font-mono text-muted-foreground/50">#</span>
+            <span className="text-[8px] font-mono text-muted-foreground/50 uppercase">Ticker</span>
+            <span className="text-[8px] font-mono text-muted-foreground/50 text-right uppercase">Price</span>
+            <span className="text-[8px] font-mono text-muted-foreground/50 text-center uppercase">Signal</span>
+            <span className="text-[8px] font-mono text-muted-foreground/50 text-right uppercase">Conv.</span>
           </div>
 
-          {/* Alerts Section */}
-          <div className="border-t border-border/30 pt-2">
-            <div className="flex items-center gap-1 mb-1.5">
-              <AlertCircle className={`w-2.5 h-2.5 ${styles.text}`} />
-              <span className="text-[9px] font-mono tracking-wider text-muted-foreground uppercase">
-                ALERTS
-              </span>
-            </div>
-            <div className="space-y-1">
-              {alerts.map((alert, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => onSelectTicker?.(alert.ticker)}
-                  className="w-full text-left p-1.5 rounded bg-card/50 border border-border/30 hover:border-border/60 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-0.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-[11px] font-mono font-bold text-foreground">{alert.ticker}</span>
-                      <Badge
-                        variant="outline"
-                        className={`text-[8px] px-1 py-0 ${
-                          alert.signal === 'BUY'
-                            ? 'bg-green-500/10 text-green-400 border-green-500/30'
-                            : 'bg-red-500/10 text-red-400 border-red-500/30'
-                        }`}
-                      >
-                        {alert.signal === 'BUY' ? (
-                          <TrendingUp className="w-2 h-2 mr-0.5" />
-                        ) : (
-                          <TrendingDown className="w-2 h-2 mr-0.5" />
-                        )}
-                        {alert.signal}
-                      </Badge>
-                    </div>
-                    <span className={`text-[9px] font-mono font-bold flex-shrink-0 ${
-                      alert.confidence >= 0.85 ? 'text-green-400' :
-                      alert.confidence >= 0.75 ? 'text-theme-gold' : 'text-orange-400'
-                    }`}>
-                      {(alert.confidence * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                  <p className="text-[9px] text-muted-foreground leading-tight line-clamp-1">
-                    {alert.reason}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Ticker rows */}
+          {sorted.map((t) => {
+            const isPositive = t.change >= 0
+            const signalColor =
+              t.signal === 'BUY' ? 'text-green-400 bg-green-500/10 border-green-500/25' :
+              t.signal === 'SELL' ? 'text-red-400 bg-red-500/10 border-red-500/25' :
+              'text-muted-foreground bg-muted/30 border-border/30'
+            const convColor =
+              t.conviction >= 0.88 ? 'text-green-400' :
+              t.conviction >= 0.75 ? 'text-yellow-400' :
+              'text-orange-400'
+
+            return (
+              <button
+                key={t.symbol}
+                onClick={() => onSelectTicker?.(t.symbol)}
+                className="w-full grid grid-cols-[16px_1fr_56px_44px_36px] gap-x-1.5 px-2 py-1 hover:bg-white/5 transition-colors border-b border-border/10 last:border-b-0 text-left"
+              >
+                {/* Rank */}
+                <span className="text-[9px] font-mono text-muted-foreground/40 self-center">
+                  {t.trending === 1 ? (
+                    <Flame className="w-2.5 h-2.5 text-orange-400" />
+                  ) : (
+                    t.trending
+                  )}
+                </span>
+
+                {/* Ticker + change % */}
+                <div className="flex flex-col justify-center min-w-0">
+                  <span className="text-[11px] font-mono font-bold text-foreground leading-none">
+                    {t.symbol}
+                  </span>
+                  <span className={`text-[9px] font-mono leading-none mt-0.5 ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                    {isPositive ? '+' : ''}{t.change.toFixed(2)}%
+                  </span>
+                </div>
+
+                {/* Price */}
+                <span className="text-[10px] font-mono text-foreground text-right self-center">
+                  ${t.price.toFixed(2)}
+                </span>
+
+                {/* Signal badge */}
+                <div className="flex items-center justify-center">
+                  <span className={`text-[8px] font-mono font-bold px-1 py-0.5 rounded border flex items-center gap-0.5 ${signalColor}`}>
+                    {t.signal === 'BUY'
+                      ? <TrendingUp className="w-2 h-2" />
+                      : t.signal === 'SELL'
+                      ? <TrendingDown className="w-2 h-2" />
+                      : null
+                    }
+                    {t.signal}
+                  </span>
+                </div>
+
+                {/* Conviction */}
+                <span className={`text-[10px] font-mono font-bold text-right self-center ${convColor}`}>
+                  {(t.conviction * 100).toFixed(0)}%
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

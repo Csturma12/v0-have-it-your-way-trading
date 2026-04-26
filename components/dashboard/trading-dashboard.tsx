@@ -64,8 +64,8 @@ export function TradingDashboard() {
         </Badge>
       </div>
 
-      {/* Customizable Workspace - Drag/Drop, Resize, Add/Remove */}
-      <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      {/* Main workspace — left sidebar sectors + right resizable grid */}
+      <main className="flex-1 min-h-0 overflow-hidden">
         <WidgetGrid
           selectedTicker={selectedTicker}
           onSelectTicker={setSelectedTicker}
