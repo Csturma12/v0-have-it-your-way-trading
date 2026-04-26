@@ -1247,30 +1247,17 @@ export function TradingViewChart({ ticker }: ChartProps) {
 
       {/* ── Sub-chart pane (oscillators / volume / volatility / trend) ── */}
       {hasSubIndicators && (
-        <div className="flex-[1] min-h-0 relative border-t border-border/40">
+        <div className="flex-[1] min-h-0 relative border-t border-border/40 bg-[#0a0a0a]">
           {/* Label strip showing which sub-chart indicators are active */}
-          <div className="absolute top-1 left-2 z-10 flex items-center gap-2 flex-wrap pointer-events-none">
+          <div className="absolute top-2 left-3 z-20 flex items-center gap-2 flex-wrap pointer-events-none">
             {INDICATORS.filter(i => SUBCHART_CATEGORIES.includes(i.category) && activeIndicators.has(i.id)).map(ind => (
-              <span key={ind.id} className="flex items-center gap-1 text-[9px] font-mono bg-black/60 px-1.5 py-0.5 rounded border border-border/30">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ind.color }} />
-                {ind.label}
+              <span key={ind.id} className="flex items-center gap-1 text-[8px] font-mono font-semibold bg-black/70 px-1.5 py-0.5 rounded border border-border/50">
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: ind.color }} />
+                <span className="whitespace-nowrap">{ind.label}</span>
               </span>
             ))}
           </div>
           <div ref={subContainerRef} className="absolute inset-0" />
-        </div>
-      )}
-
-      {/* ── Active indicator legend ── */}
-      {activeIndicators.size > 0 && !showIndicators && (
-        <div className="flex items-center gap-3 px-3 py-1 border-t border-border/30 bg-card/30 flex-shrink-0 flex-wrap">
-          {INDICATORS.filter((i) => activeIndicators.has(i.id)).slice(0, 12).map((ind) => (
-            <div key={ind.id} className="flex items-center gap-1">
-              <span className="w-3 h-0.5 rounded-full inline-block" style={{ backgroundColor: ind.color }} />
-              <span className="text-[9px] font-mono text-muted-foreground">{ind.label}</span>
-            </div>
-          ))}
-          {activeIndicators.size > 12 && <span className="text-[9px] font-mono text-muted-foreground">+{activeIndicators.size - 12} more</span>}
         </div>
       )}
     </div>

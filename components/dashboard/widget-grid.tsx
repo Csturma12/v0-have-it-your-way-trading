@@ -350,6 +350,20 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [isEditMode, setIsEditMode] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
+  const [wrapperWidth, setWrapperWidth] = useState(1200)
+
+  // Track wrapper width for responsive grid
+  useEffect(() => {
+    const updateWidth = () => {
+      if (wrapperRef.current) {
+        setWrapperWidth(wrapperRef.current.offsetWidth)
+      }
+    }
+    updateWidth()
+    const resizeObserver = new ResizeObserver(updateWidth)
+    if (wrapperRef.current) resizeObserver.observe(wrapperRef.current)
+    return () => resizeObserver.disconnect()
+  }, [])
 
   // On mount: restore the widget list (which panels are visible) but ALWAYS
   // reset positions to DEFAULT_LAYOUT so the grid never drifts between sessions.
@@ -533,6 +547,38 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
         </div>
 
         {/* Grid */}
+        <style jsx global>{`
+          .react-grid-item > .react-resizable-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: rgba(34, 197, 94, 0.6);
+            border-radius: 2px;
+            z-index: 10;
+          }
+          .react-grid-item > .react-resizable-handle::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-right: 2px solid rgba(255,255,255,0.8);
+            border-bottom: 2px solid rgba(255,255,255,0.8);
+          }
+          .react-resizable-handle-sw { bottom: 0; left: 0; cursor: sw-resize; }
+          .react-resizable-handle-sw::after { transform: rotate(135deg); bottom: 3px; left: 3px; }
+          .react-resizable-handle-se { bottom: 0; right: 0; cursor: se-resize; }
+          .react-resizable-handle-se::after { transform: rotate(45deg); bottom: 3px; right: 3px; }
+          .react-resizable-handle-nw { top: 0; left: 0; cursor: nw-resize; }
+          .react-resizable-handle-nw::after { transform: rotate(-135deg); top: 3px; left: 3px; }
+          .react-resizable-handle-ne { top: 0; right: 0; cursor: ne-resize; }
+          .react-resizable-handle-ne::after { transform: rotate(-45deg); top: 3px; right: 3px; }
+          .react-resizable-handle-w { left: 0; top: 50%; transform: translateY(-50%); cursor: w-resize; width: 8px; height: 20px; }
+          .react-resizable-handle-e { right: 0; top: 50%; transform: translateY(-50%); cursor: e-resize; width: 8px; height: 20px; }
+          .react-resizable-handle-n { top: 0; left: 50%; transform: translateX(-50%); cursor: n-resize; width: 20px; height: 8px; }
+          .react-resizable-handle-s { bottom: 0; left: 50%; transform: translateX(-50%); cursor: s-resize; width: 20px; height: 8px; }
+          .react-resizable-handle-w::after, .react-resizable-handle-e::after,
+          .react-resizable-handle-n::after, .react-resizable-handle-s::after { display: none; }
+        `}</style>
         <div className={`flex-1 overflow-auto p-2 ${isEditMode ? '' : 'rgl-locked'}`}>
           <GridLayout
             className="layout"
@@ -543,12 +589,12 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             containerPadding={[4, 4]}
             isDraggable={isEditMode}
             isResizable={isEditMode}
-            resizeHandles={ALL_RESIZE_HANDLES}
+            resizeHandles={['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}
             draggableHandle=".widget-drag-handle"
             compactType={null}
             preventCollision={true}
             onLayoutChange={(newLayout) => setLayout(newLayout)}
-            width={1200}
+            width={wrapperWidth}
           >
             {rightWidgets.map(widget => (
               <div
