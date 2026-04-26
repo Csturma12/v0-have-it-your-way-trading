@@ -67,7 +67,6 @@ export async function GET(request: Request) {
 
     if (!res.ok) {
       const text = await res.text()
-      console.log('[v0] Polygon error:', res.status, text)
       return NextResponse.json(
         { error: `Polygon API error: ${res.status}`, details: text },
         { status: res.status }
@@ -75,11 +74,8 @@ export async function GET(request: Request) {
     }
 
     const data: PolygonResponse = await res.json()
-    
-    console.log('[v0] Polygon bars response:', ticker, range, 'resultsCount:', data.resultsCount, 'status:', data.status)
 
     if (!data.results || data.results.length === 0) {
-      console.log('[v0] No bars returned, message:', data.message)
       return NextResponse.json({
         ticker,
         range,
@@ -108,7 +104,6 @@ export async function GET(request: Request) {
       count: bars.length,
     })
   } catch (error) {
-    console.log('[v0] Polygon route error:', error)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Failed to fetch bars',
