@@ -19,6 +19,13 @@ import {
   TrendingUp,
   Shield,
   BarChart3,
+  Eye,
+  Activity,
+  Layers,
+  Crosshair,
+  Star,
+  Layout,
+  Bell,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -33,8 +40,14 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   {
     label: 'Dashboard',
-    href: '/',
     icon: LayoutDashboard,
+    children: [
+      { label: 'Main Dashboard', href: '/', icon: LayoutDashboard },
+      { label: 'Quick Trade', href: '/quicktrade', icon: Crosshair, accent: 'green' },
+      { label: 'Watchlists', href: '/watchlists', icon: Star, accent: 'gold' },
+      { label: 'Saved Layouts', href: '/layouts', icon: Layout, accent: 'cyan' },
+      { label: 'Alerts', href: '/alerts', icon: Bell, accent: 'red' },
+    ],
   },
   {
     label: 'TradeDesk',
@@ -52,6 +65,17 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Claude Ideas', href: '/trade-ideas/claude', icon: Brain, accent: 'gold' },
       { label: 'OpenAI Ideas', href: '/trade-ideas/openai', icon: Sparkles, accent: 'green' },
+    ],
+  },
+  {
+    label: 'Dark Pool',
+    icon: Eye,
+    accent: 'cyan',
+    children: [
+      { label: 'Dark Pool Flow',   href: '/dark-pool',           icon: Eye,      accent: 'cyan' },
+      { label: 'Block Trades',     href: '/dark-pool/blocks',    icon: Layers,   accent: 'cyan' },
+      { label: 'Options Flow',     href: '/dark-pool/options',   icon: Activity, accent: 'gold' },
+      { label: 'Unusual Whales',   href: '/dark-pool/unusual',   icon: Signal,   accent: 'green' },
     ],
   },
   {
