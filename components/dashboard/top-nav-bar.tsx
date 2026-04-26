@@ -26,6 +26,12 @@ import {
   Star,
   Layout,
   Bell,
+  LayoutGrid,
+  DollarSign,
+  LineChart,
+  Globe,
+  BookOpen,
+  ArrowLeftRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -76,6 +82,17 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Block Trades',     href: '/dark-pool/blocks',    icon: Layers,   accent: 'cyan' },
       { label: 'Options Flow',     href: '/dark-pool/options',   icon: Activity, accent: 'gold' },
       { label: 'Unusual Whales',   href: '/dark-pool/unusual',   icon: Signal,   accent: 'green' },
+    ],
+  },
+  {
+    label: 'Widgets',
+    icon: LayoutGrid,
+    children: [
+      { label: 'Quote',   href: '/widgets/quote',   icon: DollarSign,    accent: 'green' },
+      { label: 'Trade',   href: '/widgets/trade',   icon: ArrowLeftRight, accent: 'gold' },
+      { label: 'Stocks',  href: '/widgets/stocks',  icon: LineChart,      accent: 'cyan' },
+      { label: 'General', href: '/widgets/general', icon: BookOpen },
+      { label: 'Market',  href: '/widgets/market',  icon: Globe },
     ],
   },
   {
