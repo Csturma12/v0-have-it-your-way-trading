@@ -83,125 +83,125 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
         <>
           {/* Header */}
           <div className="p-4 border-b border-border">
-        <h2 className="text-sm font-bold font-mono tracking-wide text-foreground mb-3">WATCHLIST</h2>
-        
-        {/* Search */}
-        <div className="relative mb-3">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search tickers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-xs bg-muted/30 border-border/50"
-          />
-        </div>
+            <h2 className="text-sm font-bold font-mono tracking-wide text-foreground mb-3">WATCHLIST</h2>
+            
+            {/* Search */}
+            <div className="relative mb-3">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search tickers..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-xs bg-muted/30 border-border/50"
+              />
+            </div>
 
-        {/* Add Ticker */}
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            placeholder="Add ticker..."
-            value={newTicker}
-            onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === 'Enter' && addTicker()}
-            className="h-8 text-xs bg-muted/30 border-border/50 font-mono"
-          />
-          <Button
-            onClick={addTicker}
-            className="h-8 w-8 p-0 bg-primary/20 hover:bg-primary/30 border-primary/30"
-          >
-            <Plus className="w-3.5 h-3.5 text-primary" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Watchlist Items */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-2 space-y-1">
-          {filtered.map((item) => {
-            const isPositive = item.change >= 0
-            const isSelected = item.ticker === selectedTicker
-
-            return (
-              <button
-                key={item.ticker}
-                onClick={() => onSelectTicker?.(item.ticker)}
-                className={`w-full text-left p-2.5 rounded-lg transition-colors group ${
-                  isSelected
-                    ? 'bg-primary/10 border border-primary/30'
-                    : 'hover:bg-muted/30 border border-transparent'
-                }`}
+            {/* Add Ticker */}
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="Add ticker..."
+                value={newTicker}
+                onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === 'Enter' && addTicker()}
+                className="h-8 text-xs bg-muted/30 border-border/50 font-mono"
+              />
+              <Button
+                onClick={addTicker}
+                className="h-8 w-8 p-0 bg-primary/20 hover:bg-primary/30 border-primary/30"
               >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleStar(item.ticker)
-                      }}
-                      className="opacity-60 hover:opacity-100 transition-opacity"
-                    >
-                      <Star
-                        className={`w-3 h-3 ${
-                          item.starred ? 'text-theme-gold fill-theme-gold' : 'text-muted-foreground'
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm font-mono font-bold text-foreground">{item.ticker}</span>
-                  </div>
+                <Plus className="w-3.5 h-3.5 text-primary" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Watchlist Items */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-2 space-y-1">
+              {filtered.map((item) => {
+                const isPositive = item.change >= 0
+                const isSelected = item.ticker === selectedTicker
+
+                return (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeTicker(item.ticker)
-                    }}
-                    className="opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity"
+                    key={item.ticker}
+                    onClick={() => onSelectTicker?.(item.ticker)}
+                    className={`w-full text-left p-2.5 rounded-lg transition-colors group ${
+                      isSelected
+                        ? 'bg-primary/10 border border-primary/30'
+                        : 'hover:bg-muted/30 border border-transparent'
+                    }`}
                   >
-                    <Trash2 className="w-3 h-3 text-destructive" />
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleStar(item.ticker)
+                          }}
+                          className="opacity-60 hover:opacity-100 transition-opacity"
+                        >
+                          <Star
+                            className={`w-3 h-3 ${
+                              item.starred ? 'text-theme-gold fill-theme-gold' : 'text-muted-foreground'
+                            }`}
+                          />
+                        </button>
+                        <span className="text-sm font-mono font-bold text-foreground">{item.ticker}</span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeTicker(item.ticker)
+                        }}
+                        className="opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="w-3 h-3 text-destructive" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-mono text-foreground">
+                        ${item.price.toFixed(2)}
+                      </span>
+                      <div className={`flex items-center gap-1 text-xs font-mono ${
+                        isPositive ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {isPositive ? (
+                          <TrendingUp className="w-3 h-3" />
+                        ) : (
+                          <TrendingDown className="w-3 h-3" />
+                        )}
+                        <span>
+                          {isPositive ? '+' : ''}{item.changePercent.toFixed(2)}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        Vol: {item.volume}
+                      </span>
+                      <span className={`text-[10px] font-mono ${
+                        isPositive ? 'text-green-400/70' : 'text-red-400/70'
+                      }`}>
+                        {isPositive ? '+' : ''}{item.change.toFixed(2)}
+                      </span>
+                    </div>
                   </button>
-                </div>
+                )
+              })}
+            </div>
+          </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-mono text-foreground">
-                    ${item.price.toFixed(2)}
-                  </span>
-                  <div className={`flex items-center gap-1 text-xs font-mono ${
-                    isPositive ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    {isPositive ? (
-                      <TrendingUp className="w-3 h-3" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3" />
-                    )}
-                    <span>
-                      {isPositive ? '+' : ''}{item.changePercent.toFixed(2)}%
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    Vol: {item.volume}
-                  </span>
-                  <span className={`text-[10px] font-mono ${
-                    isPositive ? 'text-green-400/70' : 'text-red-400/70'
-                  }`}>
-                    {isPositive ? '+' : ''}{item.change.toFixed(2)}
-                  </span>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Footer Stats */}
-      <div className="p-3 border-t border-border bg-card/50">
-        <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
-          <span>{watchlist.length} TICKERS</span>
-          <span>{watchlist.filter((i) => i.starred).length} STARRED</span>
-        </div>
-      </div>
+          {/* Footer Stats */}
+          <div className="p-3 border-t border-border bg-card/50">
+            <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+              <span>{watchlist.length} TICKERS</span>
+              <span>{watchlist.filter((i) => i.starred).length} STARRED</span>
+            </div>
+          </div>
         </>
       )}
     </div>
