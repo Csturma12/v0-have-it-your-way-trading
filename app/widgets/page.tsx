@@ -72,11 +72,15 @@ const WIDGET_CATEGORIES: WidgetCategory[] = [
   {
     label: 'General',
     items: [
-      { label: 'News',                description: 'Real-time news feed filtered by symbol or sector',          available: true  },
-      { label: 'Earnings Calendar',   description: 'Upcoming earnings with estimate vs. actual results',        available: true  },
-      { label: 'Economic Calendar',   description: 'Fed events, CPI, NFP, and macro data releases',             available: true  },
-      { label: 'Notes',               description: 'Personal notes and annotations attached to tickers',        available: true  },
-      { label: 'Alerts',              description: 'Price, volume, and indicator-based alert management',        available: true  },
+      { label: 'Watchlists',        description: 'Custom watchlists with real-time quotes and alerts',          available: true  },
+      { label: 'Screeners',         description: 'Stock screener with technical and fundamental filters',       available: true  },
+      { label: 'Option Screener',   description: 'Filter options by strike, expiry, volume, and Greeks',       available: false },
+      { label: 'Bond Screener',     description: 'Search and filter fixed income securities by yield and rating', available: false },
+      { label: 'Alert Message',     description: 'Price, volume, and indicator-based alert notifications',      available: true  },
+      { label: 'Note',              description: 'Personal notes and annotations attached to tickers',          available: true  },
+      { label: 'Messages',          description: 'In-app messages and broker communications',                   available: false },
+      { label: 'Community',         description: 'Community discussion feed and social sentiment',              available: false },
+      { label: 'Clock',             description: 'Market session clock with open/close countdown',              available: true  },
     ],
   },
   {
