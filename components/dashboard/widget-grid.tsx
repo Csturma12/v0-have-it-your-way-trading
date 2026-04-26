@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import GridLayout, { type Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
-import { Lock, Unlock, RotateCcw, Plus, X, GripVertical } from 'lucide-react'
+import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check } from 'lucide-react'
 import { SectorPillBox } from './sector-pill-box'
 import { ThemePillBox } from './theme-pill-box'
 import { TradingViewChart } from './tradingview-chart'
@@ -22,7 +22,9 @@ import {
   BarChart2,
 } from 'lucide-react'
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v8'
+const STORAGE_KEY = 'trading-dashboard-rgl-v9'
+// Layout is intentionally NOT persisted — the default layout is always restored
+// on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
 const ALL_RESIZE_HANDLES: Array<'s' | 'w' | 'e' | 'n' | 'sw' | 'nw' | 'se' | 'ne'> = [
   's', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne',
@@ -334,6 +336,7 @@ const DEFAULT_LAYOUT: Layout[] = [
 interface SavedState {
   layout: Layout[]
   rightWidgets: RightWidget[]
+  userSaved?: boolean
 }
 
 interface WidgetGridProps {
@@ -346,28 +349,43 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [rightWidgets, setRightWidgets] = useState<RightWidget[]>(DEFAULT_RIGHT_WIDGETS)
   const [isEditMode, setIsEditMode] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
+  const [layoutSaved, setLayoutSaved] = useState(false)
 
+  // On mount: restore the widget list (which panels are visible) but ALWAYS
+  // reset positions to DEFAULT_LAYOUT so the grid never drifts between sessions.
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
         const parsed = JSON.parse(saved) as SavedState
-        if (parsed.layout && parsed.rightWidgets) {
-          setLayout(parsed.layout)
+        if (parsed.rightWidgets) {
           setRightWidgets(parsed.rightWidgets)
+        }
+        // Restore layout positions only if the user explicitly saved them
+        if (parsed.layout && parsed.userSaved) {
+          setLayout(parsed.layout)
         }
       }
     } catch { /* ignore */ }
-    setHydrated(true)
   }, [])
 
-  useEffect(() => {
-    if (!hydrated) return
+  // Manual save — only triggered by the "Save Layout" button in edit mode
+  const saveLayout = () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ layout, rightWidgets } satisfies SavedState))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ layout, rightWidgets, userSaved: true } satisfies SavedState))
+      setLayoutSaved(true)
+      setTimeout(() => setLayoutSaved(false), 2000)
     } catch { /* ignore */ }
-  }, [layout, rightWidgets, hydrated])
+  }
+
+  // Persist widget visibility changes automatically (not position/size)
+  useEffect(() => {
+    try {
+      const existing = localStorage.getItem(STORAGE_KEY)
+      const parsed = existing ? JSON.parse(existing) : {}
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...parsed, rightWidgets }))
+    } catch { /* ignore */ }
+  }, [rightWidgets])
 
   const removeWidget = (id: string) => {
     setRightWidgets(w => w.filter(x => x.id !== id))
@@ -495,9 +513,21 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                 </div>
               )}
 
-              <span className="text-[9px] font-mono text-muted-foreground ml-auto">
-                Drag header to move | Drag any edge or corner to resize
+              <span className="text-[9px] font-mono text-muted-foreground">
+                Drag header to move &nbsp;|&nbsp; Drag any edge or corner to resize
               </span>
+
+              <button
+                onClick={saveLayout}
+                className={`ml-auto flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-mono font-bold border transition-all ${
+                  layoutSaved
+                    ? 'bg-green-500/20 text-green-400 border-green-500/40'
+                    : 'bg-muted/50 text-muted-foreground border-border hover:text-foreground'
+                }`}
+              >
+                {layoutSaved ? <Check className="w-3 h-3" /> : <Save className="w-3 h-3" />}
+                {layoutSaved ? 'Saved' : 'Save Layout'}
+              </button>
             </>
           )}
         </div>
