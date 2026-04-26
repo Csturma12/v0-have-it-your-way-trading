@@ -118,10 +118,13 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
             const isSelected = item.ticker === selectedTicker
 
             return (
-              <button
+              <div
                 key={item.ticker}
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelectTicker?.(item.ticker)}
-                className={`w-full text-left p-2.5 rounded-lg transition-colors group ${
+                onKeyDown={(e) => e.key === 'Enter' && onSelectTicker?.(item.ticker)}
+                className={`w-full text-left p-2.5 rounded-lg transition-colors cursor-pointer group ${
                   isSelected
                     ? 'bg-primary/10 border border-primary/30'
                     : 'hover:bg-muted/30 border border-transparent'
@@ -187,7 +190,7 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
                     {isPositive ? '+' : ''}{item.change.toFixed(2)}
                   </span>
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>
