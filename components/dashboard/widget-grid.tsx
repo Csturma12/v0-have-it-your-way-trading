@@ -26,6 +26,9 @@ import { SectorPillBox } from './sector-pill-box'
 import { ThemePillBox } from './theme-pill-box'
 import { WatchlistPanel } from './watchlist-panel'
 import { NewsWidget } from './news-widget'
+import { MarketOverview } from './market-overview'
+import { TechnicalIndicators } from './technical-indicators'
+import { OptionsChain } from './options-chain'
 import {
   Cpu,
   Scale,
@@ -68,7 +71,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v21'
+const STORAGE_KEY = 'trading-dashboard-rgl-v23'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -359,7 +362,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news'
+type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain'
 
 interface RightWidget {
   id: string
@@ -368,15 +371,17 @@ interface RightWidget {
 }
 
 const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
-  { id: 'chart',     type: 'chart',     title: 'Chart' },
-  { id: 'watchlist', type: 'watchlist', title: 'Watchlist' },
-  { id: 'news',      type: 'news',      title: 'Market News' },
+  { id: 'chart',           type: 'chart',           title: 'Chart' },
+  { id: 'watchlist',       type: 'watchlist',       title: 'Watchlist' },
+  { id: 'market-overview', type: 'market-overview', title: 'Market Overview' },
+  { id: 'news',            type: 'news',            title: 'Market News' },
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'chart',     x: 0, y: 0, w: 8, h: 5, minH: 4 },
-  { i: 'watchlist', x: 8, y: 0, w: 4, h: 5, minH: 4,  maxH: 5 },
-  { i: 'news',      x: 0, y: 5, w: 12, h: 3, minH: 2,  maxH: 4 },
+  { i: 'chart',           x: 0, y: 0, w: 8, h: 5, minH: 4 },
+  { i: 'watchlist',       x: 8, y: 0, w: 4, h: 3, minH: 3, maxH: 5 },
+  { i: 'market-overview', x: 8, y: 3, w: 4, h: 3, minH: 3, maxH: 5 },
+  { i: 'news',            x: 0, y: 5, w: 12, h: 3, minH: 2, maxH: 4 },
 ]
 
 interface SavedState {
@@ -552,9 +557,12 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   )
 
   const renderRight = (widget: RightWidget) => {
-    if (widget.type === 'chart')     return <TradingViewAdvancedChart ticker={selectedTicker} onChangeTicker={onSelectTicker} />
-    if (widget.type === 'watchlist') return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
-    if (widget.type === 'news')      return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
+    if (widget.type === 'chart')           return <TradingViewAdvancedChart ticker={selectedTicker} onChangeTicker={onSelectTicker} />
+    if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
+    if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
+    if (widget.type === 'market-overview') return <MarketOverview onSelectTicker={onSelectTicker} />
+    if (widget.type === 'technicals')      return <TechnicalIndicators ticker={selectedTicker} />
+    if (widget.type === 'options-chain')   return <OptionsChain ticker={selectedTicker} />
     return null
   }
 
