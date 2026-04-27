@@ -113,8 +113,15 @@ function PillSection({
 export function MarketSectorPills({ onSelectTicker }: MarketSectorPillsProps) {
   const { sectors, loading: sectorsLoading, source: sectorsSource, refresh: refreshSectors } = useSectorPerformance()
   const { data: gl, loading: glLoading, source: glSource, refresh: refreshGL } = useGainersLosers()
+  const [timeframe, setTimeframe] = useState<'live' | 'daily' | 'weekly' | 'monthly'>('live')
 
-  const sectorRows = sectors?.realTimePerformance ?? []
+  const sectorRows = timeframe === 'live'
+    ? (sectors?.realTimePerformance ?? [])
+    : timeframe === 'daily'
+    ? (sectors?.daily ?? [])
+    : timeframe === 'weekly'
+    ? (sectors?.weekly ?? [])
+    : (sectors?.monthly ?? [])
 
   return (
     <div className="space-y-1">
@@ -130,7 +137,21 @@ export function MarketSectorPills({ onSelectTicker }: MarketSectorPillsProps) {
       >
         <div className="px-2 py-1 border-b border-border/20 grid grid-cols-[1fr_auto] gap-2">
           <span className="text-[8px] font-mono text-muted-foreground/50 uppercase">Sector</span>
-          <span className="text-[8px] font-mono text-muted-foreground/50 uppercase text-right">Perf</span>
+          <div className="flex items-center gap-1">
+            {(['live', 'daily', 'weekly', 'monthly'] as const).map(tf => (
+              <button
+                key={tf}
+                onClick={() => setTimeframe(tf)}
+                className={`text-[7px] font-mono px-1 py-0.5 rounded transition-colors ${
+                  timeframe === tf
+                    ? 'bg-theme-green/20 text-theme-green'
+                    : 'text-muted-foreground/50 hover:text-muted-foreground'
+                }`}
+              >
+                {tf === 'live' ? 'Live' : tf === 'daily' ? 'Daily' : tf === 'weekly' ? 'Weekly' : 'Monthly'}
+              </button>
+            ))}
+          </div>
         </div>
         {sectorRows
           .slice()

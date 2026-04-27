@@ -72,7 +72,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v24'
+const STORAGE_KEY = 'trading-dashboard-rgl-v25'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -374,14 +374,19 @@ interface RightWidget {
 const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
   { id: 'chart',           type: 'chart',           title: 'Chart' },
   { id: 'watchlist',       type: 'watchlist',       title: 'Watchlist' },
-  { id: 'market-overview', type: 'market-overview', title: 'Market Overview' },
   { id: 'news',            type: 'news',            title: 'Market News' },
+]
+
+// Available add-on widgets (can be added via edit mode)
+const ADDON_WIDGETS: RightWidget[] = [
+  { id: 'market-overview', type: 'market-overview', title: 'Market Overview' },
+  { id: 'technicals',      type: 'technicals',      title: 'Technical Indicators' },
+  { id: 'options-chain',   type: 'options-chain',   title: 'Options Chain' },
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
   { i: 'chart',           x: 0, y: 0, w: 8, h: 5, minH: 4 },
-  { i: 'watchlist',       x: 8, y: 0, w: 4, h: 3, minH: 3 },
-  { i: 'market-overview', x: 8, y: 3, w: 4, h: 3, minH: 3 },
+  { i: 'watchlist',       x: 8, y: 0, w: 4, h: 5, minH: 3 },
   { i: 'news',            x: 0, y: 5, w: 12, h: 3, minH: 2 },
 ]
 
