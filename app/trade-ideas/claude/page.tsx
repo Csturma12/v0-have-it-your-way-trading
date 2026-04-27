@@ -337,21 +337,42 @@ export default function ClaudeIdeasPage() {
   const [filterTimeframe, setFilterTimeframe] = useState<Timeframe | 'all'>('all')
   const [filterCategory, setFilterCategory] = useState<IdeaCategory | 'all'>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
-  // Simulate live price updates
+  // Fetch live prices from Polygon API
+  const fetchLivePrices = async () => {
+    try {
+      const tickers = CLAUDE_IDEAS.map(i => i.ticker).join(',')
+      const res = await fetch(`/api/polygon/batch-quotes?tickers=${tickers}`)
+      if (!res.ok) return
+      const data = await res.json()
+      const quotes = data.quotes ?? {}
+
+      setIdeas(prev => prev.map(idea => {
+        const q = quotes[idea.ticker]
+        if (!q) return idea
+        return {
+          ...idea,
+          currentPrice: q.price ?? idea.currentPrice
+        }
+      }))
+      setLastUpdated(new Date().toLocaleTimeString())
+    } catch (err) {
+      console.error('[trade-ideas] Failed to fetch live prices:', err)
+    }
+  }
+
+  // Fetch live prices on mount and every 30 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIdeas(prev => prev.map(idea => ({
-        ...idea,
-        currentPrice: idea.currentPrice * (1 + (Math.random() - 0.5) * 0.002)
-      })))
-    }, 5000)
+    fetchLivePrices()
+    const interval = setInterval(fetchLivePrices, 30000)
     return () => clearInterval(interval)
   }, [])
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true)
-    setTimeout(() => setIsRefreshing(false), 2000)
+    await fetchLivePrices()
+    setIsRefreshing(false)
   }
 
   const toggleSaved = (id: string) => {
@@ -384,14 +405,21 @@ export default function ClaudeIdeasPage() {
             </div>
           </div>
           
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Analyzing...' : 'Refresh Analysis'}
-          </button>
+          <div className="flex items-center gap-3">
+            {lastUpdated && (
+              <span className="text-xs text-muted-foreground font-mono">
+                Last updated: {lastUpdated}
+              </span>
+            )}
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Fetching...' : 'Refresh Prices'}
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
