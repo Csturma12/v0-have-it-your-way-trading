@@ -30,6 +30,7 @@ import { MarketOverview } from './market-overview'
 import { TechnicalIndicators } from './technical-indicators'
 import { OptionsChain } from './options-chain'
 import { MarketSectorPills } from './market-sector-pills'
+import { CompanyProfile } from './company-profile'
 import {
   Cpu,
   Scale,
@@ -72,7 +73,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v24'
+const STORAGE_KEY = 'trading-dashboard-rgl-v26'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -363,7 +364,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain'
+type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile'
 
 interface RightWidget {
   id: string
@@ -373,16 +374,23 @@ interface RightWidget {
 
 const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
   { id: 'chart',           type: 'chart',           title: 'Chart' },
+  { id: 'company-profile', type: 'company-profile', title: 'Company Profile' },
   { id: 'watchlist',       type: 'watchlist',       title: 'Watchlist' },
-  { id: 'market-overview', type: 'market-overview', title: 'Market Overview' },
   { id: 'news',            type: 'news',            title: 'Market News' },
 ]
 
+// Available add-on widgets (can be added via edit mode)
+const ADDON_WIDGETS: RightWidget[] = [
+  { id: 'market-overview', type: 'market-overview', title: 'Market Overview' },
+  { id: 'technicals',      type: 'technicals',      title: 'Technical Indicators' },
+  { id: 'options-chain',   type: 'options-chain',   title: 'Options Chain' },
+]
+
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'chart',           x: 0, y: 0, w: 8, h: 5, minH: 4 },
-  { i: 'watchlist',       x: 8, y: 0, w: 4, h: 3, minH: 3 },
-  { i: 'market-overview', x: 8, y: 3, w: 4, h: 3, minH: 3 },
-  { i: 'news',            x: 0, y: 5, w: 12, h: 3, minH: 2 },
+  { i: 'chart',           x: 0, y: 0, w: 8, h: 6, minH: 4 },
+  { i: 'company-profile', x: 8, y: 0, w: 4, h: 4, minH: 3 },
+  { i: 'watchlist',       x: 8, y: 4, w: 4, h: 4, minH: 3 },
+  { i: 'news',            x: 0, y: 6, w: 12, h: 3, minH: 2 },
 ]
 
 interface SavedState {
@@ -538,14 +546,17 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     setRightWidgets(DEFAULT_RIGHT_WIDGETS)
   }
 
+  // All widgets that can be added (default + addon, minus currently visible)
+  const ALL_WIDGETS = useMemo(() => [...DEFAULT_RIGHT_WIDGETS, ...ADDON_WIDGETS], [])
   const availableToAdd = useMemo(
-    () => DEFAULT_RIGHT_WIDGETS.filter(d => !rightWidgets.find(w => w.id === d.id)),
-    [rightWidgets]
+    () => ALL_WIDGETS.filter(d => !rightWidgets.find(w => w.id === d.id)),
+    [rightWidgets, ALL_WIDGETS]
   )
 
   const addWidget = (meta: RightWidget) => {
+    // Find existing layout definition or create a sensible default
     const def = DEFAULT_LAYOUT.find(l => l.i === meta.id) ?? {
-      i: meta.id, x: 0, y: Infinity, w: 6, h: 8,
+      i: meta.id, x: 0, y: Infinity, w: 4, h: 4, minH: 3,
     }
     setRightWidgets(w => [...w, meta])
     setLayout(l => [...l, def])
@@ -559,6 +570,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
 
   const renderRight = (widget: RightWidget) => {
     if (widget.type === 'chart')           return <TradingViewAdvancedChart ticker={selectedTicker} onChangeTicker={onSelectTicker} />
+    if (widget.type === 'company-profile') return <CompanyProfile ticker={selectedTicker} />
     if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'market-overview') return <MarketOverview onSelectTicker={onSelectTicker} />
