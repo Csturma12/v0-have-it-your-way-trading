@@ -465,7 +465,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // Compute rowHeight so the full grid fits exactly within the wrapper height.
   // Total rows in the default layout = chart h(13) + news h(5) + margins/padding.
   // We target 18 rows total with 2px margin and 8px padding (top+bottom).
-  const TOTAL_ROWS = 8 // chart(5) + news(3)
+  // Base rows for the default layout — chart can grow beyond this dynamically
+  const TOTAL_ROWS = 8
   const MARGIN = 1   // matches margin={[1,1]}
   const PADDING = 4  // matches containerPadding={[4,4]}
   const rowHeight = Math.floor(

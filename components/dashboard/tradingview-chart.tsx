@@ -750,14 +750,25 @@ export function TradingViewChart({ ticker, onChangeTicker, onHeightChange }: Cha
     window.addEventListener('mouseup', onUp)
   }, [paneHeights, mainChartHeight, MIN_MAIN_HEIGHT, MIN_PANE_HEIGHT, MAX_PANE_HEIGHT])
 
+  // Keep paneHeights in sync with activeSubIds — seed new entries with default,
+  // remove stale ones so the total height stays accurate
+  useEffect(() => {
+    setPaneHeights(prev => {
+      const next: Record<string, number> = {}
+      activeSubIds.forEach(id => { next[id] = prev[id] ?? 120 })
+      return next
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSubIds.join(',')])
+
   // Report total height (main + all sub-panes + toolbar) to parent grid so the
   // chart grid cell grows/shrinks automatically with oscillator additions and resizes
   useEffect(() => {
     if (!onHeightChange) return
     const TOOLBAR_HEIGHT = 56
-    const subTotal = Object.values(paneHeights).reduce((s, h) => s + h, 0)
+    const subTotal = activeSubIds.reduce((s, id) => s + (paneHeights[id] ?? 120), 0)
     onHeightChange(mainChartHeight + subTotal + TOOLBAR_HEIGHT)
-  }, [mainChartHeight, paneHeights, onHeightChange])
+  }, [mainChartHeight, paneHeights, activeSubIds, onHeightChange])
 
   // Sub-chart indicator IDs that are active (each gets its own pane)
   const activeSubIds = INDICATORS.filter(
