@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import GridLayout, { type Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -21,6 +21,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { TradingViewChart } from './tradingview-chart'
+import { TradingViewAdvancedChart } from './tradingview-advanced-chart'
 import { SectorPillBox } from './sector-pill-box'
 import { ThemePillBox } from './theme-pill-box'
 import { WatchlistPanel } from './watchlist-panel'
