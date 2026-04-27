@@ -141,7 +141,7 @@ interface Bar {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INDICATOR CALCULATION FUNCTIONS
-// ═════�������═══════════════════════��════════════════════════════════════════════════
+// ═════���������═══════════════════════��════════════════════════════════════════════════
 
 function calcSMA(data: number[], period: number): number[] {
   const result: number[] = []
@@ -1064,8 +1064,8 @@ export function TradingViewChart({ ticker }: ChartProps) {
         </div>
       )}
 
-      {/* ── Main chart container ── */}
-      <div className="relative flex-1" style={{ minHeight: '200px' }}>
+      {/* ── Main chart container — shrinks to give room to sub-panes ── */}
+      <div className="relative flex-1 min-h-0">
         <div ref={containerRef} className="absolute inset-0" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a]/70 backdrop-blur-sm">
@@ -1085,23 +1085,28 @@ export function TradingViewChart({ ticker }: ChartProps) {
         )}
       </div>
 
-      {/* ── Per-indicator sub-panes (Webull-style, each gets own labeled row) ── */}
-      {loadedBars.length > 0 && activeSubIds.map(id => {
-        const ind = INDICATORS.find(i => i.id === id)!
-        const times = loadedBars.map(b => b.time as UTCTimestamp)
-        return (
-          <ChartSubPane
-            key={id}
-            indicatorId={id}
-            label={ind.label}
-            color={ind.color}
-            bars={loadedBars as SubPaneBar[]}
-            times={times}
-            mainChartRef={chartRef}
-            onRemove={(rmId) => toggleIndicator(rmId)}
-          />
-        )
-      })}
+      {/* ── Per-indicator sub-panes — scrollable area so multiple oscillators
+           don't blow out the chart widget height ── */}
+      {loadedBars.length > 0 && activeSubIds.length > 0 && (
+        <div className="overflow-y-auto flex-shrink-0" style={{ maxHeight: '55%' }}>
+          {activeSubIds.map(id => {
+            const ind = INDICATORS.find(i => i.id === id)!
+            const times = loadedBars.map(b => b.time as UTCTimestamp)
+            return (
+              <ChartSubPane
+                key={id}
+                indicatorId={id}
+                label={ind.label}
+                color={ind.color}
+                bars={loadedBars as SubPaneBar[]}
+                times={times}
+                mainChartRef={chartRef}
+                onRemove={(rmId) => toggleIndicator(rmId)}
+              />
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

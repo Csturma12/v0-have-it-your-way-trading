@@ -3,8 +3,9 @@
 /**
  * ChartSubPane — renders ONE indicator in its own labeled pane
  * (mirrors the Webull layout where each oscillator gets a separate row)
+ * Users can drag the top border to resize, or collapse/expand the pane.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   createChart,
   LineSeries,
@@ -12,7 +13,7 @@ import {
   type IChartApi,
   type UTCTimestamp,
 } from 'lightweight-charts'
-import { X } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, GripHorizontal } from 'lucide-react'
 
 export interface Bar {
   time: number | string
@@ -23,6 +24,10 @@ export interface Bar {
   volume: number
 }
 
+const MIN_HEIGHT = 60
+const MAX_HEIGHT = 400
+const DEFAULT_HEIGHT = 120
+
 interface SubPaneProps {
   indicatorId: string
   label: string
@@ -32,6 +37,7 @@ interface SubPaneProps {
   mainChartRef: React.MutableRefObject<IChartApi | null>
   onRemove: (id: string) => void
   currentValue?: string
+  defaultHeight?: number
 }
 
 // ── Shared calc helpers ──────────────────────────────────────────────────────
@@ -248,9 +254,34 @@ function buildSeriesData(id: string, bars: Bar[]): SeriesData[] {
 
 // ── SubPane component ─────────────────────────────────────────────────────────
 
-export function ChartSubPane({ indicatorId, label, color, bars, times, mainChartRef, onRemove }: SubPaneProps) {
+export function ChartSubPane({ indicatorId, label, color, bars, times, mainChartRef, onRemove, defaultHeight = DEFAULT_HEIGHT }: SubPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
+  const [paneHeight, setPaneHeight] = useState(defaultHeight)
+  const [collapsed, setCollapsed] = useState(false)
+  const dragStartY = useRef<number | null>(null)
+  const dragStartH = useRef<number>(defaultHeight)
+
+  // Drag-to-resize: user drags the top grip bar to change height
+  const onDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragStartY.current = e.clientY
+    dragStartH.current = paneHeight
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (dragStartY.current === null) return
+      const delta = ev.clientY - dragStartY.current
+      const newH = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, dragStartH.current + delta))
+      setPaneHeight(newH)
+    }
+    const onMouseUp = () => {
+      dragStartY.current = null
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }, [paneHeight])
 
   useEffect(() => {
     if (!containerRef.current || bars.length === 0) return
@@ -345,24 +376,54 @@ export function ChartSubPane({ indicatorId, label, color, bars, times, mainChart
     return ''
   })()
 
+  const chartAreaHeight = paneHeight - 22 // subtract label row height
+
   return (
-    <div className="flex-shrink-0 border-t border-[#1f2937] bg-[#0a0a0a]" style={{ height: '120px' }}>
-      {/* Label row */}
-      <div className="flex items-center gap-2 px-3 py-1 bg-[#0f1117] border-b border-[#1f2937]">
-        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-        <span className="text-[10px] font-mono font-semibold text-foreground">{label}</span>
-        {lastVal && (
-          <span className="text-[10px] font-mono text-muted-foreground ml-1">{lastVal}</span>
-        )}
-        <button
-          onClick={() => onRemove(indicatorId)}
-          className="ml-auto p-0.5 rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors"
-        >
-          <X className="w-3 h-3" />
-        </button>
+    <div
+      className="flex-shrink-0 border-t border-[#1f2937] bg-[#0a0a0a] flex flex-col"
+      style={{ height: collapsed ? 22 : paneHeight }}
+    >
+      {/* Drag grip — drag this bar up/down to resize */}
+      <div
+        onMouseDown={onDragStart}
+        className="flex items-center justify-center h-[4px] bg-[#0f1117] hover:bg-blue-500/20 cursor-row-resize group border-b border-[#1f2937] flex-shrink-0"
+        title="Drag to resize"
+      >
+        <GripHorizontal className="w-3 h-2 text-muted-foreground/30 group-hover:text-blue-400/60 transition-colors" />
       </div>
-      {/* Chart area */}
-      <div ref={containerRef} className="w-full" style={{ height: '96px' }} />
+
+      {/* Label row */}
+      <div className="flex items-center gap-2 px-3 h-[18px] bg-[#0f1117] border-b border-[#1f2937] flex-shrink-0">
+        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+        <span className="text-[10px] font-mono font-semibold text-foreground leading-none">{label}</span>
+        {lastVal && (
+          <span className="text-[10px] font-mono text-muted-foreground ml-1 leading-none">{lastVal}</span>
+        )}
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={() => setCollapsed(v => !v)}
+            className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+            title={collapsed ? 'Expand' : 'Collapse'}
+          >
+            {collapsed
+              ? <ChevronDown className="w-3 h-3" />
+              : <ChevronUp className="w-3 h-3" />
+            }
+          </button>
+          <button
+            onClick={() => onRemove(indicatorId)}
+            className="p-0.5 rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors"
+            title="Remove indicator"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Chart area — hidden when collapsed */}
+      {!collapsed && (
+        <div ref={containerRef} className="w-full flex-1" style={{ height: chartAreaHeight }} />
+      )}
     </div>
   )
 }
