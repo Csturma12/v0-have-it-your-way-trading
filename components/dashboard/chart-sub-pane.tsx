@@ -38,6 +38,7 @@ interface SubPaneProps {
   onRemove: (id: string) => void
   currentValue?: string
   defaultHeight?: number
+  onHeightChange?: (height: number) => void
 }
 
 // ── Shared calc helpers ──────────────────────────────────────────────────────
@@ -254,13 +255,18 @@ function buildSeriesData(id: string, bars: Bar[]): SeriesData[] {
 
 // ── SubPane component ─────────────────────────────────────────────────────────
 
-export function ChartSubPane({ indicatorId, label, color, bars, times, mainChartRef, onRemove, defaultHeight = DEFAULT_HEIGHT }: SubPaneProps) {
+export function ChartSubPane({ indicatorId, label, color, bars, times, mainChartRef, onRemove, defaultHeight = DEFAULT_HEIGHT, onHeightChange }: SubPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const [paneHeight, setPaneHeight] = useState(defaultHeight)
   const [collapsed, setCollapsed] = useState(false)
   const dragStartY = useRef<number | null>(null)
   const dragStartH = useRef<number>(defaultHeight)
+
+  // Report actual rendered height to parent whenever it changes
+  useEffect(() => {
+    onHeightChange?.(collapsed ? 26 : paneHeight)
+  }, [paneHeight, collapsed, onHeightChange])
 
   // Drag-to-resize: user drags the top grip bar to change height
   const onDragStart = useCallback((e: React.MouseEvent) => {

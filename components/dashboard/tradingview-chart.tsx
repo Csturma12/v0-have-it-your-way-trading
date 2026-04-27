@@ -23,6 +23,7 @@ import { ChartSubPane, type Bar as SubPaneBar } from './chart-sub-pane'
 interface ChartProps {
   ticker: string
   onChangeTicker?: (ticker: string) => void
+  onHeightChange?: (totalPx: number) => void
 }
 
 // ── Timeframes ──────────────────────────────────────────────────────────────
@@ -697,7 +698,7 @@ type LineSeries_t = ISeriesApi<'Line'>
 type HistoSeries_t = ISeriesApi<'Histogram'>
 type AreaSeries_t = ISeriesApi<'Area'>
 
-export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
+export function TradingViewChart({ ticker, onChangeTicker, onHeightChange }: ChartProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -718,6 +719,12 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
   const [tickerInput, setTickerInput] = useState('')
   const [tickerSearchActive, setTickerSearchActive] = useState(false)
   const tickerInputRef = useRef<HTMLInputElement>(null)
+  // Track each sub-pane height so we can report total to parent
+  const [paneHeights, setPaneHeights] = useState<Record<string, number>>({})
+  const [mainChartHeight, setMainChartHeight] = useState(220)
+  const MIN_MAIN_HEIGHT = 100   // main chart never goes below this
+  const MIN_PANE_HEIGHT = 60    // each oscillator never goes below this
+  const MAX_PANE_HEIGHT = 400
 
   // Sub-chart indicator IDs that are active (each gets its own pane)
   const activeSubIds = INDICATORS.filter(
@@ -958,6 +965,14 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
     return () => { cancelled = true }
   }, [ticker])
 
+  // Report total height to parent when sub-panes change
+  useEffect(() => {
+    if (!onHeightChange) return
+    const subTotal = activeSubIds.reduce((sum, id) => sum + (paneHeights[id] ?? 120), 0)
+    const total = MAIN_CHART_MIN_PX + TOOLBAR_PX + subTotal
+    onHeightChange(total)
+  }, [activeSubIds, paneHeights, onHeightChange])
+
   const toggleIndicator = (id: string) => {
     setActiveIndicators((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
   }
@@ -975,7 +990,7 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
   const grouped = INDICATORS.reduce((acc, ind) => { (acc[ind.category] ||= []).push(ind); return acc }, {} as Record<IndicatorCategory, IndicatorDef[]>)
 
   return (
-    <div ref={wrapperRef} className="flex flex-col h-full bg-[#0a0a0a]">
+    <div ref={wrapperRef} className="flex flex-col h-full bg-[#0a0a0a] overflow-y-auto">
       {/* ── Toolbar ── */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-card/60 flex-shrink-0 gap-2 flex-wrap">
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -1102,8 +1117,8 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
         </div>
       )}
 
-      {/* ── Main chart container — shrinks to give room to sub-panes ── */}
-      <div className="relative flex-1 min-h-0">
+      {/* ── Main chart container — fixed min height, never collapses ── */}
+      <div className="relative flex-shrink-0" style={{ height: `${MAIN_CHART_MIN_PX}px` }}>
         <div ref={containerRef} className="absolute inset-0" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a]/70 backdrop-blur-sm">
@@ -1123,10 +1138,10 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
         )}
       </div>
 
-      {/* ── Per-indicator sub-panes — scrollable area so multiple oscillators
-           don't blow out the chart widget height ── */}
+      {/* ── Per-indicator sub-panes — grow freely, push news widget down
+           OR user can scroll inside the chart cell without stretching it ── */}
       {loadedBars.length > 0 && activeSubIds.length > 0 && (
-        <div className="overflow-y-auto flex-shrink-0" style={{ maxHeight: '55%' }}>
+        <div className="flex-shrink-0">
           {activeSubIds.map(id => {
             const ind = INDICATORS.find(i => i.id === id)!
             const times = loadedBars.map(b => b.time as UTCTimestamp)
@@ -1140,6 +1155,7 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
                 times={times}
                 mainChartRef={chartRef}
                 onRemove={(rmId) => toggleIndicator(rmId)}
+                onHeightChange={(h) => setPaneHeights(prev => ({ ...prev, [id]: h }))}
               />
             )
           })}

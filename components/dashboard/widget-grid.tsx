@@ -549,8 +549,15 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     [layout, rightWidgets]
   )
 
+  // When oscillators are added/resized/collapsed, expand or contract the chart grid cell
+  const handleChartHeightChange = useCallback((totalPx: number) => {
+    const rowH = Math.max(1, rowHeight)
+    const newH = Math.max(DEFAULT_LAYOUT.find(l => l.i === 'chart')!.minH!, Math.ceil(totalPx / rowH))
+    setLayout(prev => prev.map(l => l.i === 'chart' ? { ...l, h: newH, maxH: Math.max(newH, 5) } : l))
+  }, [rowHeight])
+
   const renderRight = (widget: RightWidget) => {
-    if (widget.type === 'chart')     return <TradingViewChart ticker={selectedTicker} onChangeTicker={onSelectTicker} />
+    if (widget.type === 'chart')     return <TradingViewChart ticker={selectedTicker} onChangeTicker={onSelectTicker} onHeightChange={handleChartHeightChange} />
     if (widget.type === 'watchlist') return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')      return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     return null
