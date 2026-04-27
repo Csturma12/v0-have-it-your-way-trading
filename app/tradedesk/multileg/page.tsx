@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 
 type Model = 'claude' | 'openai'
 type RiskLevel = 'low' | 'medium' | 'high'
@@ -222,16 +223,9 @@ export default function MultiLegPage() {
   const [activeTab, setActiveTab] = useState<'ideas' | 'staged' | 'history' | 'custom'>('ideas')
   const [refreshing, setRefreshing] = useState(false)
 
-  // Simulate live Greeks updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIdeas(prev => prev.map(idea => ({
-        ...idea,
-        pop: Math.max(20, Math.min(95, (idea.pop || 50) + (Math.random() - 0.5) * 2)),
-      })))
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
+  // Fetch live prices from Polygon API
+  const tickers = [...CLAUDE_IDEAS, ...OPENAI_IDEAS].map(i => i.ticker)
+  const { quotes: liveQuotes } = useLiveQuotes(tickers, { refreshInterval: 30000 })
 
   const filteredIdeas = ideas.filter(idea => {
     if (selectedModel !== 'all' && idea.model !== selectedModel) return false

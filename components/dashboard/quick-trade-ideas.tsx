@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, Zap, Flame, Target, ArrowRight } from 'lucide-react'
+import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 
 interface TradeIdea {
   ticker: string
@@ -16,25 +17,28 @@ interface QuickTradeIdeasProps {
   onSelectIdea?: (ticker: string, action: 'buy' | 'sell') => void
 }
 
-export function QuickTradeIdeas({ onSelectIdea }: QuickTradeIdeasProps) {
-  const [ideas, setIdeas] = useState<TradeIdea[]>([])
-  const [loading, setLoading] = useState(true)
+const IDEA_TICKERS = [
+  { ticker: 'NVDA', action: 'buy' as const, reason: 'AI momentum', strength: 'high' as const },
+  { ticker: 'TSLA', action: 'buy' as const, reason: 'Breakout setup', strength: 'medium' as const },
+  { ticker: 'META', action: 'buy' as const, reason: 'Dark pool activity', strength: 'high' as const },
+  { ticker: 'AMD', action: 'sell' as const, reason: 'Resistance hit', strength: 'medium' as const },
+  { ticker: 'AAPL', action: 'buy' as const, reason: 'Earnings play', strength: 'low' as const },
+]
 
-  useEffect(() => {
-    // Simulated trade ideas - in production, fetch from AI/signals API
-    const mockIdeas: TradeIdea[] = [
-      { ticker: 'NVDA', action: 'buy', reason: 'AI momentum', strength: 'high', price: 205.10, change: 4.04 },
-      { ticker: 'TSLA', action: 'buy', reason: 'Breakout setup', strength: 'medium', price: 178.50, change: 2.15 },
-      { ticker: 'META', action: 'buy', reason: 'Dark pool activity', strength: 'high', price: 512.30, change: 1.82 },
-      { ticker: 'AMD', action: 'sell', reason: 'Resistance hit', strength: 'medium', price: 162.40, change: -1.25 },
-      { ticker: 'AAPL', action: 'buy', reason: 'Earnings play', strength: 'low', price: 189.20, change: 0.75 },
-    ]
-    
-    setTimeout(() => {
-      setIdeas(mockIdeas)
-      setLoading(false)
-    }, 500)
-  }, [])
+export function QuickTradeIdeas({ onSelectIdea }: QuickTradeIdeasProps) {
+  const tickers = IDEA_TICKERS.map(i => i.ticker)
+  const { quotes, isLoading } = useLiveQuotes(tickers, { refreshInterval: 30000 })
+
+  const ideas: TradeIdea[] = IDEA_TICKERS.map(idea => {
+    const q = quotes[idea.ticker]
+    return {
+      ...idea,
+      price: q?.price || 0,
+      change: q?.changePercent || 0,
+    }
+  })
+
+  const loading = isLoading && Object.keys(quotes).length === 0
 
   const strengthColors = {
     high: 'bg-green-500/20 border-green-500/40 text-green-400',
