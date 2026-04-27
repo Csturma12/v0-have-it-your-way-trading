@@ -22,8 +22,8 @@ import {
   BarChart2,
 } from 'lucide-react'
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v12'
-// Layout is intentionally NOT persisted — the default layout is always restored
+const STORAGE_KEY = 'trading-dashboard-rgl-v17'
+// Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
 const ALL_RESIZE_HANDLES: Array<'s' | 'w' | 'e' | 'n' | 'sw' | 'nw' | 'se' | 'ne'> = [
@@ -328,9 +328,9 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'chart',     x: 0, y: 0,  w: 8, h: 12, minH: 8,  maxH: 12 },
-  { i: 'watchlist', x: 8, y: 0,  w: 4, h: 12, minH: 6,  maxH: 12 },
-  { i: 'news',      x: 0, y: 12, w: 12, h: 5, minH: 3,  maxH: 6  },
+  { i: 'chart',     x: 0, y: 0, w: 8, h: 13, minH: 10, maxH: 13 },
+  { i: 'watchlist', x: 8, y: 0, w: 4, h: 13, minH: 10, maxH: 13 },
+  { i: 'news',      x: 0, y: 13, w: 12, h: 5, minH: 3,  maxH: 6  },
 ]
 
 interface SavedState {
@@ -354,22 +354,32 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
   const [wrapperWidth, setWrapperWidth] = useState(1200)
+  const [wrapperHeight, setWrapperHeight] = useState(800)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [savedLayouts, setSavedLayouts] = useState<Array<{ name: string; layout: Layout[]; widgets: RightWidget[] }>>([])
-  const [newLayoutName, setNewLayoutName] = useState('')
 
-  // Track wrapper width for responsive grid
+  // Track wrapper width AND height for responsive grid
   useEffect(() => {
-    const updateWidth = () => {
+    const updateSize = () => {
       if (wrapperRef.current) {
         setWrapperWidth(wrapperRef.current.offsetWidth)
+        setWrapperHeight(wrapperRef.current.offsetHeight)
       }
     }
-    updateWidth()
-    const resizeObserver = new ResizeObserver(updateWidth)
+    updateSize()
+    const resizeObserver = new ResizeObserver(updateSize)
     if (wrapperRef.current) resizeObserver.observe(wrapperRef.current)
     return () => resizeObserver.disconnect()
   }, [])
+
+  // Compute rowHeight so the full grid fits exactly within the wrapper height.
+  // Total rows in the default layout = chart h(13) + news h(5) + margins/padding.
+  // We target 18 rows total with 2px margin and 8px padding (top+bottom).
+  const TOTAL_ROWS = 18
+  const MARGIN = 1   // matches margin={[1,1]}
+  const PADDING = 4  // matches containerPadding={[4,4]}
+  const rowHeight = Math.floor(
+    (wrapperHeight - PADDING * 2 - MARGIN * (TOTAL_ROWS + 1)) / TOTAL_ROWS
+  )
 
   // Load saved layouts from localStorage
   useEffect(() => {
@@ -697,7 +707,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             className="layout"
             layout={visibleLayout}
             cols={12}
-            rowHeight={48}
+            rowHeight={rowHeight}
             margin={[1, 1]}
             containerPadding={[4, 4]}
             isDraggable={isEditMode}
@@ -706,7 +716,19 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             draggableHandle=".widget-drag-handle"
             compactType={null}
             preventCollision={true}
-            onLayoutChange={(newLayout) => setLayout(newLayout)}
+            onLayoutChange={(newLayout) => {
+              // Enforce maxH constraints to prevent chart from growing too large
+              const constrainedLayout = newLayout.map(item => {
+                const original = DEFAULT_LAYOUT.find(d => d.i === item.i)
+                if (!original) return item
+                // Enforce the maxH from DEFAULT_LAYOUT
+                if (item.h > original.maxH!) {
+                  return { ...item, h: original.maxH! }
+                }
+                return item
+              })
+              setLayout(constrainedLayout)
+            }}
             width={wrapperWidth}
           >
             {rightWidgets.map(widget => (
