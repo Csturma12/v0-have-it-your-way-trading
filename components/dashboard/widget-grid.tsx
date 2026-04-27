@@ -22,7 +22,7 @@ import {
   BarChart2,
 } from 'lucide-react'
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v19'
+const STORAGE_KEY = 'trading-dashboard-rgl-v21'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -328,9 +328,9 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'chart',     x: 0, y: 0, w: 8, h: 7, minH: 5,  maxH: 7 },
-  { i: 'watchlist', x: 8, y: 0, w: 4, h: 7, minH: 5,  maxH: 7 },
-  { i: 'news',      x: 0, y: 7, w: 12, h: 4, minH: 3,  maxH: 5  },
+  { i: 'chart',     x: 0, y: 0, w: 8, h: 5, minH: 4,  maxH: 5 },
+  { i: 'watchlist', x: 8, y: 0, w: 4, h: 5, minH: 4,  maxH: 5 },
+  { i: 'news',      x: 0, y: 5, w: 12, h: 3, minH: 2,  maxH: 4 },
 ]
 
 interface SavedState {
@@ -374,7 +374,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // Compute rowHeight so the full grid fits exactly within the wrapper height.
   // Total rows in the default layout = chart h(13) + news h(5) + margins/padding.
   // We target 18 rows total with 2px margin and 8px padding (top+bottom).
-  const TOTAL_ROWS = 18
+  const TOTAL_ROWS = 8 // chart(5) + news(3)
   const MARGIN = 1   // matches margin={[1,1]}
   const PADDING = 4  // matches containerPadding={[4,4]}
   const rowHeight = Math.floor(
