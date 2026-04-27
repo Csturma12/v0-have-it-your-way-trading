@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, BookmarkPlus, BookmarkCheck } from 'lucide-react'
 
 interface ChartProps {
   ticker: string
@@ -20,6 +20,17 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
   const [tickerSearchActive, setTickerSearchActive] = useState(false)
   const tickerInputRef = useRef<HTMLInputElement>(null)
   const widgetRef = useRef<any>(null)
+  const [addedToWatchlist, setAddedToWatchlist] = useState(false)
+
+  // Reset confirmation badge when ticker changes
+  useEffect(() => { setAddedToWatchlist(false) }, [ticker])
+
+  const handleAddToWatchlist = () => {
+    window.dispatchEvent(new CustomEvent('watchlist:add', { detail: { ticker } }))
+    setAddedToWatchlist(true)
+    // Reset after 2s so it can be triggered again
+    setTimeout(() => setAddedToWatchlist(false), 2000)
+  }
 
   // Load TradingView script once
   useEffect(() => {
@@ -80,7 +91,7 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
     <div className="flex flex-col h-full bg-[#0a0a0a] overflow-hidden font-mono select-none relative">
       {/* Toolbar */}
       <div className="flex-shrink-0 bg-[#0f1117] border-b border-[#1f2937] px-3 py-2 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1">
           {/* Ticker search */}
           {tickerSearchActive ? (
             <form
@@ -115,6 +126,22 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
             </button>
           )}
         </div>
+
+        {/* Add to Watchlist */}
+        <button
+          onClick={handleAddToWatchlist}
+          title={addedToWatchlist ? 'Added to watchlist' : `Add ${ticker} to watchlist`}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-semibold border transition-all duration-200 flex-shrink-0 ${
+            addedToWatchlist
+              ? 'bg-theme-green/20 border-theme-green/50 text-theme-green'
+              : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-theme-green/10 hover:border-theme-green/40 hover:text-theme-green'
+          }`}
+        >
+          {addedToWatchlist
+            ? <><BookmarkCheck className="w-3.5 h-3.5" /> Added</>
+            : <><BookmarkPlus className="w-3.5 h-3.5" /> Watchlist</>
+          }
+        </button>
       </div>
 
       {/* TradingView Chart */}
