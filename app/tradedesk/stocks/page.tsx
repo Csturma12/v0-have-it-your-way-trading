@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 import { 
   TrendingUp, TrendingDown, Brain, Sparkles, Clock, Target, CheckCircle, Search, Filter,
-  Plus, History, X, Save, ArrowUpRight, Zap, AlertTriangle, RefreshCw
+  Plus, History, X, Save, ArrowUpRight, Zap, AlertTriangle, RefreshCw, Loader
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 
 type Model = 'claude' | 'openai'
 type RiskLevel = 'low' | 'medium' | 'high'
@@ -95,6 +96,8 @@ export default function StocksPage() {
   const [riskFilter, setRiskFilter] = useState<RiskLevel | 'all'>('all')
   const [timeframeFilter, setTimeframeFilter] = useState<Timeframe | 'all'>('all')
   const [showFilters, setShowFilters] = useState(false)
+  const [broker, setBroker] = useState<'alpaca' | 'tastytrade'>('alpaca')
+  const { executeTrade, isLoading: isExecuting } = useBrokerTrade(broker)
   
   const [ideas, setIdeas] = useState<StockIdea[]>([...CLAUDE_IDEAS, ...OPENAI_IDEAS])
   const [stagedTrades, setStagedTrades] = useState<StagedTrade[]>([])
@@ -148,10 +151,19 @@ export default function StocksPage() {
     }
   }
 
-  const handleExecuteTrade = (trade: StagedTrade) => {
+  const handleExecuteTrade = async (trade: StagedTrade) => {
+    // Execute the trade through the broker
+    const order = {
+      ticker: trade.ticker,
+      side: trade.action,
+      quantity: trade.quantity,
+      orderType: 'market' as const,
+    }
+    const result = await executeTrade(order)
+    
+    // Move to execution history
     setStagedTrades(prev => prev.filter(t => t.id !== trade.id))
     setExecutionHistory(prev => [...prev, { ...trade, status: 'executed' }])
-    router.push(`/quicktrade?ticker=${trade.ticker}&action=${trade.action}&entry=${trade.entry}&quantity=${trade.quantity}`)
   }
 
   const handleCancelTrade = (trade: StagedTrade) => {
@@ -256,6 +268,26 @@ export default function StocksPage() {
             </div>
           )}
 
+          {/* Broker Selector */}
+          <div className="mb-4 p-3 rounded-lg bg-card/50 border border-border flex items-center justify-between">
+            <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Paper Trading via:</span>
+            <div className="flex gap-2">
+              {(['alpaca', 'tastytrade'] as const).map((b) => (
+                <button
+                  key={b}
+                  onClick={() => setBroker(b)}
+                  className={`px-3 py-1 rounded text-xs font-mono font-semibold uppercase transition-colors ${
+                    broker === b
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted/30 text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {b === 'alpaca' ? '🦙 Alpaca' : '🥜 Tastytrade'}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Tabs */}
           <div className="flex gap-2 mb-6 border-b border-border pb-2">
             {[
@@ -351,8 +383,16 @@ export default function StocksPage() {
                       <span className="text-sm text-muted-foreground">Entry: ${trade.entry.toFixed(2)} | Qty: {trade.quantity} | Staged: {trade.stagedAt.toLocaleTimeString()}</span>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="text-green-400 border-green-500/40 hover:bg-green-500/20" onClick={() => handleExecuteTrade(trade)}>
-                        <ArrowUpRight className="w-4 h-4 mr-1" /> Execute
+                      <Button size="sm" variant="outline" className="text-green-400 border-green-500/40 hover:bg-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isExecuting} onClick={() => handleExecuteTrade(trade)}>
+                        {isExecuting ? (
+                          <>
+                            <Loader className="w-4 h-4 mr-1 animate-spin" /> Executing...
+                          </>
+                        ) : (
+                          <>
+                            <ArrowUpRight className="w-4 h-4 mr-1" /> Execute
+                          </>
+                        )}
                       </Button>
                       <Button size="sm" variant="outline" className="text-red-400 border-red-500/40 hover:bg-red-500/20" onClick={() => handleCancelTrade(trade)}>
                         <X className="w-4 h-4" />

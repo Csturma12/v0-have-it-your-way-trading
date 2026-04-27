@@ -10,13 +10,15 @@ import {
   Clock,
   AlertTriangle,
   Check,
-  X
+  X,
+  Loader
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 import { QuickTradeIdeas } from '@/components/dashboard/quick-trade-ideas'
+import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 
 export default function QuickTradePage() {
   const [ticker, setTicker] = useState('NVDA')
@@ -25,6 +27,9 @@ export default function QuickTradePage() {
   const [quantity, setQuantity] = useState('10')
   const [limitPrice, setLimitPrice] = useState('')
   const [stopPrice, setStopPrice] = useState('')
+  const [broker, setBroker] = useState<'alpaca' | 'tastytrade'>('alpaca')
+  
+  const { executeTrade, isLoading, result, error } = useBrokerTrade(broker)
   
   const handleTradeIdeaSelect = (ideaTicker: string, action: 'buy' | 'sell') => {
     setTicker(ideaTicker)
@@ -33,6 +38,17 @@ export default function QuickTradePage() {
     setOrderType('market')
     setLimitPrice('')
     setStopPrice('')
+  }
+
+  const handleExecuteTrade = async () => {
+    await executeTrade({
+      ticker,
+      side,
+      quantity: parseInt(quantity),
+      orderType,
+      limitPrice: limitPrice ? parseFloat(limitPrice) : undefined,
+      stopPrice: stopPrice ? parseFloat(stopPrice) : undefined,
+    })
   }
   
   // Mock quote data
@@ -200,7 +216,61 @@ export default function QuickTradePage() {
               </div>
             )}
 
-            {/* Order Summary */}
+            {/* Broker Selector */}
+            <div className="mb-6">
+              <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2 block">
+                Paper Trading Broker
+              </label>
+              <div className="flex gap-2">
+                {(['alpaca', 'tastytrade'] as const).map((b) => (
+                  <button
+                    key={b}
+                    onClick={() => setBroker(b)}
+                    className={`flex-1 px-4 py-2 rounded text-sm font-mono font-semibold uppercase transition-colors ${
+                      broker === b
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/30 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {b === 'alpaca' ? '🦙 Alpaca' : '🥜 Tastytrade'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Broker Selection */}
+            <div className="mb-6">
+              <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2 block">
+                Paper Trading Broker
+              </label>
+              <div className="flex gap-2">
+                {(['alpaca', 'tastytrade'] as const).map((b) => (
+                  <button
+                    key={b}
+                    onClick={() => setBroker(b)}
+                    className={`flex-1 px-4 py-2 rounded text-sm font-mono font-semibold uppercase transition-colors ${
+                      broker === b
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/30 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {b === 'alpaca' ? '🦙 Alpaca' : '🥒 Tastytrade'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Error/Success Messages */}
+            {error && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 mb-6">
+                <p className="text-sm font-mono text-red-400">{error}</p>
+              </div>
+            )}
+            {result && (
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 mb-6">
+                <p className="text-sm font-mono text-green-400">Order executed! ID: {result.orderId}</p>
+              </div>
+            )}
             <div className="p-4 rounded-lg bg-muted/20 border border-border mb-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-mono text-muted-foreground">Estimated Value</span>
@@ -217,21 +287,60 @@ export default function QuickTradePage() {
               <Button
                 variant="outline"
                 className="flex-1 gap-2"
+                onClick={() => {
+                  setTicker('NVDA')
+                  setSide('buy')
+                  setQuantity('10')
+                  setOrderType('market')
+                  setLimitPrice('')
+                  setStopPrice('')
+                }}
               >
                 <X className="w-4 h-4" />
-                Cancel
+                Clear
               </Button>
               <Button
+                onClick={handleExecuteTrade}
+                disabled={isLoading}
                 className={`flex-1 gap-2 ${
                   side === 'buy' 
                     ? 'bg-green-600 hover:bg-green-700 text-white' 
                     : 'bg-red-600 hover:bg-red-700 text-white'
                 }`}
               >
-                <Check className="w-4 h-4" />
-                {side === 'buy' ? 'Buy' : 'Sell'} {ticker}
+                {isLoading ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Executing...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    {side === 'buy' ? 'Buy' : 'Sell'} {ticker}
+                  </>
+                )}
               </Button>
             </div>
+
+            {/* Trade Result Alert */}
+            {result && (
+              <div className="mt-4 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                <div className="flex items-center gap-2 text-green-400">
+                  <Check className="w-4 h-4" />
+                  <span className="font-mono text-sm">{side === 'buy' ? 'Buy' : 'Sell'} order executed: {result.orderId}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Error Alert */}
+            {error && (
+              <div className="mt-4 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                <div className="flex items-center gap-2 text-red-400">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="font-mono text-sm">{error}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Trade Ideas Section */}
