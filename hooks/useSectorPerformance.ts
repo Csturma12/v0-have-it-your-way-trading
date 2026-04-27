@@ -34,20 +34,26 @@ interface UseSectorPerformanceOptions {
   refreshInterval?: number
 }
 
-export function useSectorPerformance(options: UseSectorPerformanceOptions = {}) {
-  const { refreshInterval = 300000 } = options
+export type SectorTimeframe = 'live' | 'daily' | 'weekly' | 'monthly'
+
+interface UseSectorPerformanceFullOptions extends UseSectorPerformanceOptions {
+  timeframe?: SectorTimeframe
+}
+
+export function useSectorPerformance(options: UseSectorPerformanceFullOptions = {}) {
+  const { refreshInterval = 300000, timeframe = 'live' } = options
   
-  const [sectors, setSectors] = useState<SectorPerformanceData | null>(null)
+  const [allSectors, setAllSectors] = useState<SectorPerformanceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [source, setSource] = useState<string>('unknown')
 
   const fetchSectors = useCallback(async () => {
+    setLoading(true)
     try {
       const res = await fetch('/api/alpha-vantage/sectors?type=sectors')
       if (!res.ok) throw new Error('Failed to fetch sectors')
-      
       const json = await res.json()
-      setSectors(json)
+      setAllSectors(json)
       setSource(json.source || 'unknown')
     } catch {
       // Silently fail - mock data will be used
@@ -62,7 +68,19 @@ export function useSectorPerformance(options: UseSectorPerformanceOptions = {}) 
     return () => clearInterval(interval)
   }, [fetchSectors, refreshInterval])
 
-  return { sectors, loading, source, refresh: fetchSectors }
+  // Derive the active rows based on the selected timeframe
+  const sectors = allSectors
+    ? {
+        ...allSectors,
+        active:
+          timeframe === 'daily'   ? allSectors.daily   :
+          timeframe === 'weekly'  ? allSectors.weekly  :
+          timeframe === 'monthly' ? allSectors.monthly :
+          allSectors.realTimePerformance,
+      }
+    : null
+
+  return { sectors, allSectors, loading, source, refresh: fetchSectors }
 }
 
 export function useGainersLosers(options: UseSectorPerformanceOptions = {}) {
@@ -73,10 +91,10 @@ export function useGainersLosers(options: UseSectorPerformanceOptions = {}) {
   const [source, setSource] = useState<string>('unknown')
 
   const fetchData = useCallback(async () => {
+    setLoading(true)
     try {
       const res = await fetch('/api/alpha-vantage/sectors?type=gainers')
       if (!res.ok) throw new Error('Failed to fetch gainers/losers')
-      
       const json = await res.json()
       setData(json)
       setSource(json.source || 'unknown')

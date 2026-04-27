@@ -110,18 +110,21 @@ function PillSection({
   )
 }
 
+const TIMEFRAMES = [
+  { key: 'live',    label: 'Live'    },
+  { key: 'daily',   label: 'Daily'   },
+  { key: 'weekly',  label: 'Weekly'  },
+  { key: 'monthly', label: 'Monthly' },
+] as const
+
 export function MarketSectorPills({ onSelectTicker }: MarketSectorPillsProps) {
-  const { sectors, loading: sectorsLoading, source: sectorsSource, refresh: refreshSectors } = useSectorPerformance()
-  const { data: gl, loading: glLoading, source: glSource, refresh: refreshGL } = useGainersLosers()
   const [timeframe, setTimeframe] = useState<'live' | 'daily' | 'weekly' | 'monthly'>('live')
 
-  const sectorRows = timeframe === 'live'
-    ? (sectors?.realTimePerformance ?? [])
-    : timeframe === 'daily'
-    ? (sectors?.daily ?? [])
-    : timeframe === 'weekly'
-    ? (sectors?.weekly ?? [])
-    : (sectors?.monthly ?? [])
+  // Pass timeframe into hook so it re-fetches / re-slices reactively
+  const { sectors, loading: sectorsLoading, source: sectorsSource, refresh: refreshSectors } = useSectorPerformance({ timeframe })
+  const { data: gl, loading: glLoading, source: glSource, refresh: refreshGL } = useGainersLosers()
+
+  const sectorRows = sectors?.active ?? []
 
   return (
     <div className="space-y-1">
@@ -135,20 +138,24 @@ export function MarketSectorPills({ onSelectTicker }: MarketSectorPillsProps) {
         source={sectorsSource}
         onRefresh={refreshSectors}
       >
-        <div className="px-2 py-1 border-b border-border/20 grid grid-cols-[1fr_auto] gap-2">
-          <span className="text-[8px] font-mono text-muted-foreground/50 uppercase">Sector</span>
-          <div className="flex items-center gap-1">
-            {(['live', 'daily', 'weekly', 'monthly'] as const).map(tf => (
+        <div className="px-2 py-1.5 border-b border-border/20 flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[8px] font-mono text-muted-foreground/50 uppercase">Sector</span>
+            <span className="text-[8px] font-mono text-muted-foreground/50 uppercase">Perf</span>
+          </div>
+          {/* Timeframe selector — full labels, Live first */}
+          <div className="flex items-center gap-1 w-full">
+            {TIMEFRAMES.map(({ key, label }) => (
               <button
-                key={tf}
-                onClick={() => setTimeframe(tf)}
-                className={`text-[7px] font-mono px-1 py-0.5 rounded transition-colors ${
-                  timeframe === tf
-                    ? 'bg-theme-green/20 text-theme-green'
-                    : 'text-muted-foreground/50 hover:text-muted-foreground'
+                key={key}
+                onClick={() => setTimeframe(key)}
+                className={`flex-1 text-[9px] font-mono font-semibold py-0.5 rounded transition-colors border ${
+                  timeframe === key
+                    ? 'bg-theme-green/20 text-theme-green border-theme-green/40'
+                    : 'text-muted-foreground/60 hover:text-muted-foreground border-transparent hover:border-border/30'
                 }`}
               >
-                {tf === 'live' ? 'Live' : tf === 'daily' ? 'Daily' : tf === 'weekly' ? 'Weekly' : 'Monthly'}
+                {label}
               </button>
             ))}
           </div>
