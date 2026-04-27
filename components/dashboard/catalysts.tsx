@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { RefreshCw, Calendar, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
@@ -11,69 +11,6 @@ interface Catalyst {
   impact: 'high' | 'medium' | 'low'
   sentiment?: 'bullish' | 'bearish' | 'neutral'
   source?: string
-}
-
-const MOCK_CATALYSTS: Record<string, Catalyst[]> = {
-  AAPL: [
-    {
-      type: 'earnings',
-      title: 'Q1 2025 Earnings Report',
-      date: '2025-01-28',
-      impact: 'high',
-      sentiment: 'bullish',
-      source: 'Company',
-    },
-    {
-      type: 'event',
-      title: 'Apple Spring Event',
-      date: '2025-03-18',
-      impact: 'high',
-      sentiment: 'neutral',
-      source: 'Company',
-    },
-    {
-      type: 'economic',
-      title: 'Fed Interest Rate Decision',
-      date: '2025-02-19',
-      impact: 'medium',
-      sentiment: 'neutral',
-      source: 'Federal Reserve',
-    },
-    {
-      type: 'news',
-      title: 'Analyst Upgrade Probability',
-      date: '2025-02-01',
-      impact: 'low',
-      sentiment: 'bullish',
-      source: 'Street',
-    },
-  ],
-  NVDA: [
-    {
-      type: 'earnings',
-      title: 'Q4 2025 Earnings Report',
-      date: '2025-02-25',
-      impact: 'high',
-      sentiment: 'bullish',
-      source: 'Company',
-    },
-    {
-      type: 'event',
-      title: 'GTC Conference (GPU Tech)',
-      date: '2025-03-24',
-      impact: 'medium',
-      sentiment: 'neutral',
-      source: 'Company',
-    },
-    {
-      type: 'economic',
-      title: 'AI Chip Sales Data Release',
-      date: '2025-02-15',
-      impact: 'medium',
-      sentiment: 'neutral',
-      source: 'Market',
-    },
-  ],
 }
 
 function formatDate(dateStr: string): string {
@@ -99,22 +36,73 @@ function getTypeColor(type: string): string {
 export function Catalysts({ ticker = 'AAPL' }: { ticker: string }) {
   const [catalysts, setCatalysts] = useState<Catalyst[]>([])
   const [loading, setLoading] = useState(true)
+  const [source, setSource] = useState<string>('unknown')
 
-  const fetch = async () => {
+  const fetchCatalysts = useCallback(async () => {
     setLoading(true)
     try {
-      const mock = MOCK_CATALYSTS[ticker] || MOCK_CATALYSTS.AAPL
-      setCatalysts(mock.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()))
+      // Fetch news for the ticker to derive catalysts
+      const newsRes = await fetch(`/api/news?ticker=${ticker}&limit=10`)
+      
+      if (newsRes.ok) {
+        const newsData = await newsRes.json()
+        const articles = newsData.articles || []
+        
+        // Convert news to catalysts format
+        const newsCatalysts: Catalyst[] = articles.slice(0, 6).map((article: { title?: string; published_utc?: string; sentiment?: string }, idx: number) => {
+          const isEarnings = (article.title || '').toLowerCase().includes('earnings') || (article.title || '').toLowerCase().includes('q1') || (article.title || '').toLowerCase().includes('q2') || (article.title || '').toLowerCase().includes('q3') || (article.title || '').toLowerCase().includes('q4')
+          const isEvent = (article.title || '').toLowerCase().includes('event') || (article.title || '').toLowerCase().includes('conference') || (article.title || '').toLowerCase().includes('announcement')
+          const isEconomic = (article.title || '').toLowerCase().includes('fed') || (article.title || '').toLowerCase().includes('rate') || (article.title || '').toLowerCase().includes('inflation')
+
+          return {
+            type: isEarnings ? 'earnings' : isEvent ? 'event' : isEconomic ? 'economic' : 'news',
+            title: article.title || 'News Update',
+            date: article.published_utc || new Date().toISOString(),
+            impact: idx < 2 ? 'high' : idx < 4 ? 'medium' : 'low',
+            sentiment: article.sentiment === 'positive' ? 'bullish' : article.sentiment === 'negative' ? 'bearish' : 'neutral',
+            source: 'News',
+          }
+        })
+
+        // Add upcoming earnings placeholder based on common patterns
+        const earningsDate = new Date()
+        earningsDate.setMonth(earningsDate.getMonth() + 1)
+        
+        const allCatalysts = [
+          {
+            type: 'earnings' as const,
+            title: `${ticker} Upcoming Earnings`,
+            date: earningsDate.toISOString(),
+            impact: 'high' as const,
+            sentiment: 'neutral' as const,
+            source: 'Estimated',
+          },
+          ...newsCatalysts,
+        ]
+
+        setCatalysts(allCatalysts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()))
+        setSource(newsData.source || 'polygon')
+      } else {
+        throw new Error('Failed to fetch news')
+      }
     } catch (err) {
       console.error('[Catalysts] Error:', err)
+      // Fallback to static data
+      setCatalysts([
+        { type: 'earnings', title: `${ticker} Q2 2026 Earnings`, date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), impact: 'high', sentiment: 'neutral', source: 'Estimated' },
+        { type: 'economic', title: 'Fed Interest Rate Decision', date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), impact: 'medium', sentiment: 'neutral', source: 'Federal Reserve' },
+      ])
+      setSource('mock')
     } finally {
       setLoading(false)
     }
-  }
+  }, [ticker])
 
   useEffect(() => {
-    fetch()
-  }, [ticker])
+    fetchCatalysts()
+    const interval = setInterval(fetchCatalysts, 300000) // Refresh every 5 min
+    return () => clearInterval(interval)
+  }, [fetchCatalysts])
 
   if (loading) {
     return (
@@ -132,10 +120,10 @@ export function Catalysts({ ticker = 'AAPL' }: { ticker: string }) {
           <Calendar className="w-3 h-3 text-muted-foreground/70" />
           <span className="text-xs font-mono text-muted-foreground/70 uppercase">Catalysts</span>
           <Badge variant="outline" className="text-[10px] px-1 py-0.5">
-            DEMO
+            {source === 'polygon' || source === 'finnhub' ? 'LIVE' : 'DEMO'}
           </Badge>
         </div>
-        <button onClick={fetch} className="hover:bg-white/5 p-1 rounded transition-colors">
+        <button onClick={fetchCatalysts} className="hover:bg-white/5 p-1 rounded transition-colors">
           <RefreshCw className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
         </button>
       </div>

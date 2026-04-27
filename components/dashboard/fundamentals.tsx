@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
@@ -44,10 +44,10 @@ export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
   const [loading, setLoading] = useState(true)
   const [source, setSource] = useState<string>('unknown')
 
-  const fetch = async () => {
+  const fetchFundamentals = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/polygon/fundamentals?ticker=${ticker}`)
+      const res = await globalThis.fetch(`/api/polygon/fundamentals?ticker=${ticker}`)
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
       setFundamentals(data.fundamentals)
@@ -57,13 +57,13 @@ export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [ticker])
 
   useEffect(() => {
-    fetch()
-    const interval = setInterval(fetch, 300000) // 5 min
+    fetchFundamentals()
+    const interval = setInterval(fetchFundamentals, 300000) // 5 min
     return () => clearInterval(interval)
-  }, [ticker])
+  }, [fetchFundamentals])
 
   if (loading) {
     return (
@@ -91,7 +91,7 @@ export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
             {source === 'polygon' ? 'LIVE' : 'DEMO'}
           </Badge>
         </div>
-        <button onClick={fetch} className="hover:bg-white/5 p-1 rounded transition-colors">
+        <button onClick={fetchFundamentals} className="hover:bg-white/5 p-1 rounded transition-colors">
           <RefreshCw className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
         </button>
       </div>

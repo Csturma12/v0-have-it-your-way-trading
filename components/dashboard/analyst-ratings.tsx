@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { RefreshCw, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
@@ -14,44 +14,69 @@ interface AnalystRating {
 }
 
 const MOCK_RATINGS: Record<string, AnalystRating> = {
-  AAPL: {
-    strongBuy: 18,
-    buy: 12,
-    hold: 8,
-    sell: 2,
-    strongSell: 1,
-    targetPrice: 235.50,
-  },
-  NVDA: {
-    strongBuy: 22,
-    buy: 14,
-    hold: 5,
-    sell: 1,
-    strongSell: 0,
-    targetPrice: 185.75,
-  },
+  AAPL: { strongBuy: 18, buy: 12, hold: 8, sell: 2, strongSell: 1, targetPrice: 235.50 },
+  NVDA: { strongBuy: 22, buy: 14, hold: 5, sell: 1, strongSell: 0, targetPrice: 185.75 },
+  MSFT: { strongBuy: 25, buy: 10, hold: 4, sell: 1, strongSell: 0, targetPrice: 485.00 },
+  GOOGL: { strongBuy: 20, buy: 15, hold: 6, sell: 2, strongSell: 0, targetPrice: 195.00 },
+  AMZN: { strongBuy: 24, buy: 12, hold: 3, sell: 1, strongSell: 0, targetPrice: 225.00 },
+  META: { strongBuy: 28, buy: 8, hold: 4, sell: 0, strongSell: 0, targetPrice: 625.00 },
+  TSLA: { strongBuy: 8, buy: 10, hold: 15, sell: 8, strongSell: 5, targetPrice: 280.00 },
+  AMD: { strongBuy: 18, buy: 14, hold: 6, sell: 2, strongSell: 0, targetPrice: 180.00 },
 }
 
 export function AnalystRatings({ ticker = 'AAPL' }: { ticker: string }) {
   const [ratings, setRatings] = useState<AnalystRating | null>(null)
   const [loading, setLoading] = useState(true)
+  const [source, setSource] = useState<string>('unknown')
 
-  const fetch = async () => {
+  const fetchRatings = useCallback(async () => {
     setLoading(true)
     try {
-      // For now, use mock data as Polygon doesn't provide analyst ratings in free tier
-      const mock = MOCK_RATINGS[ticker] || MOCK_RATINGS.AAPL
-      setRatings(mock)
+      // Try to fetch from research aggregate API
+      const res = await fetch(`/api/research/aggregate?ticker=${ticker}`)
+      
+      if (res.ok) {
+        const data = await res.json()
+        
+        // Check if we got analyst data
+        if (data.analyst_ratings || data.recommendations) {
+          const ar = data.analyst_ratings || data.recommendations || {}
+          setRatings({
+            strongBuy: ar.strongBuy || ar.strong_buy || 0,
+            buy: ar.buy || 0,
+            hold: ar.hold || 0,
+            sell: ar.sell || 0,
+            strongSell: ar.strongSell || ar.strong_sell || 0,
+            targetPrice: ar.targetPrice || ar.target_price || null,
+          })
+          setSource(data.source || 'api')
+          return
+        }
+      }
+
+      // Fallback to mock data with some randomization for other tickers
+      const base = MOCK_RATINGS[ticker] || MOCK_RATINGS.AAPL
+      setRatings({
+        ...base,
+        strongBuy: base.strongBuy + Math.floor(Math.random() * 4) - 2,
+        buy: base.buy + Math.floor(Math.random() * 4) - 2,
+      })
+      setSource('mock')
     } catch (err) {
       console.error('[AnalystRatings] Error:', err)
+      const mock = MOCK_RATINGS[ticker] || MOCK_RATINGS.AAPL
+      setRatings(mock)
+      setSource('mock')
     } finally {
       setLoading(false)
     }
-  }
+  }, [ticker])
 
   useEffect(() => {
-    fetch()
-  }, [ticker])
+    fetchRatings()
+    const interval = setInterval(fetchRatings, 300000) // Refresh every 5 min
+    return () => clearInterval(interval)
+  }, [fetchRatings])
 
   if (loading) {
     return (
@@ -88,10 +113,10 @@ export function AnalystRatings({ ticker = 'AAPL' }: { ticker: string }) {
           <TrendingUp className="w-3 h-3 text-muted-foreground/70" />
           <span className="text-xs font-mono text-muted-foreground/70 uppercase">Analyst Ratings</span>
           <Badge variant="outline" className="text-[10px] px-1 py-0.5">
-            DEMO
+            {source !== 'mock' ? 'LIVE' : 'DEMO'}
           </Badge>
         </div>
-        <button onClick={fetch} className="hover:bg-white/5 p-1 rounded transition-colors">
+        <button onClick={fetchRatings} className="hover:bg-white/5 p-1 rounded transition-colors">
           <RefreshCw className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
         </button>
       </div>
