@@ -90,22 +90,6 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
 
   useEffect(() => { setHydrated(true) }, [])
 
-  // Listen for add-to-watchlist events fired by the chart toolbar
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const ticker = (e as CustomEvent<{ ticker: string }>).detail?.ticker
-      if (!ticker) return
-      const t = ticker.trim().toUpperCase()
-      setWatchlist(prev => {
-        if (prev.some(w => w.ticker === t)) return prev
-        return [...prev, blankItem(t)]
-      })
-      fetchTicker(ticker.trim().toUpperCase())
-    }
-    window.addEventListener('watchlist:add', handler)
-    return () => window.removeEventListener('watchlist:add', handler)
-  }, [fetchTicker])
-
   // Fetch live quote + details for a single ticker
   const fetchTicker = useCallback(async (ticker: string) => {
     try {
@@ -152,6 +136,22 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
       )
     }
   }, [])
+
+  // Listen for add-to-watchlist events fired by the chart toolbar
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ticker = (e as CustomEvent<{ ticker: string }>).detail?.ticker
+      if (!ticker) return
+      const t = ticker.trim().toUpperCase()
+      setWatchlist(prev => {
+        if (prev.some(w => w.ticker === t)) return prev
+        return [...prev, blankItem(t)]
+      })
+      fetchTicker(ticker.trim().toUpperCase())
+    }
+    window.addEventListener('watchlist:add', handler)
+    return () => window.removeEventListener('watchlist:add', handler)
+  }, [fetchTicker])
 
   // Fetch all tickers and refresh every 15 seconds
   const refreshAll = useCallback((tickers: string[]) => {
