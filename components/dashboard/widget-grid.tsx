@@ -22,8 +22,8 @@ import {
   BarChart2,
 } from 'lucide-react'
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v12'
-// Layout is intentionally NOT persisted — the default layout is always restored
+const STORAGE_KEY = 'trading-dashboard-rgl-v13'
+// Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
 const ALL_RESIZE_HANDLES: Array<'s' | 'w' | 'e' | 'n' | 'sw' | 'nw' | 'se' | 'ne'> = [
@@ -706,7 +706,19 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             draggableHandle=".widget-drag-handle"
             compactType={null}
             preventCollision={true}
-            onLayoutChange={(newLayout) => setLayout(newLayout)}
+            onLayoutChange={(newLayout) => {
+              // Enforce maxH constraints to prevent chart from growing too large
+              const constrainedLayout = newLayout.map(item => {
+                const original = DEFAULT_LAYOUT.find(d => d.i === item.i)
+                if (!original) return item
+                // Enforce the maxH from DEFAULT_LAYOUT
+                if (item.h > original.maxH!) {
+                  return { ...item, h: original.maxH! }
+                }
+                return item
+              })
+              setLayout(constrainedLayout)
+            }}
             width={wrapperWidth}
           >
             {rightWidgets.map(widget => (
