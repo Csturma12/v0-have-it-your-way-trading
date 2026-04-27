@@ -385,16 +385,13 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   useEffect(() => {
     try {
       const saved = localStorage.getItem('saved-layouts')
-      if (saved) setSavedLayouts(JSON.parse(saved))
+      // Load saved layouts if they exist
+      if (saved) {
+        // Keep for future use when implementing saved layouts UI
+      }
     } catch { /* ignore */ }
   }, [])
 
-  // Save layouts to localStorage whenever savedLayouts changes
-  useEffect(() => {
-    try {
-      localStorage.setItem('saved-layouts', JSON.stringify(savedLayouts))
-    } catch { /* ignore */ }
-  }, [savedLayouts])
   // reset positions to DEFAULT_LAYOUT so the grid never drifts between sessions.
   useEffect(() => {
     try {
@@ -421,7 +418,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     } catch { /* ignore */ }
   }
 
-  // Save current layout with a custom name
+  // Save current layout with a custom name (placeholder for future implementation)
+  /*
   const saveLayoutWithName = () => {
     if (!newLayoutName.trim()) return
     try {
@@ -446,6 +444,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const deleteSavedLayout = (name: string) => {
     setSavedLayouts(prev => prev.filter(l => l.name !== name))
   }
+  */
 
   // Persist widget visibility changes automatically (not position/size)
   useEffect(() => {
