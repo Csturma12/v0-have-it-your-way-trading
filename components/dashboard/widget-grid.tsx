@@ -1,10 +1,25 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import GridLayout, { type Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check, Trash2 } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { SectorPillBox } from './sector-pill-box'
 import { ThemePillBox } from './theme-pill-box'
 import { TradingViewChart } from './tradingview-chart'
@@ -21,6 +36,36 @@ import {
   Globe,
   BarChart2,
 } from 'lucide-react'
+
+// ─── Sortable wrapper for sidebar pill boxes ────────────────────────────────
+function SortablePillItem({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 50 : 'auto',
+      }}
+      className="relative group/sortable"
+    >
+      {/* Drag handle — appears on hover at the left edge */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute left-0 top-0 bottom-0 w-3 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-0 group-hover/sortable:opacity-100 transition-opacity z-10"
+        title="Drag to reorder"
+      >
+        <GripVertical className="w-2.5 h-2.5 text-muted-foreground/50" />
+      </div>
+      <div className="pl-3">
+        {children}
+      </div>
+    </div>
+  )
+}
 
 const STORAGE_KEY = 'trading-dashboard-rgl-v21'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
@@ -328,7 +373,7 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'chart',     x: 0, y: 0, w: 8, h: 5, minH: 4,  maxH: 5 },
+  { i: 'chart',     x: 0, y: 0, w: 8, h: 5, minH: 4 },
   { i: 'watchlist', x: 8, y: 0, w: 4, h: 5, minH: 4,  maxH: 5 },
   { i: 'news',      x: 0, y: 5, w: 12, h: 3, minH: 2,  maxH: 4 },
 ]
@@ -357,6 +402,52 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [wrapperHeight, setWrapperHeight] = useState(800)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
+  // Sidebar drag-to-reorder state — persisted to localStorage
+  const [sectorOrder, setSectorOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('sidebar-sector-order')
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[]
+        // Validate all keys still exist
+        if (parsed.every(k => k in SECTOR_DATA)) return parsed
+      }
+    } catch { /* ignore */ }
+    return Object.keys(SECTOR_DATA)
+  })
+  const [themeOrder, setThemeOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('sidebar-theme-order')
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[]
+        if (parsed.every(k => k in THEME_DATA)) return parsed
+      }
+    } catch { /* ignore */ }
+    return Object.keys(THEME_DATA)
+  })
+
+  const sectorSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  const themeSensors  = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+
+  const handleSectorDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setSectorOrder(prev => {
+      const next = arrayMove(prev, prev.indexOf(String(active.id)), prev.indexOf(String(over.id)))
+      try { localStorage.setItem('sidebar-sector-order', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }, [])
+
+  const handleThemeDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setThemeOrder(prev => {
+      const next = arrayMove(prev, prev.indexOf(String(active.id)), prev.indexOf(String(over.id)))
+      try { localStorage.setItem('sidebar-theme-order', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }, [])
+
   // Track wrapper width AND height for responsive grid
   useEffect(() => {
     const updateSize = () => {
@@ -374,7 +465,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // Compute rowHeight so the full grid fits exactly within the wrapper height.
   // Total rows in the default layout = chart h(13) + news h(5) + margins/padding.
   // We target 18 rows total with 2px margin and 8px padding (top+bottom).
-  const TOTAL_ROWS = 8 // chart(5) + news(3)
+  // Base rows for the default layout — chart can grow beyond this dynamically
+  const TOTAL_ROWS = 8
   const MARGIN = 1   // matches margin={[1,1]}
   const PADDING = 4  // matches containerPadding={[4,4]}
   const rowHeight = Math.floor(
@@ -458,8 +550,17 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     [layout, rightWidgets]
   )
 
+  // When oscillators are added/resized/collapsed, expand or contract the chart grid cell.
+  // totalPx = mainChartHeight + all sub-pane heights + toolbar/header (~56px)
+  const handleChartHeightChange = useCallback((totalPx: number) => {
+    const rowH = Math.max(1, rowHeight)
+    const minH = DEFAULT_LAYOUT.find(l => l.i === 'chart')!.minH!
+    const newH = Math.max(minH, Math.ceil(totalPx / rowH))
+    setLayout(prev => prev.map(l => l.i === 'chart' ? { ...l, h: newH } : l))
+  }, [rowHeight])
+
   const renderRight = (widget: RightWidget) => {
-    if (widget.type === 'chart')     return <TradingViewChart ticker={selectedTicker} />
+    if (widget.type === 'chart')     return <TradingViewChart ticker={selectedTicker} onChangeTicker={onSelectTicker} onHeightChange={handleChartHeightChange} />
     if (widget.type === 'watchlist') return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')      return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     return null
@@ -468,41 +569,61 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   return (
     <div className={`flex h-full overflow-hidden ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
 
-      {/* ── LEFT SIDEBAR: sectors + themes, scrollable ── */}
+      {/* ── LEFT SIDEBAR: sectors + themes, sortable, scrollable ── */}
       {!isFullscreen && (
         <aside className="w-[280px] flex-shrink-0 border-r border-border overflow-y-auto bg-card/20">
         <div className="p-1.5 space-y-1">
           {/* Sectors Header */}
-          <div className="px-2 pt-1 pb-0.5">
+          <div className="px-2 pt-1 pb-0.5 flex items-center gap-1.5">
             <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-muted-foreground">
               SECTORS
             </span>
+            <span className="text-[8px] font-mono text-muted-foreground/40 ml-auto">drag to reorder</span>
           </div>
-          {Object.entries(SECTOR_DATA).map(([key, sector]) => (
-            <SectorPillBox
-              key={key}
-              title={sector.title}
-              accent={sector.accent}
-              tickers={sector.tickers}
-              onSelectTicker={onSelectTicker}
-            />
-          ))}
+          <DndContext sensors={sectorSensors} collisionDetection={closestCenter} onDragEnd={handleSectorDragEnd}>
+            <SortableContext items={sectorOrder} strategy={verticalListSortingStrategy}>
+              {sectorOrder.map(key => {
+                const sector = SECTOR_DATA[key as keyof typeof SECTOR_DATA]
+                if (!sector) return null
+                return (
+                  <SortablePillItem key={key} id={key}>
+                    <SectorPillBox
+                      title={sector.title}
+                      accent={sector.accent}
+                      tickers={sector.tickers}
+                      onSelectTicker={onSelectTicker}
+                    />
+                  </SortablePillItem>
+                )
+              })}
+            </SortableContext>
+          </DndContext>
 
           {/* Themes Header */}
-          <div className="px-2 pt-3 pb-0.5 border-t border-border/30 mt-2">
+          <div className="px-2 pt-3 pb-0.5 border-t border-border/30 mt-2 flex items-center gap-1.5">
             <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-muted-foreground">
               THEMES
             </span>
+            <span className="text-[8px] font-mono text-muted-foreground/40 ml-auto">drag to reorder</span>
           </div>
-          {Object.entries(THEME_DATA).map(([key, theme]) => (
-            <ThemePillBox
-              key={key}
-              title={theme.title}
-              icon={theme.icon}
-              tickers={theme.tickers}
-              onSelectTicker={onSelectTicker}
-            />
-          ))}
+          <DndContext sensors={themeSensors} collisionDetection={closestCenter} onDragEnd={handleThemeDragEnd}>
+            <SortableContext items={themeOrder} strategy={verticalListSortingStrategy}>
+              {themeOrder.map(key => {
+                const theme = THEME_DATA[key as keyof typeof THEME_DATA]
+                if (!theme) return null
+                return (
+                  <SortablePillItem key={key} id={key}>
+                    <ThemePillBox
+                      title={theme.title}
+                      icon={theme.icon}
+                      tickers={theme.tickers}
+                      onSelectTicker={onSelectTicker}
+                    />
+                  </SortablePillItem>
+                )
+              })}
+            </SortableContext>
+          </DndContext>
         </div>
         </aside>
       )}

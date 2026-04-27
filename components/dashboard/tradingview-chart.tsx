@@ -17,11 +17,13 @@ import {
 // Which categories render on the main price chart vs the sub-chart pane
 const OVERLAY_CATEGORIES: IndicatorCategory[] = ['overlay']
 const SUBCHART_CATEGORIES: IndicatorCategory[] = ['oscillator', 'volume', 'volatility', 'trend']
-import { TrendingUp, Maximize2, Loader2, Settings2, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { TrendingUp, Maximize2, Loader2, Settings2, X, ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { ChartSubPane, type Bar as SubPaneBar } from './chart-sub-pane'
 
 interface ChartProps {
   ticker: string
+  onChangeTicker?: (ticker: string) => void
+  onHeightChange?: (totalPx: number) => void
 }
 
 // ── Timeframes ──────────────────────────────────────────────────────────────
@@ -141,7 +143,7 @@ interface Bar {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INDICATOR CALCULATION FUNCTIONS
-// ═════�������═══════════════════════��════════════════════════════════════════════════
+// ═════�����������═══════════════════════��════════════════════════════════════════════════
 
 function calcSMA(data: number[], period: number): number[] {
   const result: number[] = []
@@ -696,7 +698,7 @@ type LineSeries_t = ISeriesApi<'Line'>
 type HistoSeries_t = ISeriesApi<'Histogram'>
 type AreaSeries_t = ISeriesApi<'Area'>
 
-export function TradingViewChart({ ticker }: ChartProps) {
+export function TradingViewChart({ ticker, onChangeTicker, onHeightChange }: ChartProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -714,6 +716,59 @@ export function TradingViewChart({ ticker }: ChartProps) {
   const [activeIndicators, setActiveIndicators] = useState<Set<string>>(new Set(['ema21', 'rsi', 'macd']))
   const [quote, setQuote] = useState<{ last: number; change: number; changePct: number } | null>(null)
   const [loadedBars, setLoadedBars] = useState<SubPaneBar[]>([])
+  const [tickerInput, setTickerInput] = useState('')
+  const [tickerSearchActive, setTickerSearchActive] = useState(false)
+  const tickerInputRef = useRef<HTMLInputElement>(null)
+  // Track each sub-pane height so we can report total to parent
+  const [paneHeights, setPaneHeights] = useState<Record<string, number>>({})
+  const [mainChartHeight, setMainChartHeight] = useState(220)
+  const MIN_MAIN_HEIGHT = 100   // main chart never goes below this
+  const MIN_PANE_HEIGHT = 60    // each oscillator never goes below this
+  const MAX_PANE_HEIGHT = 400
+
+  // Factory: returns a mousedown handler for a given sub-pane's grip.
+  // Dragging UP: shrinks that pane, grows main chart.
+  // Dragging DOWN: grows that pane, shrinks main chart (down to MIN_MAIN_HEIGHT).
+  const makeDragGrip = useCallback((id: string) => (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startY = e.clientY
+    const startPaneH = paneHeights[id] ?? 120
+    const startMainH = mainChartHeight
+
+    const onMove = (ev: MouseEvent) => {
+      const delta = ev.clientY - startY
+      const newPaneH = Math.min(MAX_PANE_HEIGHT, Math.max(MIN_PANE_HEIGHT, startPaneH + delta))
+      const newMainH = Math.max(MIN_MAIN_HEIGHT, startMainH - delta)
+      setPaneHeights(prev => ({ ...prev, [id]: newPaneH }))
+      setMainChartHeight(newMainH)
+    }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [paneHeights, mainChartHeight, MIN_MAIN_HEIGHT, MIN_PANE_HEIGHT, MAX_PANE_HEIGHT])
+
+  // Keep paneHeights in sync with activeSubIds — seed new entries with default,
+  // remove stale ones so the total height stays accurate
+  useEffect(() => {
+    setPaneHeights(prev => {
+      const next: Record<string, number> = {}
+      activeSubIds.forEach(id => { next[id] = prev[id] ?? 120 })
+      return next
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSubIds.join(',')])
+
+  // Report total height (main + all sub-panes + toolbar) to parent grid so the
+  // chart grid cell grows/shrinks automatically with oscillator additions and resizes
+  useEffect(() => {
+    if (!onHeightChange) return
+    const TOOLBAR_HEIGHT = 56
+    const subTotal = activeSubIds.reduce((s, id) => s + (paneHeights[id] ?? 120), 0)
+    onHeightChange(mainChartHeight + subTotal + TOOLBAR_HEIGHT)
+  }, [mainChartHeight, paneHeights, activeSubIds, onHeightChange])
 
   // Sub-chart indicator IDs that are active (each gets its own pane)
   const activeSubIds = INDICATORS.filter(
@@ -954,6 +1009,14 @@ export function TradingViewChart({ ticker }: ChartProps) {
     return () => { cancelled = true }
   }, [ticker])
 
+  // Report total height to parent when sub-panes change
+  useEffect(() => {
+    if (!onHeightChange) return
+    const subTotal = activeSubIds.reduce((sum, id) => sum + (paneHeights[id] ?? 120), 0)
+    const total = MAIN_CHART_MIN_PX + TOOLBAR_PX + subTotal
+    onHeightChange(total)
+  }, [activeSubIds, paneHeights, onHeightChange])
+
   const toggleIndicator = (id: string) => {
     setActiveIndicators((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
   }
@@ -971,12 +1034,46 @@ export function TradingViewChart({ ticker }: ChartProps) {
   const grouped = INDICATORS.reduce((acc, ind) => { (acc[ind.category] ||= []).push(ind); return acc }, {} as Record<IndicatorCategory, IndicatorDef[]>)
 
   return (
-    <div ref={wrapperRef} className="flex flex-col h-full bg-[#0a0a0a]">
+    <div ref={wrapperRef} className="flex flex-col h-full bg-[#0a0a0a] overflow-y-auto">
       {/* ── Toolbar ── */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-card/60 flex-shrink-0 gap-2 flex-wrap">
         <div className="flex items-center gap-2.5 flex-wrap">
           <TrendingUp className="w-3.5 h-3.5 text-theme-green flex-shrink-0" />
-          <span className="font-mono font-bold text-sm tracking-wider">{ticker}</span>
+
+          {/* Inline ticker search */}
+          {tickerSearchActive ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const val = tickerInput.trim().toUpperCase()
+                if (val && onChangeTicker) onChangeTicker(val)
+                setTickerSearchActive(false)
+                setTickerInput('')
+              }}
+              className="flex items-center gap-1"
+            >
+              <input
+                ref={tickerInputRef}
+                value={tickerInput}
+                onChange={e => setTickerInput(e.target.value.toUpperCase())}
+                onBlur={() => { setTickerSearchActive(false); setTickerInput('') }}
+                onKeyDown={e => e.key === 'Escape' && (setTickerSearchActive(false), setTickerInput(''))}
+                placeholder={ticker}
+                autoFocus
+                className="w-20 px-1.5 py-0.5 bg-white/10 border border-theme-green/60 rounded text-sm font-mono font-bold tracking-wider text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-theme-green"
+              />
+            </form>
+          ) : (
+            <button
+              onClick={() => { setTickerSearchActive(true); setTickerInput('') }}
+              className="flex items-center gap-1 font-mono font-bold text-sm tracking-wider hover:text-theme-green transition-colors group"
+              title="Click to change ticker"
+            >
+              {ticker}
+              <Search className="w-3 h-3 text-muted-foreground/50 group-hover:text-theme-green transition-colors" />
+            </button>
+          )}
+
           {quote && (
             <>
               <span className="font-mono text-sm tabular-nums">${quote.last.toFixed(2)}</span>
@@ -1064,8 +1161,8 @@ export function TradingViewChart({ ticker }: ChartProps) {
         </div>
       )}
 
-      {/* ── Main chart container ── */}
-      <div className="relative flex-1" style={{ minHeight: '200px' }}>
+      {/* ── Main chart container — height controlled by drag grip ── */}
+      <div className="relative flex-shrink-0" style={{ height: `${mainChartHeight}px` }}>
         <div ref={containerRef} className="absolute inset-0" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a]/70 backdrop-blur-sm">
@@ -1085,23 +1182,32 @@ export function TradingViewChart({ ticker }: ChartProps) {
         )}
       </div>
 
-      {/* ── Per-indicator sub-panes (Webull-style, each gets own labeled row) ── */}
-      {loadedBars.length > 0 && activeSubIds.map(id => {
-        const ind = INDICATORS.find(i => i.id === id)!
-        const times = loadedBars.map(b => b.time as UTCTimestamp)
-        return (
-          <ChartSubPane
-            key={id}
-            indicatorId={id}
-            label={ind.label}
-            color={ind.color}
-            bars={loadedBars as SubPaneBar[]}
-            times={times}
-            mainChartRef={chartRef}
-            onRemove={(rmId) => toggleIndicator(rmId)}
-          />
-        )
-      })}
+      {/* ── Per-indicator sub-panes ──
+           Each pane's grip adjusts its own height AND the main chart height above it.
+           The outer wrapper is overflow-y-auto so if combined height > widget cell,
+           users can scroll up/down to see all indicators without pushing the news widget. ── */}
+      {loadedBars.length > 0 && activeSubIds.length > 0 && (
+        <div className="flex-shrink-0">
+          {activeSubIds.map(id => {
+            const ind = INDICATORS.find(i => i.id === id)!
+            const times = loadedBars.map(b => b.time as UTCTimestamp)
+            return (
+              <ChartSubPane
+                key={id}
+                indicatorId={id}
+                label={ind.label}
+                color={ind.color}
+                bars={loadedBars as SubPaneBar[]}
+                times={times}
+                mainChartRef={chartRef}
+                onRemove={(rmId) => toggleIndicator(rmId)}
+                paneHeight={paneHeights[id] ?? 120}
+                onDragGrip={makeDragGrip(id)}
+              />
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
