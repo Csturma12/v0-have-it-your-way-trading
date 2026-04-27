@@ -17,11 +17,12 @@ import {
 // Which categories render on the main price chart vs the sub-chart pane
 const OVERLAY_CATEGORIES: IndicatorCategory[] = ['overlay']
 const SUBCHART_CATEGORIES: IndicatorCategory[] = ['oscillator', 'volume', 'volatility', 'trend']
-import { TrendingUp, Maximize2, Loader2, Settings2, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { TrendingUp, Maximize2, Loader2, Settings2, X, ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { ChartSubPane, type Bar as SubPaneBar } from './chart-sub-pane'
 
 interface ChartProps {
   ticker: string
+  onChangeTicker?: (ticker: string) => void
 }
 
 // ── Timeframes ──────────────────────────────────────────────────────────────
@@ -141,7 +142,7 @@ interface Bar {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INDICATOR CALCULATION FUNCTIONS
-// ═════���������═══════════════════════��════════════════════════════════════════════════
+// ═════�����������═══════════════════════��════════════════════════════════════════════════
 
 function calcSMA(data: number[], period: number): number[] {
   const result: number[] = []
@@ -696,7 +697,7 @@ type LineSeries_t = ISeriesApi<'Line'>
 type HistoSeries_t = ISeriesApi<'Histogram'>
 type AreaSeries_t = ISeriesApi<'Area'>
 
-export function TradingViewChart({ ticker }: ChartProps) {
+export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -714,6 +715,9 @@ export function TradingViewChart({ ticker }: ChartProps) {
   const [activeIndicators, setActiveIndicators] = useState<Set<string>>(new Set(['ema21', 'rsi', 'macd']))
   const [quote, setQuote] = useState<{ last: number; change: number; changePct: number } | null>(null)
   const [loadedBars, setLoadedBars] = useState<SubPaneBar[]>([])
+  const [tickerInput, setTickerInput] = useState('')
+  const [tickerSearchActive, setTickerSearchActive] = useState(false)
+  const tickerInputRef = useRef<HTMLInputElement>(null)
 
   // Sub-chart indicator IDs that are active (each gets its own pane)
   const activeSubIds = INDICATORS.filter(
@@ -976,7 +980,41 @@ export function TradingViewChart({ ticker }: ChartProps) {
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-card/60 flex-shrink-0 gap-2 flex-wrap">
         <div className="flex items-center gap-2.5 flex-wrap">
           <TrendingUp className="w-3.5 h-3.5 text-theme-green flex-shrink-0" />
-          <span className="font-mono font-bold text-sm tracking-wider">{ticker}</span>
+
+          {/* Inline ticker search */}
+          {tickerSearchActive ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const val = tickerInput.trim().toUpperCase()
+                if (val && onChangeTicker) onChangeTicker(val)
+                setTickerSearchActive(false)
+                setTickerInput('')
+              }}
+              className="flex items-center gap-1"
+            >
+              <input
+                ref={tickerInputRef}
+                value={tickerInput}
+                onChange={e => setTickerInput(e.target.value.toUpperCase())}
+                onBlur={() => { setTickerSearchActive(false); setTickerInput('') }}
+                onKeyDown={e => e.key === 'Escape' && (setTickerSearchActive(false), setTickerInput(''))}
+                placeholder={ticker}
+                autoFocus
+                className="w-20 px-1.5 py-0.5 bg-white/10 border border-theme-green/60 rounded text-sm font-mono font-bold tracking-wider text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-theme-green"
+              />
+            </form>
+          ) : (
+            <button
+              onClick={() => { setTickerSearchActive(true); setTickerInput('') }}
+              className="flex items-center gap-1 font-mono font-bold text-sm tracking-wider hover:text-theme-green transition-colors group"
+              title="Click to change ticker"
+            >
+              {ticker}
+              <Search className="w-3 h-3 text-muted-foreground/50 group-hover:text-theme-green transition-colors" />
+            </button>
+          )}
+
           {quote && (
             <>
               <span className="font-mono text-sm tabular-nums">${quote.last.toFixed(2)}</span>

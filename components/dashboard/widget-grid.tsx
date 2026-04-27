@@ -459,7 +459,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   )
 
   const renderRight = (widget: RightWidget) => {
-    if (widget.type === 'chart')     return <TradingViewChart ticker={selectedTicker} />
+    if (widget.type === 'chart')     return <TradingViewChart ticker={selectedTicker} onChangeTicker={onSelectTicker} />
     if (widget.type === 'watchlist') return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')      return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     return null
