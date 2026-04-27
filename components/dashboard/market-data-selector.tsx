@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Radio } from '@/components/ui/radio'
 import { Check, AlertCircle, Zap } from 'lucide-react'
 
 const DATA_SOURCES = [
@@ -80,11 +78,18 @@ export function MarketDataSelector() {
             onClick={() => handleSelect(source.id)}
           >
             <div className="flex items-start gap-3">
-              <Radio
-                checked={selected === source.id}
-                onChange={() => handleSelect(source.id)}
-                className="mt-1 flex-shrink-0"
-              />
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 cursor-pointer transition-colors ${
+                  selected === source.id
+                    ? 'border-theme-green bg-theme-green/20'
+                    : 'border-border hover:border-border/60'
+                }`}
+                onClick={() => handleSelect(source.id)}
+              >
+                {selected === source.id && (
+                  <div className="w-2 h-2 rounded-full bg-theme-green" />
+                )}
+              </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
