@@ -104,17 +104,6 @@ export default function OptionsFlowPage() {
     }
     setLoading(false)
   }
-      if (res.ok) {
-        const data = await res.json()
-        setFlow(data.flow || [])
-        setSource(data.source || 'unknown')
-      }
-    } catch (err) {
-      console.error('[OptionsFlow] Error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   useEffect(() => {
     fetchFlow()
