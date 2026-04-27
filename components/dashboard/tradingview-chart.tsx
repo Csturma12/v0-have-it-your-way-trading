@@ -750,6 +750,11 @@ export function TradingViewChart({ ticker, onChangeTicker, onHeightChange }: Cha
     window.addEventListener('mouseup', onUp)
   }, [paneHeights, mainChartHeight, MIN_MAIN_HEIGHT, MIN_PANE_HEIGHT, MAX_PANE_HEIGHT])
 
+  // Sub-chart indicator IDs that are active (each gets its own pane)
+  const activeSubIds = INDICATORS.filter(
+    i => SUBCHART_CATEGORIES.includes(i.category) && activeIndicators.has(i.id)
+  ).map(i => i.id)
+
   // Keep paneHeights in sync with activeSubIds — seed new entries with default,
   // remove stale ones so the total height stays accurate
   useEffect(() => {
@@ -769,11 +774,6 @@ export function TradingViewChart({ ticker, onChangeTicker, onHeightChange }: Cha
     const subTotal = activeSubIds.reduce((s, id) => s + (paneHeights[id] ?? 120), 0)
     onHeightChange(mainChartHeight + subTotal + TOOLBAR_HEIGHT)
   }, [mainChartHeight, paneHeights, activeSubIds, onHeightChange])
-
-  // Sub-chart indicator IDs that are active (each gets its own pane)
-  const activeSubIds = INDICATORS.filter(
-    i => SUBCHART_CATEGORIES.includes(i.category) && activeIndicators.has(i.id)
-  ).map(i => i.id)
 
   // Initialize chart once
   useEffect(() => {
