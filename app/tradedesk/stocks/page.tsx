@@ -383,8 +383,16 @@ export default function StocksPage() {
                       <span className="text-sm text-muted-foreground">Entry: ${trade.entry.toFixed(2)} | Qty: {trade.quantity} | Staged: {trade.stagedAt.toLocaleTimeString()}</span>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="text-green-400 border-green-500/40 hover:bg-green-500/20" onClick={() => handleExecuteTrade(trade)}>
-                        <ArrowUpRight className="w-4 h-4 mr-1" /> Execute
+                      <Button size="sm" variant="outline" className="text-green-400 border-green-500/40 hover:bg-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isExecuting} onClick={() => handleExecuteTrade(trade)}>
+                        {isExecuting ? (
+                          <>
+                            <Loader className="w-4 h-4 mr-1 animate-spin" /> Executing...
+                          </>
+                        ) : (
+                          <>
+                            <ArrowUpRight className="w-4 h-4 mr-1" /> Execute
+                          </>
+                        )}
                       </Button>
                       <Button size="sm" variant="outline" className="text-red-400 border-red-500/40 hover:bg-red-500/20" onClick={() => handleCancelTrade(trade)}>
                         <X className="w-4 h-4" />
