@@ -418,33 +418,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     } catch { /* ignore */ }
   }
 
-  // Save current layout with a custom name (placeholder for future implementation)
-  /*
-  const saveLayoutWithName = () => {
-    if (!newLayoutName.trim()) return
-    try {
-      setSavedLayouts(prev => [...prev, { name: newLayoutName, layout, widgets: rightWidgets }])
-      setNewLayoutName('')
-      setLayoutSaved(true)
-      setTimeout(() => setLayoutSaved(false), 2000)
-    } catch { /* ignore */ }
-  }
 
-  // Load a saved layout
-  const loadSavedLayout = (savedLayout: { name: string; layout: Layout[]; widgets: RightWidget[] }) => {
-    try {
-      setLayout(savedLayout.layout)
-      setRightWidgets(savedLayout.widgets)
-      setIsEditMode(false)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ layout: savedLayout.layout, rightWidgets: savedLayout.widgets, userSaved: true } satisfies SavedState))
-    } catch { /* ignore */ }
-  }
-
-  // Delete a saved layout
-  const deleteSavedLayout = (name: string) => {
-    setSavedLayouts(prev => prev.filter(l => l.name !== name))
-  }
-  */
 
   // Persist widget visibility changes automatically (not position/size)
   useEffect(() => {
