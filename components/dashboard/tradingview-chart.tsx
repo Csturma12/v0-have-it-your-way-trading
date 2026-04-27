@@ -141,7 +141,7 @@ interface Bar {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INDICATOR CALCULATION FUNCTIONS
-// ═════�����═══════════════════════��════════════════════════════════════════════════
+// ═════�������═══════════════════════��════════════════════════════════════════════════
 
 function calcSMA(data: number[], period: number): number[] {
   const result: number[] = []
@@ -711,7 +711,7 @@ export function TradingViewChart({ ticker }: ChartProps) {
   const [error, setError] = useState<string | null>(null)
   const [showIndicators, setShowIndicators] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<Set<IndicatorCategory>>(new Set(['overlay']))
-  const [activeIndicators, setActiveIndicators] = useState<Set<string>>(new Set(['ema9', 'ema21']))
+  const [activeIndicators, setActiveIndicators] = useState<Set<string>>(new Set(['ema21', 'rsi', 'macd']))
   const [quote, setQuote] = useState<{ last: number; change: number; changePct: number } | null>(null)
   const [loadedBars, setLoadedBars] = useState<SubPaneBar[]>([])
 

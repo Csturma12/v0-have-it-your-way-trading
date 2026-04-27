@@ -22,7 +22,7 @@ import {
   BarChart2,
 } from 'lucide-react'
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v9'
+const STORAGE_KEY = 'trading-dashboard-rgl-v11'
 // Layout is intentionally NOT persisted — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -328,9 +328,9 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'chart',     x: 0, y: 0,  w: 8, h: 10 },
-  { i: 'watchlist', x: 8, y: 0,  w: 4, h: 10 },
-  { i: 'news',      x: 0, y: 10, w: 12, h: 6 },
+  { i: 'chart',     x: 0, y: 0,  w: 8, h: 14, minH: 8,  maxH: 14 },
+  { i: 'watchlist', x: 8, y: 0,  w: 4, h: 14, minH: 6,  maxH: 14 },
+  { i: 'news',      x: 0, y: 14, w: 12, h: 5, minH: 3,  maxH: 8  },
 ]
 
 interface SavedState {
