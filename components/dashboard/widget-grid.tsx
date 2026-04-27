@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import GridLayout, { type Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -20,9 +20,9 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { TradingViewChart } from './tradingview-chart'
 import { SectorPillBox } from './sector-pill-box'
 import { ThemePillBox } from './theme-pill-box'
-import { TradingViewChart } from './tradingview-chart'
 import { WatchlistPanel } from './watchlist-panel'
 import { NewsWidget } from './news-widget'
 import {
@@ -550,17 +550,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     [layout, rightWidgets]
   )
 
-  // When oscillators are added/resized/collapsed, expand or contract the chart grid cell.
-  // totalPx = mainChartHeight + all sub-pane heights + toolbar/header (~56px)
-  const handleChartHeightChange = useCallback((totalPx: number) => {
-    const rowH = Math.max(1, rowHeight)
-    const minH = DEFAULT_LAYOUT.find(l => l.i === 'chart')!.minH!
-    const newH = Math.max(minH, Math.ceil(totalPx / rowH))
-    setLayout(prev => prev.map(l => l.i === 'chart' ? { ...l, h: newH } : l))
-  }, [rowHeight])
-
   const renderRight = (widget: RightWidget) => {
-    if (widget.type === 'chart')     return <TradingViewChart ticker={selectedTicker} onChangeTicker={onSelectTicker} onHeightChange={handleChartHeightChange} />
+    if (widget.type === 'chart')     return <TradingViewChart ticker={selectedTicker} onChangeTicker={onSelectTicker} />
     if (widget.type === 'watchlist') return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')      return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     return null
