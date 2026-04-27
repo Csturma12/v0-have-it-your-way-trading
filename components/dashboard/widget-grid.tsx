@@ -72,7 +72,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v23'
+const STORAGE_KEY = 'trading-dashboard-rgl-v24'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -380,9 +380,9 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
 
 const DEFAULT_LAYOUT: Layout[] = [
   { i: 'chart',           x: 0, y: 0, w: 8, h: 5, minH: 4 },
-  { i: 'watchlist',       x: 8, y: 0, w: 4, h: 3, minH: 3, maxH: 5 },
-  { i: 'market-overview', x: 8, y: 3, w: 4, h: 3, minH: 3, maxH: 5 },
-  { i: 'news',            x: 0, y: 5, w: 12, h: 3, minH: 2, maxH: 4 },
+  { i: 'watchlist',       x: 8, y: 0, w: 4, h: 3, minH: 3 },
+  { i: 'market-overview', x: 8, y: 3, w: 4, h: 3, minH: 3 },
+  { i: 'news',            x: 0, y: 5, w: 12, h: 3, minH: 2 },
 ]
 
 interface SavedState {
@@ -830,17 +830,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             compactType={null}
             preventCollision={true}
             onLayoutChange={(newLayout) => {
-              // Enforce maxH constraints to prevent chart from growing too large
-              const constrainedLayout = newLayout.map(item => {
-                const original = DEFAULT_LAYOUT.find(d => d.i === item.i)
-                if (!original) return item
-                // Enforce the maxH from DEFAULT_LAYOUT
-                if (item.h > original.maxH!) {
-                  return { ...item, h: original.maxH! }
-                }
-                return item
-              })
-              setLayout(constrainedLayout)
+              setLayout(newLayout)
             }}
             width={wrapperWidth}
           >
