@@ -750,6 +750,15 @@ export function TradingViewChart({ ticker, onChangeTicker, onHeightChange }: Cha
     window.addEventListener('mouseup', onUp)
   }, [paneHeights, mainChartHeight, MIN_MAIN_HEIGHT, MIN_PANE_HEIGHT, MAX_PANE_HEIGHT])
 
+  // Report total height (main + all sub-panes + toolbar) to parent grid so the
+  // chart grid cell grows/shrinks automatically with oscillator additions and resizes
+  useEffect(() => {
+    if (!onHeightChange) return
+    const TOOLBAR_HEIGHT = 56
+    const subTotal = Object.values(paneHeights).reduce((s, h) => s + h, 0)
+    onHeightChange(mainChartHeight + subTotal + TOOLBAR_HEIGHT)
+  }, [mainChartHeight, paneHeights, onHeightChange])
+
   // Sub-chart indicator IDs that are active (each gets its own pane)
   const activeSubIds = INDICATORS.filter(
     i => SUBCHART_CATEGORIES.includes(i.category) && activeIndicators.has(i.id)
@@ -1162,8 +1171,10 @@ export function TradingViewChart({ ticker, onChangeTicker, onHeightChange }: Cha
         )}
       </div>
 
-      {/* ── Per-indicator sub-panes — grow freely, push news widget down
-           OR user can scroll inside the chart cell without stretching it ── */}
+      {/* ── Per-indicator sub-panes ──
+           Each pane's grip adjusts its own height AND the main chart height above it.
+           The outer wrapper is overflow-y-auto so if combined height > widget cell,
+           users can scroll up/down to see all indicators without pushing the news widget. ── */}
       {loadedBars.length > 0 && activeSubIds.length > 0 && (
         <div className="flex-shrink-0">
           {activeSubIds.map(id => {
@@ -1179,7 +1190,8 @@ export function TradingViewChart({ ticker, onChangeTicker, onHeightChange }: Cha
                 times={times}
                 mainChartRef={chartRef}
                 onRemove={(rmId) => toggleIndicator(rmId)}
-                onHeightChange={(h) => setPaneHeights(prev => ({ ...prev, [id]: h }))}
+                paneHeight={paneHeights[id] ?? 120}
+                onDragGrip={makeDragGrip(id)}
               />
             )
           })}

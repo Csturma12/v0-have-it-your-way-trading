@@ -5,7 +5,7 @@
  * (mirrors the Webull layout where each oscillator gets a separate row)
  * Users can drag the top border to resize, or collapse/expand the pane.
  */
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   createChart,
   LineSeries,
@@ -24,8 +24,6 @@ export interface Bar {
   volume: number
 }
 
-const MIN_HEIGHT = 60
-const MAX_HEIGHT = 400
 const DEFAULT_HEIGHT = 120
 
 interface SubPaneProps {
@@ -37,8 +35,10 @@ interface SubPaneProps {
   mainChartRef: React.MutableRefObject<IChartApi | null>
   onRemove: (id: string) => void
   currentValue?: string
-  defaultHeight?: number
-  onHeightChange?: (height: number) => void
+  // Parent controls height and drag — dragging the grip adjusts both
+  // this pane and the main chart above it simultaneously
+  paneHeight?: number
+  onDragGrip?: (e: React.MouseEvent) => void
 }
 
 // ── Shared calc helpers ──────────────────────────────────────────────────────
@@ -255,39 +255,10 @@ function buildSeriesData(id: string, bars: Bar[]): SeriesData[] {
 
 // ── SubPane component ─────────────────────────────────────────────────────────
 
-export function ChartSubPane({ indicatorId, label, color, bars, times, mainChartRef, onRemove, defaultHeight = DEFAULT_HEIGHT, onHeightChange }: SubPaneProps) {
+export function ChartSubPane({ indicatorId, label, color, bars, times, mainChartRef, onRemove, paneHeight = DEFAULT_HEIGHT, onDragGrip }: SubPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
-  const [paneHeight, setPaneHeight] = useState(defaultHeight)
   const [collapsed, setCollapsed] = useState(false)
-  const dragStartY = useRef<number | null>(null)
-  const dragStartH = useRef<number>(defaultHeight)
-
-  // Report actual rendered height to parent whenever it changes
-  useEffect(() => {
-    onHeightChange?.(collapsed ? 26 : paneHeight)
-  }, [paneHeight, collapsed, onHeightChange])
-
-  // Drag-to-resize: user drags the top grip bar to change height
-  const onDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    dragStartY.current = e.clientY
-    dragStartH.current = paneHeight
-
-    const onMouseMove = (ev: MouseEvent) => {
-      if (dragStartY.current === null) return
-      const delta = ev.clientY - dragStartY.current
-      const newH = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, dragStartH.current + delta))
-      setPaneHeight(newH)
-    }
-    const onMouseUp = () => {
-      dragStartY.current = null
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup', onMouseUp)
-    }
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
-  }, [paneHeight])
 
   useEffect(() => {
     if (!containerRef.current || bars.length === 0) return
@@ -389,12 +360,12 @@ export function ChartSubPane({ indicatorId, label, color, bars, times, mainChart
       className="flex-shrink-0 border-t border-[#1f2937] bg-[#0a0a0a] flex flex-col"
       style={{ height: collapsed ? 26 : paneHeight }}
     >
-      {/* Drag-to-resize grip — only visible when expanded */}
-      {!collapsed && (
+      {/* Drag-to-resize grip — drag up to shrink pane + grow chart, drag down to do the reverse */}
+      {!collapsed && onDragGrip && (
         <div
-          onMouseDown={onDragStart}
+          onMouseDown={onDragGrip}
           className="h-2 w-full flex items-center justify-center cursor-ns-resize flex-shrink-0 hover:bg-white/5 group"
-          title="Drag to resize pane"
+          title="Drag up to shrink pane / grow chart, drag down to grow pane / shrink chart"
         >
           <GripHorizontal className="w-4 h-2 text-muted-foreground/20 group-hover:text-muted-foreground/60 transition-colors" />
         </div>

@@ -373,7 +373,7 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'chart',     x: 0, y: 0, w: 8, h: 5, minH: 4,  maxH: 5 },
+  { i: 'chart',     x: 0, y: 0, w: 8, h: 5, minH: 4 },
   { i: 'watchlist', x: 8, y: 0, w: 4, h: 5, minH: 4,  maxH: 5 },
   { i: 'news',      x: 0, y: 5, w: 12, h: 3, minH: 2,  maxH: 4 },
 ]
@@ -549,11 +549,13 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     [layout, rightWidgets]
   )
 
-  // When oscillators are added/resized/collapsed, expand or contract the chart grid cell
+  // When oscillators are added/resized/collapsed, expand or contract the chart grid cell.
+  // totalPx = mainChartHeight + all sub-pane heights + toolbar/header (~56px)
   const handleChartHeightChange = useCallback((totalPx: number) => {
     const rowH = Math.max(1, rowHeight)
-    const newH = Math.max(DEFAULT_LAYOUT.find(l => l.i === 'chart')!.minH!, Math.ceil(totalPx / rowH))
-    setLayout(prev => prev.map(l => l.i === 'chart' ? { ...l, h: newH, maxH: Math.max(newH, 5) } : l))
+    const minH = DEFAULT_LAYOUT.find(l => l.i === 'chart')!.minH!
+    const newH = Math.max(minH, Math.ceil(totalPx / rowH))
+    setLayout(prev => prev.map(l => l.i === 'chart' ? { ...l, h: newH } : l))
   }, [rowHeight])
 
   const renderRight = (widget: RightWidget) => {
