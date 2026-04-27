@@ -777,36 +777,45 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
         <style jsx global>{`
           .react-grid-item > .react-resizable-handle {
             position: absolute;
-            width: 14px;
-            height: 14px;
-            background: rgba(34, 197, 94, 0.6);
-            border-radius: 2px;
-            z-index: 10;
+            width: 16px;
+            height: 16px;
+            background: rgba(34, 197, 94, 0.8);
+            border-radius: 3px;
+            z-index: 100;
+            pointer-events: auto !important;
+            opacity: 1;
+            transition: background 0.15s, transform 0.15s;
+          }
+          .react-grid-item > .react-resizable-handle:hover {
+            background: rgba(34, 197, 94, 1);
+            transform: scale(1.2);
           }
           .react-grid-item > .react-resizable-handle::after {
             content: '';
             position: absolute;
             width: 6px;
             height: 6px;
-            border-right: 2px solid rgba(255,255,255,0.8);
-            border-bottom: 2px solid rgba(255,255,255,0.8);
+            border-right: 2px solid rgba(255,255,255,0.9);
+            border-bottom: 2px solid rgba(255,255,255,0.9);
           }
-          .react-resizable-handle-sw { bottom: 0; left: 0; cursor: sw-resize; }
-          .react-resizable-handle-sw::after { transform: rotate(135deg); bottom: 3px; left: 3px; }
-          .react-resizable-handle-se { bottom: 0; right: 0; cursor: se-resize; }
-          .react-resizable-handle-se::after { transform: rotate(45deg); bottom: 3px; right: 3px; }
-          .react-resizable-handle-nw { top: 0; left: 0; cursor: nw-resize; }
-          .react-resizable-handle-nw::after { transform: rotate(-135deg); top: 3px; left: 3px; }
-          .react-resizable-handle-ne { top: 0; right: 0; cursor: ne-resize; }
-          .react-resizable-handle-ne::after { transform: rotate(-45deg); top: 3px; right: 3px; }
-          .react-resizable-handle-w { left: 0; top: 50%; transform: translateY(-50%); cursor: w-resize; width: 8px; height: 20px; }
-          .react-resizable-handle-e { right: 0; top: 50%; transform: translateY(-50%); cursor: e-resize; width: 8px; height: 20px; }
-          .react-resizable-handle-n { top: 0; left: 50%; transform: translateX(-50%); cursor: n-resize; width: 20px; height: 8px; }
-          .react-resizable-handle-s { bottom: 0; left: 50%; transform: translateX(-50%); cursor: s-resize; width: 20px; height: 8px; }
+          .react-resizable-handle-sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+          .react-resizable-handle-sw::after { transform: rotate(135deg); bottom: 4px; left: 4px; }
+          .react-resizable-handle-se { bottom: -4px; right: -4px; cursor: se-resize; }
+          .react-resizable-handle-se::after { transform: rotate(45deg); bottom: 4px; right: 4px; }
+          .react-resizable-handle-nw { top: -4px; left: -4px; cursor: nw-resize; }
+          .react-resizable-handle-nw::after { transform: rotate(-135deg); top: 4px; left: 4px; }
+          .react-resizable-handle-ne { top: -4px; right: -4px; cursor: ne-resize; }
+          .react-resizable-handle-ne::after { transform: rotate(-45deg); top: 4px; right: 4px; }
+          .react-resizable-handle-w { left: -4px; top: 50%; transform: translateY(-50%); cursor: w-resize; width: 10px; height: 24px; }
+          .react-resizable-handle-e { right: -4px; top: 50%; transform: translateY(-50%); cursor: e-resize; width: 10px; height: 24px; }
+          .react-resizable-handle-n { top: -4px; left: 50%; transform: translateX(-50%); cursor: n-resize; width: 24px; height: 10px; }
+          .react-resizable-handle-s { bottom: -4px; left: 50%; transform: translateX(-50%); cursor: s-resize; width: 24px; height: 10px; }
           .react-resizable-handle-w::after, .react-resizable-handle-e::after,
           .react-resizable-handle-n::after, .react-resizable-handle-s::after { display: none; }
+          .react-resizable-handle-w:hover, .react-resizable-handle-e:hover { transform: translateY(-50%) scale(1.1); }
+          .react-resizable-handle-n:hover, .react-resizable-handle-s:hover { transform: translateX(-50%) scale(1.1); }
         `}</style>
-        <div ref={wrapperRef} className={`flex-1 overflow-hidden p-2 ${isEditMode ? '' : 'rgl-locked'}`}>
+        <div ref={wrapperRef} className={`flex-1 p-2 ${isEditMode ? 'overflow-visible' : 'overflow-hidden rgl-locked'}`}>
           <GridLayout
             className="layout"
             layout={visibleLayout}
@@ -838,17 +847,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             {rightWidgets.map(widget => (
               <div
                 key={widget.id}
-                className={`h-full bg-card border border-border rounded-lg overflow-hidden flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
+                className={`h-full bg-card border border-border rounded-lg flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
               >
-                {/* Resize handles - only visible in edit mode */}
-                {isEditMode && (
-                  <>
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary/50 cursor-n-resize hover:bg-primary rounded-b" title="Resize top" />
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary/50 cursor-s-resize hover:bg-primary rounded-t" title="Resize bottom" />
-                    <div className="absolute top-1/2 -translate-y-1/2 left-0 h-12 w-1 bg-primary/50 cursor-w-resize hover:bg-primary rounded-r" title="Resize left" />
-                    <div className="absolute top-1/2 -translate-y-1/2 right-0 h-12 w-1 bg-primary/50 cursor-e-resize hover:bg-primary rounded-l" title="Resize right" />
-                  </>
-                )}
                 {/* Widget header / drag bar */}
                 <div className={`widget-drag-handle flex items-center justify-between px-2 py-1 border-b border-border/50 bg-muted/30 ${isEditMode ? 'cursor-grab' : ''}`}>
                   <div className="flex items-center gap-1.5">
