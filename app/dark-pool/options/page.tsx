@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
+import { useOptionsFlow } from '@/hooks/useOptionsFlow'
 
 interface OptionsFlow {
   id: string
@@ -53,11 +54,56 @@ export default function OptionsFlowPage() {
   const [filter, setFilter] = useState<'all' | 'calls' | 'puts'>('all')
   const [unusualOnly, setUnusualOnly] = useState(false)
   const [source, setSource] = useState<string>('unknown')
+  const [dataSource, setDataSource] = useState<'unusual-whales' | 'tradier'>('unusual-whales')
+
+  // Fetch from both UW and Tradier
+  const uwFlow = async () => {
+    try {
+      const res = await fetch('/api/dark-pool?type=options')
+      if (!res.ok) return
+      const data = await res.json()
+      setSource('unusual-whales')
+      return data.data || []
+    } catch {
+      return []
+    }
+  }
+
+  const { data: tradierFlow, loading: tradierLoading, refresh: tradierRefresh } = useOptionsFlow({
+    type: filter === 'all' ? 'all' : filter === 'calls' ? 'call' : 'put',
+    unusualOnly,
+    refreshInterval: 30000,
+  })
 
   const fetchFlow = async () => {
     setLoading(true)
-    try {
-      const res = await fetch('/api/dark-pool?type=options')
+    const uwData = await uwFlow()
+    if (uwData.length > 0) {
+      setFlow(uwData)
+      setDataSource('unusual-whales')
+    } else {
+      // Fall back to Tradier data
+      setFlow(
+        tradierFlow.map(t => ({
+          id: t.id,
+          ticker: t.symbol,
+          strike: t.strike,
+          expiry: 'N/A',
+          type: t.type,
+          premium: (t.bid + t.ask) / 2 * t.volume,
+          size: t.volume,
+          openInterest: t.oi,
+          volume: t.volume,
+          side: t.bid_iv > 30 ? 'buy' : 'sell',
+          sentiment: t.type === 'call' ? 'bullish' : 'bearish',
+          timestamp: t.timestamp,
+          unusual: t.unusual,
+        }))
+      )
+      setDataSource('tradier')
+    }
+    setLoading(false)
+  }
       if (res.ok) {
         const data = await res.json()
         setFlow(data.flow || [])
