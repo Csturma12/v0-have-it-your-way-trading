@@ -33,6 +33,8 @@ import { MarketSectorPills } from './market-sector-pills'
 import { CompanyProfile } from './company-profile'
 import { Fundamentals } from './fundamentals'
 import { AnalystRatings } from './analyst-ratings'
+import { Metrics } from './metrics'
+import { Catalysts } from './catalysts'
 import {
   Cpu,
   Scale,
@@ -75,7 +77,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v27'
+const STORAGE_KEY = 'trading-dashboard-rgl-v28'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -366,7 +368,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings'
+type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts'
 
 interface RightWidget {
   id: string
@@ -385,6 +387,8 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
 const ADDON_WIDGETS: RightWidget[] = [
   { id: 'fundamentals',      type: 'fundamentals',      title: 'Fundamentals' },
   { id: 'analyst-ratings',   type: 'analyst-ratings',   title: 'Analyst Ratings' },
+  { id: 'metrics',           type: 'metrics',           title: 'Metrics' },
+  { id: 'catalysts',         type: 'catalysts',         title: 'Catalysts' },
   { id: 'market-overview',   type: 'market-overview',   title: 'Market Overview' },
   { id: 'technicals',        type: 'technicals',        title: 'Technical Indicators' },
   { id: 'options-chain',     type: 'options-chain',     title: 'Options Chain' },
@@ -577,6 +581,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'company-profile') return <CompanyProfile ticker={selectedTicker} />
     if (widget.type === 'fundamentals')    return <Fundamentals ticker={selectedTicker} />
     if (widget.type === 'analyst-ratings') return <AnalystRatings ticker={selectedTicker} />
+    if (widget.type === 'metrics')         return <Metrics ticker={selectedTicker} />
+    if (widget.type === 'catalysts')       return <Catalysts ticker={selectedTicker} />
     if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'market-overview') return <MarketOverview onSelectTicker={onSelectTicker} />
