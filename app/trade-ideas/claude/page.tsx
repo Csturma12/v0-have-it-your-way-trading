@@ -338,40 +338,50 @@ export default function ClaudeIdeasPage() {
   const [filterCategory, setFilterCategory] = useState<IdeaCategory | 'all'>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [researchData, setResearchData] = useState<Record<string, {
+    darkPool: { sentiment: string; totalValue: number; recentTrades: number }
+    optionsFlow: { sentiment: string; callPutRatio: number; unusualActivity: boolean }
+    insiderActivity: { netDirection: string; recentTrades: number }
+    news: { sentiment: string; count: number; latestHeadline: string | null }
+    overallSentiment: { score: number; label: string; signals: string[] }
+  }>>({})
 
-  // Fetch live prices from Polygon API
-  const fetchLivePrices = async () => {
+  // Fetch aggregated research data from all APIs
+  const fetchResearchData = async () => {
     try {
       const tickers = CLAUDE_IDEAS.map(i => i.ticker).join(',')
-      const res = await fetch(`/api/polygon/batch-quotes?tickers=${tickers}`)
+      const res = await fetch(`/api/research/aggregate?tickers=${tickers}`)
       if (!res.ok) return
       const data = await res.json()
-      const quotes = data.quotes ?? {}
-
+      
+      // Update prices and research data
+      const research = data.research ?? {}
+      setResearchData(research)
+      
       setIdeas(prev => prev.map(idea => {
-        const q = quotes[idea.ticker]
-        if (!q) return idea
+        const r = research[idea.ticker]
+        if (!r) return idea
         return {
           ...idea,
-          currentPrice: q.price ?? idea.currentPrice
+          currentPrice: r.price?.current ?? idea.currentPrice
         }
       }))
       setLastUpdated(new Date().toLocaleTimeString())
     } catch (err) {
-      console.error('[trade-ideas] Failed to fetch live prices:', err)
+      console.error('[trade-ideas] Failed to fetch research data:', err)
     }
   }
 
-  // Fetch live prices on mount and every 30 seconds
+  // Fetch research data on mount and every 60 seconds
   useEffect(() => {
-    fetchLivePrices()
-    const interval = setInterval(fetchLivePrices, 30000)
+    fetchResearchData()
+    const interval = setInterval(fetchResearchData, 60000)
     return () => clearInterval(interval)
   }, [])
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
-    await fetchLivePrices()
+    await fetchResearchData()
     setIsRefreshing(false)
   }
 
@@ -560,6 +570,94 @@ export default function ClaudeIdeasPage() {
                 {/* Expanded Content */}
                 {isExpanded && (
                   <div className="border-t border-border p-4 space-y-6">
+                    {/* Live Research Signals */}
+                    {researchData[idea.ticker] && (
+                      <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30">
+                        <h3 className="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
+                          <Activity className="w-4 h-4" /> Live Cross-Referenced Research
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {/* Dark Pool */}
+                          <div className="text-center">
+                            <div className={`text-lg font-bold ${
+                              researchData[idea.ticker].darkPool.sentiment === 'bullish' ? 'text-green-400' :
+                              researchData[idea.ticker].darkPool.sentiment === 'bearish' ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                              {researchData[idea.ticker].darkPool.sentiment.toUpperCase()}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Dark Pool</div>
+                            <div className="text-xs text-muted-foreground/60">
+                              {researchData[idea.ticker].darkPool.recentTrades} trades
+                            </div>
+                          </div>
+                          {/* Options Flow */}
+                          <div className="text-center">
+                            <div className={`text-lg font-bold ${
+                              researchData[idea.ticker].optionsFlow.sentiment === 'bullish' ? 'text-green-400' :
+                              researchData[idea.ticker].optionsFlow.sentiment === 'bearish' ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                              {researchData[idea.ticker].optionsFlow.sentiment.toUpperCase()}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Options Flow</div>
+                            <div className="text-xs text-muted-foreground/60">
+                              C/P: {researchData[idea.ticker].optionsFlow.callPutRatio.toFixed(2)}
+                              {researchData[idea.ticker].optionsFlow.unusualActivity && (
+                                <span className="text-amber-400 ml-1">UNUSUAL</span>
+                              )}
+                            </div>
+                          </div>
+                          {/* Insider Activity */}
+                          <div className="text-center">
+                            <div className={`text-lg font-bold ${
+                              researchData[idea.ticker].insiderActivity.netDirection === 'buying' ? 'text-green-400' :
+                              researchData[idea.ticker].insiderActivity.netDirection === 'selling' ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                              {researchData[idea.ticker].insiderActivity.netDirection.toUpperCase()}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Insiders</div>
+                            <div className="text-xs text-muted-foreground/60">
+                              {researchData[idea.ticker].insiderActivity.recentTrades} trades
+                            </div>
+                          </div>
+                          {/* News Sentiment */}
+                          <div className="text-center">
+                            <div className={`text-lg font-bold ${
+                              researchData[idea.ticker].news.sentiment === 'bullish' ? 'text-green-400' :
+                              researchData[idea.ticker].news.sentiment === 'bearish' ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                              {researchData[idea.ticker].news.sentiment.toUpperCase()}
+                            </div>
+                            <div className="text-xs text-muted-foreground">News</div>
+                            <div className="text-xs text-muted-foreground/60">
+                              {researchData[idea.ticker].news.count} articles
+                            </div>
+                          </div>
+                        </div>
+                        {/* Overall Sentiment Score */}
+                        <div className="mt-4 pt-3 border-t border-blue-500/20">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Overall Sentiment:</span>
+                              <span className={`font-bold ${
+                                researchData[idea.ticker].overallSentiment.score > 30 ? 'text-green-400' :
+                                researchData[idea.ticker].overallSentiment.score < -30 ? 'text-red-400' : 'text-amber-400'
+                              }`}>
+                                {researchData[idea.ticker].overallSentiment.score > 0 ? '+' : ''}
+                                {researchData[idea.ticker].overallSentiment.score}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {researchData[idea.ticker].overallSentiment.signals.slice(0, 3).map((signal, i) => (
+                                <span key={i} className="px-1.5 py-0.5 text-xs rounded bg-blue-500/20 text-blue-300">
+                                  {signal}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Thesis */}
                     <div>
                       <h3 className="text-sm font-bold text-amber-400 mb-2 flex items-center gap-2">
