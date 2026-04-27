@@ -13,7 +13,7 @@ export function TradingDashboard() {
   const [tradingMode, setTradingMode] = useState<'autonomous' | 'manual'>('manual')
 
   return (
-    <div className="h-screen overflow-hidden bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Top Navigation Bar */}
       <TopNavBar />
 
