@@ -726,6 +726,30 @@ export function TradingViewChart({ ticker, onChangeTicker, onHeightChange }: Cha
   const MIN_PANE_HEIGHT = 60    // each oscillator never goes below this
   const MAX_PANE_HEIGHT = 400
 
+  // Factory: returns a mousedown handler for a given sub-pane's grip.
+  // Dragging UP: shrinks that pane, grows main chart.
+  // Dragging DOWN: grows that pane, shrinks main chart (down to MIN_MAIN_HEIGHT).
+  const makeDragGrip = useCallback((id: string) => (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startY = e.clientY
+    const startPaneH = paneHeights[id] ?? 120
+    const startMainH = mainChartHeight
+
+    const onMove = (ev: MouseEvent) => {
+      const delta = ev.clientY - startY
+      const newPaneH = Math.min(MAX_PANE_HEIGHT, Math.max(MIN_PANE_HEIGHT, startPaneH + delta))
+      const newMainH = Math.max(MIN_MAIN_HEIGHT, startMainH - delta)
+      setPaneHeights(prev => ({ ...prev, [id]: newPaneH }))
+      setMainChartHeight(newMainH)
+    }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [paneHeights, mainChartHeight, MIN_MAIN_HEIGHT, MIN_PANE_HEIGHT, MAX_PANE_HEIGHT])
+
   // Sub-chart indicator IDs that are active (each gets its own pane)
   const activeSubIds = INDICATORS.filter(
     i => SUBCHART_CATEGORIES.includes(i.category) && activeIndicators.has(i.id)
@@ -1117,8 +1141,8 @@ export function TradingViewChart({ ticker, onChangeTicker, onHeightChange }: Cha
         </div>
       )}
 
-      {/* ── Main chart container — fixed min height, never collapses ── */}
-      <div className="relative flex-shrink-0" style={{ height: `${MAIN_CHART_MIN_PX}px` }}>
+      {/* ── Main chart container — height controlled by drag grip ── */}
+      <div className="relative flex-shrink-0" style={{ height: `${mainChartHeight}px` }}>
         <div ref={containerRef} className="absolute inset-0" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a]/70 backdrop-blur-sm">
