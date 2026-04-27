@@ -31,6 +31,8 @@ import { TechnicalIndicators } from './technical-indicators'
 import { OptionsChain } from './options-chain'
 import { MarketSectorPills } from './market-sector-pills'
 import { CompanyProfile } from './company-profile'
+import { Fundamentals } from './fundamentals'
+import { AnalystRatings } from './analyst-ratings'
 import {
   Cpu,
   Scale,
@@ -73,7 +75,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v26'
+const STORAGE_KEY = 'trading-dashboard-rgl-v27'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -364,7 +366,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile'
+type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings'
 
 interface RightWidget {
   id: string
@@ -381,9 +383,11 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
 
 // Available add-on widgets (can be added via edit mode)
 const ADDON_WIDGETS: RightWidget[] = [
-  { id: 'market-overview', type: 'market-overview', title: 'Market Overview' },
-  { id: 'technicals',      type: 'technicals',      title: 'Technical Indicators' },
-  { id: 'options-chain',   type: 'options-chain',   title: 'Options Chain' },
+  { id: 'fundamentals',      type: 'fundamentals',      title: 'Fundamentals' },
+  { id: 'analyst-ratings',   type: 'analyst-ratings',   title: 'Analyst Ratings' },
+  { id: 'market-overview',   type: 'market-overview',   title: 'Market Overview' },
+  { id: 'technicals',        type: 'technicals',        title: 'Technical Indicators' },
+  { id: 'options-chain',     type: 'options-chain',     title: 'Options Chain' },
 ]
 
 const DEFAULT_LAYOUT: Layout[] = [
@@ -571,6 +575,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const renderRight = (widget: RightWidget) => {
     if (widget.type === 'chart')           return <TradingViewAdvancedChart ticker={selectedTicker} onChangeTicker={onSelectTicker} />
     if (widget.type === 'company-profile') return <CompanyProfile ticker={selectedTicker} />
+    if (widget.type === 'fundamentals')    return <Fundamentals ticker={selectedTicker} />
+    if (widget.type === 'analyst-ratings') return <AnalystRatings ticker={selectedTicker} />
     if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'market-overview') return <MarketOverview onSelectTicker={onSelectTicker} />
