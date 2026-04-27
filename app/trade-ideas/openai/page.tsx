@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 import { Sparkles, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Target, Clock, BarChart3, Zap, BookOpen, Globe, DollarSign, Activity, Layers, Filter, RefreshCw, Star, Bookmark, Share2, ExternalLink, Brain, Cpu, Database, LineChart } from 'lucide-react'
 
@@ -380,21 +381,30 @@ export default function OpenAIIdeasPage() {
   const [filterTimeframe, setFilterTimeframe] = useState<Timeframe | 'all'>('all')
   const [filterCategory, setFilterCategory] = useState<IdeaCategory | 'all'>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
-  // Simulate live price updates
+  // Fetch live prices from Polygon API
+  const tickers = OPENAI_IDEAS.map(i => i.ticker)
+  const { quotes: liveQuotes, refresh: refreshQuotes } = useLiveQuotes(tickers, { refreshInterval: 30000 })
+
+  // Update ideas with live prices
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIdeas(prev => prev.map(idea => ({
+    if (Object.keys(liveQuotes).length === 0) return
+    setIdeas(prev => prev.map(idea => {
+      const q = liveQuotes[idea.ticker]
+      if (!q || q.loading) return idea
+      return {
         ...idea,
-        currentPrice: idea.currentPrice * (1 + (Math.random() - 0.5) * 0.002)
-      })))
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
+        currentPrice: q.price || idea.currentPrice,
+      }
+    }))
+    setLastUpdated(new Date().toLocaleTimeString())
+  }, [liveQuotes])
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true)
-    setTimeout(() => setIsRefreshing(false), 2000)
+    await refreshQuotes()
+    setIsRefreshing(false)
   }
 
   const toggleSaved = (id: string) => {

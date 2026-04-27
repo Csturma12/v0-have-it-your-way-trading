@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useBrokerTrade } from '@/hooks/useBrokerTrade'
+import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 
 type Model = 'claude' | 'openai'
 type RiskLevel = 'low' | 'medium' | 'high'
@@ -110,18 +111,24 @@ export default function StocksPage() {
   const [activeTab, setActiveTab] = useState<'ideas' | 'staged' | 'history' | 'custom'>('ideas')
   const [refreshing, setRefreshing] = useState(false)
 
-  // Simulate live price updates
+  // Fetch live prices from Polygon API
+  const tickers = [...CLAUDE_IDEAS, ...OPENAI_IDEAS].map(i => i.ticker)
+  const { quotes: liveQuotes, lastUpdated } = useLiveQuotes(tickers, { refreshInterval: 30000 })
+
+  // Update ideas with live prices when quotes change
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIdeas(prev => prev.map(idea => ({
+    if (Object.keys(liveQuotes).length === 0) return
+    setIdeas(prev => prev.map(idea => {
+      const q = liveQuotes[idea.ticker]
+      if (!q || q.loading) return idea
+      return {
         ...idea,
-        currentPrice: idea.currentPrice! + (Math.random() - 0.5) * 0.8,
-        change: idea.change! + (Math.random() - 0.5) * 0.3,
-        changePercent: idea.changePercent! + (Math.random() - 0.5) * 0.15,
-      })))
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
+        currentPrice: q.price || idea.currentPrice,
+        change: q.change || idea.change,
+        changePercent: q.changePercent || idea.changePercent,
+      }
+    }))
+  }, [liveQuotes])
 
   const filteredIdeas = ideas.filter(idea => {
     if (selectedModel !== 'all' && idea.model !== selectedModel) return false

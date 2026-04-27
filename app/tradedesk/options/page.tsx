@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 
 type Model = 'claude' | 'openai'
 type RiskLevel = 'low' | 'medium' | 'high'
@@ -216,17 +217,22 @@ export default function OptionsPage() {
   const [activeTab, setActiveTab] = useState<'ideas' | 'staged' | 'history' | 'custom'>('ideas')
   const [refreshing, setRefreshing] = useState(false)
 
-  // Simulate live IV updates
+  // Fetch live prices from Polygon API
+  const tickers = [...CLAUDE_IDEAS, ...OPENAI_IDEAS].map(i => i.ticker)
+  const { quotes: liveQuotes, lastUpdated } = useLiveQuotes(tickers, { refreshInterval: 30000 })
+
+  // Update ideas with live prices when quotes change
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIdeas(prev => prev.map(idea => ({
+    if (Object.keys(liveQuotes).length === 0) return
+    setIdeas(prev => prev.map(idea => {
+      const q = liveQuotes[idea.ticker]
+      if (!q || q.loading) return idea
+      return {
         ...idea,
-        ivPercentile: Math.max(5, Math.min(95, (idea.ivPercentile || 50) + (Math.random() - 0.5) * 3)),
-        currentPrice: idea.currentPrice! + (Math.random() - 0.5) * 0.8,
-      })))
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
+        currentPrice: q.price || idea.currentPrice,
+      }
+    }))
+  }, [liveQuotes])
 
   const filteredIdeas = ideas.filter(idea => {
     if (selectedModel !== 'all' && idea.model !== selectedModel) return false

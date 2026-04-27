@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 
 type Model = 'claude' | 'openai'
 type RiskLevel = 'low' | 'medium' | 'high'
@@ -204,16 +205,19 @@ export default function HedgesPage() {
   const [activeTab, setActiveTab] = useState<'ideas' | 'staged' | 'history' | 'custom'>('ideas')
   const [refreshing, setRefreshing] = useState(false)
 
-  // Simulate live VIX updates
+  // Fetch live prices including VIX from Polygon API
+  const tickers = [...new Set([...CLAUDE_IDEAS, ...OPENAI_IDEAS].map(i => i.ticker))]
+  const { quotes: liveQuotes } = useLiveQuotes([...tickers, 'VIX'], { refreshInterval: 30000 })
+
+  // Update VIX level from live data
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIdeas(prev => prev.map(idea => ({
-        ...idea,
-        vixLevel: Math.max(10, Math.min(35, (idea.vixLevel || 18) + (Math.random() - 0.5) * 0.5)),
-      })))
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
+    const vixQuote = liveQuotes['VIX']
+    if (!vixQuote || vixQuote.loading) return
+    setIdeas(prev => prev.map(idea => ({
+      ...idea,
+      vixLevel: vixQuote.price || idea.vixLevel,
+    })))
+  }, [liveQuotes])
 
   const filteredIdeas = ideas.filter(idea => {
     if (selectedModel !== 'all' && idea.model !== selectedModel) return false

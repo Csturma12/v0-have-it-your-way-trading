@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 import { QuickTradeIdeas } from '@/components/dashboard/quick-trade-ideas'
 import { useBrokerTrade } from '@/hooks/useBrokerTrade'
+import { useLiveQuote } from '@/hooks/useLiveQuotes'
 
 export default function QuickTradePage() {
   const [ticker, setTicker] = useState('NVDA')
@@ -30,6 +31,7 @@ export default function QuickTradePage() {
   const [broker, setBroker] = useState<'alpaca' | 'tastytrade'>('alpaca')
   
   const { executeTrade, isLoading, result, error } = useBrokerTrade(broker)
+  const { quote: liveQuote } = useLiveQuote(ticker, { refreshInterval: 15000 })
   
   const handleTradeIdeaSelect = (ideaTicker: string, action: 'buy' | 'sell') => {
     setTicker(ideaTicker)
@@ -51,14 +53,15 @@ export default function QuickTradePage() {
     })
   }
   
-  // Mock quote data
+  // Live quote data from Polygon API
   const quote = {
-    price: 924.50,
-    change: 12.34,
-    changePercent: 1.35,
-    bid: 924.40,
-    ask: 924.60,
-    volume: '42.5M',
+    price: liveQuote.price || 0,
+    change: liveQuote.change || 0,
+    changePercent: liveQuote.changePercent || 0,
+    bid: liveQuote.bid || (liveQuote.price ? liveQuote.price - 0.05 : 0),
+    ask: liveQuote.ask || (liveQuote.price ? liveQuote.price + 0.05 : 0),
+    volume: liveQuote.volume || '—',
+    loading: liveQuote.loading,
   }
   
   const totalValue = Number(quantity) * quote.price
