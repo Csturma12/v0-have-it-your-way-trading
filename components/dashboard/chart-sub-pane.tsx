@@ -381,34 +381,33 @@ export function ChartSubPane({ indicatorId, label, color, bars, times, mainChart
   return (
     <div
       className="flex-shrink-0 border-t border-[#1f2937] bg-[#0a0a0a] flex flex-col"
-      style={{ height: collapsed ? 22 : paneHeight }}
+      style={{ height: collapsed ? 26 : paneHeight }}
     >
-      {/* Drag grip — drag this bar up/down to resize */}
-      <div
-        onMouseDown={onDragStart}
-        className="flex items-center justify-center h-[4px] bg-[#0f1117] hover:bg-blue-500/20 cursor-row-resize group border-b border-[#1f2937] flex-shrink-0"
-        title="Drag to resize"
-      >
-        <GripHorizontal className="w-3 h-2 text-muted-foreground/30 group-hover:text-blue-400/60 transition-colors" />
-      </div>
+      {/* Drag-to-resize grip — only visible when expanded */}
+      {!collapsed && (
+        <div
+          onMouseDown={onDragStart}
+          className="h-2 w-full flex items-center justify-center cursor-ns-resize flex-shrink-0 hover:bg-white/5 group"
+          title="Drag to resize pane"
+        >
+          <GripHorizontal className="w-4 h-2 text-muted-foreground/20 group-hover:text-muted-foreground/60 transition-colors" />
+        </div>
+      )}
 
       {/* Label row */}
-      <div className="flex items-center gap-2 px-3 h-[18px] bg-[#0f1117] border-b border-[#1f2937] flex-shrink-0">
-        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-        <span className="text-[10px] font-mono font-semibold text-foreground leading-none">{label}</span>
-        {lastVal && (
-          <span className="text-[10px] font-mono text-muted-foreground ml-1 leading-none">{lastVal}</span>
+      <div className="flex items-center gap-2 px-3 py-0.5 bg-[#0f1117] border-b border-[#1f2937] flex-shrink-0">
+        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+        <span className="text-[10px] font-mono font-semibold text-foreground">{label}</span>
+        {lastVal && !collapsed && (
+          <span className="text-[10px] font-mono text-muted-foreground ml-1">{lastVal}</span>
         )}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-0.5">
           <button
             onClick={() => setCollapsed(v => !v)}
             className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-            title={collapsed ? 'Expand' : 'Collapse'}
+            title={collapsed ? 'Expand pane' : 'Collapse pane'}
           >
-            {collapsed
-              ? <ChevronDown className="w-3 h-3" />
-              : <ChevronUp className="w-3 h-3" />
-            }
+            {collapsed ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
           <button
             onClick={() => onRemove(indicatorId)}
@@ -420,9 +419,9 @@ export function ChartSubPane({ indicatorId, label, color, bars, times, mainChart
         </div>
       </div>
 
-      {/* Chart area — hidden when collapsed */}
+      {/* Chart area — fills remaining height, hidden when collapsed */}
       {!collapsed && (
-        <div ref={containerRef} className="w-full flex-1" style={{ height: chartAreaHeight }} />
+        <div ref={containerRef} className="w-full flex-1 min-h-0" />
       )}
     </div>
   )
