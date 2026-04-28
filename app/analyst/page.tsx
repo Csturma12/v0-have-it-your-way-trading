@@ -461,4 +461,6 @@ export default function AnalystPage() {
           </div>
         </div>
       )}
+    </div>
+  )
 }
