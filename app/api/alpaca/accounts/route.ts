@@ -2,14 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const apiKey = process.env.ALPACA_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Alpaca API key not configured' }, { status: 400 })
+    const apiKeyId = process.env.ALPACA_API_KEY_ID || process.env.ALPACA_API_KEY
+    const apiSecret = process.env.ALPACA_API_SECRET_KEY || process.env.ALPACA_SECRET_API_KEY
+    
+    if (!apiKeyId || !apiSecret) {
+      return NextResponse.json({ error: 'Alpaca API credentials not configured' }, { status: 400 })
     }
 
     const response = await fetch('https://paper-api.alpaca.markets/v2/account', {
       headers: {
-        'APCA-API-KEY-ID': apiKey,
+        'APCA-API-KEY-ID': apiKeyId,
+        'APCA-API-SECRET-KEY': apiSecret,
       },
     })
 

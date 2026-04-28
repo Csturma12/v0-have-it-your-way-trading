@@ -3,16 +3,20 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUp, ArrowDown, Loader, CheckCircle, AlertTriangle, Bot, Hand } from 'lucide-react'
+import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 
 interface QuickTradeBoxProps {
   selectedTicker: string | null
   price: number | null
+  mode?: 'autonomous' | 'manual'
+  onModeChange?: (mode: 'autonomous' | 'manual') => void
 }
 
-export function QuickTradeBox({ selectedTicker, price }: QuickTradeBoxProps) {
+export function QuickTradeBox({ selectedTicker, price, mode = 'manual', onModeChange }: QuickTradeBoxProps) {
   const [quantity, setQuantity] = useState('')
   const [orderType, setOrderType] = useState<'buy' | 'sell'>('buy')
+  const { executeTrade, loading, result } = useBrokerTrade('alpaca')
 
   if (!selectedTicker) {
     return (
@@ -78,21 +82,74 @@ export function QuickTradeBox({ selectedTicker, price }: QuickTradeBoxProps) {
         </div>
       </div>
 
+      {/* Mode Toggle */}
+      {onModeChange && (
+        <div className="flex gap-1 mb-2">
+          <button
+            onClick={() => onModeChange('autonomous')}
+            className={`flex-1 flex items-center justify-center gap-1 h-5 text-[9px] font-mono font-bold rounded transition-colors ${
+              mode === 'autonomous'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted/20 border border-border/50 text-muted-foreground hover:bg-muted/30'
+            }`}
+          >
+            <Bot className="w-2.5 h-2.5" />
+            AUTO
+          </button>
+          <button
+            onClick={() => onModeChange('manual')}
+            className={`flex-1 flex items-center justify-center gap-1 h-5 text-[9px] font-mono font-bold rounded transition-colors ${
+              mode === 'manual'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted/20 border border-border/50 text-muted-foreground hover:bg-muted/30'
+            }`}
+          >
+            <Hand className="w-2.5 h-2.5" />
+            MANUAL
+          </button>
+        </div>
+      )}
+
+      {/* Trade Result */}
+      {result && (
+        <div className={`mb-2 p-1.5 rounded text-[9px] font-mono flex items-center gap-1 ${
+          result.success 
+            ? 'bg-green-500/10 border border-green-500/30 text-green-400'
+            : 'bg-red-500/10 border border-red-500/30 text-red-400'
+        }`}>
+          {result.success ? <CheckCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+          {result.success ? 'Order placed!' : result.error}
+        </div>
+      )}
+
       {/* Action Buttons */}
       <div className="flex gap-1">
         <Button
-          onClick={() => {
-            // Placeholder for order submission
-            console.log(`${orderType.toUpperCase()} ${quantity} shares of ${selectedTicker} @ $${price}`)
+          onClick={async () => {
+            if (!selectedTicker || !quantity) return
+            
+            if (mode === 'autonomous') {
+              // Execute via Alpaca API
+              await executeTrade({
+                ticker: selectedTicker,
+                side: orderType,
+                quantity: parseInt(quantity),
+                orderType: 'market',
+              })
+            } else {
+              // Manual mode - just log
+              console.log(`[v0] Manual ${orderType.toUpperCase()} ${quantity} shares of ${selectedTicker} @ $${price}`)
+            }
             setQuantity('')
           }}
+          disabled={loading || !quantity}
           className={`flex-1 h-6 text-[11px] font-mono font-bold rounded ${
             orderType === 'buy'
               ? 'bg-green-500/30 hover:bg-green-500/40 border border-green-500/50 text-green-400'
               : 'bg-red-500/30 hover:bg-red-500/40 border border-red-500/50 text-red-400'
           }`}
         >
-          SUBMIT
+          {loading ? <Loader className="w-3 h-3 animate-spin" /> : mode === 'autonomous' ? 'EXECUTE' : 'SUBMIT'}
         </Button>
         <Button
           onClick={() => setQuantity('')}
