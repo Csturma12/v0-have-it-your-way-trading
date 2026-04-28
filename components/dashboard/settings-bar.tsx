@@ -44,7 +44,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   },
   {
     id: 'trade-ideas',
-    title: 'Trade Ideas & Analyst',
+    title: 'Analyst & AI Trade Ideas',
     icon: Sparkles,
     items: [
       { label: 'Claude Ideas', href: '/trade-ideas/claude', icon: Brain, accent: 'gold' },
