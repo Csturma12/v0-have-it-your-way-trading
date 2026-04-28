@@ -8,6 +8,15 @@ import { Sparkles, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Chevron
 type RiskLevel = 'low' | 'medium' | 'high'
 type Timeframe = 'short' | 'medium' | 'long'
 type IdeaCategory = 'momentum' | 'value' | 'growth' | 'contrarian' | 'event'
+type SentimentCategory = 'bullish' | 'bearish' | 'hedge' | 'neutral'
+
+interface AnalystConsensus {
+  rating: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell'
+  score: number
+  priceTarget: { high: number; low: number; mean: number }
+  recentActivity: string
+  firms: { name: string; rating: string; action: string; date: string }[]
+}
 
 interface QuantSignal {
   name: string
@@ -28,6 +37,7 @@ interface ResearchIdea {
   timeframe: Timeframe
   risk: RiskLevel
   category: IdeaCategory
+  sentimentCategory: SentimentCategory
   headline: string
   summary: string
   quantSignals: QuantSignal[]
@@ -38,6 +48,7 @@ interface ResearchIdea {
   tradePlan: { phase: string; action: string; price: string }[]
   alternativeScenarios: { scenario: string; probability: number; outcome: string }[]
   modelConfidence: { aspect: string; score: number }[]
+  analystConsensus: AnalystConsensus | null
   lastUpdated: string
   saved: boolean
 }
@@ -55,6 +66,7 @@ const OPENAI_IDEAS: ResearchIdea[] = [
     timeframe: 'medium',
     risk: 'medium',
     category: 'momentum',
+    sentimentCategory: 'bullish',
     headline: 'AI Monetization Inflection Driving Rerating',
     summary: 'Meta is experiencing a fundamental rerating as AI investments translate into measurable monetization gains. Reels engagement now exceeds TikTok in key demographics, while AI-powered ad targeting is recovering signal loss from ATT. The Reality Labs drag is moderating, and the core business is generating substantial free cash flow for buybacks.',
     quantSignals: [
@@ -103,6 +115,16 @@ const OPENAI_IDEAS: ResearchIdea[] = [
       { aspect: 'Risk Assessment', score: 88 },
       { aspect: 'Catalyst Identification', score: 91 }
     ],
+    analystConsensus: {
+      rating: 'buy',
+      score: 87,
+      priceTarget: { high: 650, low: 520, mean: 598 },
+      recentActivity: '3 upgrades in last 90 days',
+      firms: [
+        { name: 'Bernstein', rating: 'Outperform', action: 'upgrade', date: '2026-04-16' },
+        { name: 'Morgan Stanley', rating: 'Overweight', action: 'maintain', date: '2026-04-10' }
+      ]
+    },
     lastUpdated: '1 hour ago',
     saved: false
   },
@@ -118,6 +140,7 @@ const OPENAI_IDEAS: ResearchIdea[] = [
     timeframe: 'long',
     risk: 'low',
     category: 'growth',
+    sentimentCategory: 'bullish',
     headline: 'AWS AI Services Driving Margin Expansion',
     summary: 'Amazon is at an inflection point where AWS margin expansion, retail profitability improvements, and advertising growth are converging. The AI infrastructure buildout positions AWS for the next wave of cloud adoption. Retail is benefiting from regionalization efficiency gains, while advertising is the highest-margin growth vector.',
     quantSignals: [
@@ -166,6 +189,16 @@ const OPENAI_IDEAS: ResearchIdea[] = [
       { aspect: 'Risk Assessment', score: 90 },
       { aspect: 'Catalyst Identification', score: 85 }
     ],
+    analystConsensus: {
+      rating: 'buy',
+      score: 82,
+      priceTarget: { high: 1120, low: 950, mean: 1045 },
+      recentActivity: '1 upgrade, 2 maintains in last 90 days',
+      firms: [
+        { name: 'RBC Capital', rating: 'Outperform', action: 'maintain', date: '2026-04-15' },
+        { name: 'JPMorgan', rating: 'Overweight', action: 'maintain', date: '2026-03-30' }
+      ]
+    },
     lastUpdated: '3 hours ago',
     saved: true
   },
@@ -181,6 +214,7 @@ const OPENAI_IDEAS: ResearchIdea[] = [
     timeframe: 'long',
     risk: 'low',
     category: 'value',
+    sentimentCategory: 'hedge',
     headline: 'Membership Moat Deepening with E-commerce Gains',
     summary: 'Costco represents a rare combination of defensive characteristics and growth potential. Membership renewal rates at all-time highs demonstrate pricing power. E-commerce growth is accelerating without cannibalizing in-store traffic. The recent membership fee increase will flow directly to bottom line.',
     quantSignals: [
@@ -242,8 +276,9 @@ const OPENAI_IDEAS: ResearchIdea[] = [
     currentPrice: 685.20,
     stopLoss: 720,
     timeframe: 'short',
-    risk: 'medium',
+    risk: 'high',
     category: 'contrarian',
+    sentimentCategory: 'bearish',
     headline: 'Valuation Stretched After Password Sharing Tailwind Fades',
     summary: 'Netflix has executed brilliantly on password sharing crackdown and ad tier launch, but these one-time boosts are now in the base. Competition is intensifying as Disney+ and Max find footing. Content costs are reaccelerating, and the ad business is scaling slower than projected. Current valuation leaves little room for disappointment.',
     quantSignals: [
@@ -292,6 +327,16 @@ const OPENAI_IDEAS: ResearchIdea[] = [
       { aspect: 'Risk Assessment', score: 78 },
       { aspect: 'Catalyst Identification', score: 80 }
     ],
+    analystConsensus: {
+      rating: 'hold',
+      score: 62,
+      priceTarget: { high: 720, low: 580, mean: 650 },
+      recentActivity: '1 downgrade, 2 maintains in last 90 days',
+      firms: [
+        { name: 'Jefferies', rating: 'Hold', action: 'downgrade', date: '2026-04-12' },
+        { name: 'Oppenheimer', rating: 'Perform', action: 'maintain', date: '2026-04-05' }
+      ]
+    },
     lastUpdated: '2 hours ago',
     saved: false
   },
@@ -307,6 +352,7 @@ const OPENAI_IDEAS: ResearchIdea[] = [
     timeframe: 'medium',
     risk: 'medium',
     category: 'event',
+    sentimentCategory: 'bullish',
     headline: 'Autonomous Partnership Optionality Undervalued',
     summary: 'Uber is positioned to benefit regardless of autonomous vehicle outcomes through its platform network effects. The Waymo partnership validates the asset-light strategy. Delivery profitability is improving faster than expected, and advertising is an emerging high-margin revenue stream. FCF generation enabling capital returns.',
     quantSignals: [
@@ -355,6 +401,16 @@ const OPENAI_IDEAS: ResearchIdea[] = [
       { aspect: 'Risk Assessment', score: 82 },
       { aspect: 'Catalyst Identification', score: 88 }
     ],
+    analystConsensus: {
+      rating: 'buy',
+      score: 80,
+      priceTarget: { high: 105, low: 80, mean: 92 },
+      recentActivity: '2 upgrades in last 90 days',
+      firms: [
+        { name: 'RBC Capital', rating: 'Outperform', action: 'upgrade', date: '2026-04-17' },
+        { name: 'UBS', rating: 'Buy', action: 'maintain', date: '2026-04-08' }
+      ]
+    },
     lastUpdated: '4 hours ago',
     saved: false
   }
@@ -364,6 +420,20 @@ const riskColors: Record<RiskLevel, string> = {
   low: 'text-green-400 bg-green-500/10 border-green-500/30',
   medium: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
   high: 'text-red-400 bg-red-500/10 border-red-500/30'
+}
+
+const sentimentColors: Record<SentimentCategory, string> = {
+  bullish: 'text-green-400 bg-green-500/10 border-green-500/30',
+  bearish: 'text-red-400 bg-red-500/10 border-red-500/30',
+  hedge: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
+  neutral: 'text-slate-400 bg-slate-500/10 border-slate-500/30'
+}
+
+const sentimentLabels: Record<SentimentCategory, string> = {
+  bullish: 'Bullish',
+  bearish: 'Bearish',
+  hedge: 'Hedge',
+  neutral: 'Neutral'
 }
 
 const categoryIcons: Record<IdeaCategory, typeof Brain> = {
@@ -380,6 +450,7 @@ export default function OpenAIIdeasPage() {
   const [filterRisk, setFilterRisk] = useState<RiskLevel | 'all'>('all')
   const [filterTimeframe, setFilterTimeframe] = useState<Timeframe | 'all'>('all')
   const [filterCategory, setFilterCategory] = useState<IdeaCategory | 'all'>('all')
+  const [filterSentiment, setFilterSentiment] = useState<SentimentCategory | 'all'>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
@@ -417,6 +488,7 @@ export default function OpenAIIdeasPage() {
     if (filterRisk !== 'all' && idea.risk !== filterRisk) return false
     if (filterTimeframe !== 'all' && idea.timeframe !== filterTimeframe) return false
     if (filterCategory !== 'all' && idea.category !== filterCategory) return false
+    if (filterSentiment !== 'all' && idea.sentimentCategory !== filterSentiment) return false
     return true
   })
 
@@ -487,6 +559,18 @@ export default function OpenAIIdeasPage() {
             <option value="growth">Growth</option>
             <option value="contrarian">Contrarian</option>
             <option value="event">Event-Driven</option>
+          </select>
+          
+          <select
+            value={filterSentiment}
+            onChange={(e) => setFilterSentiment(e.target.value as SentimentCategory | 'all')}
+            className="px-3 py-1.5 rounded-lg bg-muted/50 border border-border text-xs font-mono"
+          >
+            <option value="all">All Sentiments</option>
+            <option value="bullish">Bullish</option>
+            <option value="bearish">Bearish</option>
+            <option value="hedge">Hedge</option>
+            <option value="neutral">Neutral</option>
           </select>
         </div>
 
