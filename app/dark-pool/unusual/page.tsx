@@ -13,10 +13,12 @@ import {
   Users,
   Building2,
   FileText,
-  BarChart3
+  BarChart3,
+  Search
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
+import { TickerAutocomplete } from '@/components/ui/ticker-autocomplete'
 
 interface InsiderTrade {
   id: string
@@ -77,6 +79,7 @@ export default function UnusualWhalesPage() {
   const [marketTide, setMarketTide] = useState<MarketTide | null>(null)
   const [loading, setLoading] = useState(true)
   const [hasApiKey, setHasApiKey] = useState(false)
+  const [tickerSearch, setTickerSearch] = useState('')
 
   const fetchData = async () => {
     setLoading(true)
@@ -202,6 +205,25 @@ export default function UnusualWhalesPage() {
               </button>
             </div>
             
+            {/* Ticker Search */}
+            <div className="flex items-center gap-2">
+              <TickerAutocomplete
+                value={tickerSearch}
+                onChange={setTickerSearch}
+                onSelect={(ticker) => setTickerSearch(ticker.symbol)}
+                placeholder="Search ticker..."
+                className="w-44"
+              />
+              <button
+                onClick={() => {}}
+                disabled={!tickerSearch}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-bold hover:bg-green-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Search className="w-3.5 h-3.5" />
+                Search
+              </button>
+            </div>
+
             <button
               onClick={fetchData}
               disabled={loading}
@@ -267,7 +289,7 @@ export default function UnusualWhalesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/30">
-                {insiderTrades.map((trade) => (
+                {insiderTrades.filter(t => !tickerSearch || t.ticker.toUpperCase().includes(tickerSearch.toUpperCase())).map((trade) => (
                   <tr key={trade.id} className="hover:bg-muted/20 transition-colors">
                     <td className="py-2 px-3 text-[11px] font-mono text-muted-foreground">
                       {timeAgo(trade.timestamp)}
@@ -364,7 +386,7 @@ export default function UnusualWhalesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/30">
-                {congressTrades.map((trade) => (
+                {congressTrades.filter(t => !tickerSearch || t.ticker.toUpperCase().includes(tickerSearch.toUpperCase())).map((trade) => (
                   <tr key={trade.id} className="hover:bg-muted/20 transition-colors">
                     <td className="py-2 px-3 text-[11px] font-mono text-muted-foreground">
                       {timeAgo(trade.timestamp)}

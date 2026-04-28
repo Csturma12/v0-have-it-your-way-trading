@@ -10,11 +10,13 @@ import {
   Clock,
   Filter,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  Search
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 import { useOptionsFlow } from '@/hooks/useOptionsFlow'
+import { TickerAutocomplete } from '@/components/ui/ticker-autocomplete'
 
 interface OptionsFlow {
   id: string
@@ -55,6 +57,7 @@ export default function OptionsFlowPage() {
   const [unusualOnly, setUnusualOnly] = useState(false)
   const [source, setSource] = useState<string>('unknown')
   const [dataSource, setDataSource] = useState<'unusual-whales' | 'tradier'>('unusual-whales')
+  const [tickerSearch, setTickerSearch] = useState('')
 
   // Fetch from both UW and Tradier
   const uwFlow = async () => {
@@ -114,6 +117,7 @@ export default function OptionsFlowPage() {
   const filtered = flow
     .filter(f => filter === 'all' || (filter === 'calls' ? f.type === 'call' : f.type === 'put'))
     .filter(f => !unusualOnly || f.unusual)
+    .filter(f => !tickerSearch || f.ticker.toUpperCase().includes(tickerSearch.toUpperCase()))
 
   const totalPremium = filtered.reduce((sum, f) => sum + f.premium, 0)
   const callPremium = filtered.filter(f => f.type === 'call').reduce((sum, f) => sum + f.premium, 0)
@@ -135,6 +139,25 @@ export default function OptionsFlowPage() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Ticker Search */}
+            <div className="flex items-center gap-2">
+              <TickerAutocomplete
+                value={tickerSearch}
+                onChange={setTickerSearch}
+                onSelect={(ticker) => setTickerSearch(ticker.symbol)}
+                placeholder="Search ticker..."
+                className="w-44"
+              />
+              <button
+                onClick={() => {}}
+                disabled={!tickerSearch}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-theme-gold/20 border border-theme-gold/30 text-theme-gold text-xs font-bold hover:bg-theme-gold/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Search className="w-3.5 h-3.5" />
+                Search
+              </button>
+            </div>
+
             {/* Unusual Only Toggle */}
             <button
               onClick={() => setUnusualOnly(!unusualOnly)}
