@@ -1,7 +1,7 @@
 import { updateSession } from '@/lib/supabase/proxy'
 import { type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Skip auth middleware if Supabase env vars are not set
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return
