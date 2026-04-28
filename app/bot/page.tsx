@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
+import { WatchlistSync } from '@/components/dashboard/watchlist-sync'
 import { useTradingBot } from '@/hooks/useTradingBot'
 import { 
   Bot, 
@@ -344,36 +345,89 @@ export default function BotDashboardPage() {
 
         {/* Settings Section */}
         <div className="mt-6 p-4 rounded-lg border border-border bg-card">
-          <button 
+          <button
             onClick={() => setShowSettings(!showSettings)}
-            className="w-full flex items-center justify-between"
+            className="w-full flex items-center justify-between font-bold hover:opacity-80 transition-opacity"
           >
-            <h2 className="font-bold flex items-center gap-2">
+            <span className="flex items-center gap-2">
               <Settings className="w-4 h-4 text-muted-foreground" />
-              Bot Settings
-            </h2>
+              Settings & Configuration
+            </span>
             {showSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
-          {showSettings && config && riskLimits && (
-            <div className="mt-4 grid md:grid-cols-2 gap-6">
-              {/* Trading Settings */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-mono text-muted-foreground uppercase tracking-wide">Trading</h3>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Auto-execute high confidence</span>
-                  <button
-                    onClick={() => updateConfig({ auto_execute_high_confidence: !config.auto_execute_high_confidence })}
-                    className={`w-10 h-5 rounded-full transition-colors ${
-                      config.auto_execute_high_confidence ? 'bg-green-500' : 'bg-muted'
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      config.auto_execute_high_confidence ? 'translate-x-5' : 'translate-x-0.5'
-                    }`} />
-                  </button>
+          {showSettings && (
+            <div className="mt-4 space-y-4 pt-4 border-t border-border">
+              {/* Watchlist Sync */}
+              <WatchlistSync />
+
+              {/* Signal Preferences */}
+              <div className="p-4 rounded-lg border border-border bg-muted/30">
+                <h3 className="font-semibold text-sm flex items-center gap-2 mb-3">
+                  <Brain className="w-4 h-4" />
+                  AI Signal Preferences
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config?.use_claude_signals ?? true}
+                      onChange={(e) => updateConfig({ use_claude_signals: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span>Use Claude Ideas</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config?.use_openai_signals ?? true}
+                      onChange={(e) => updateConfig({ use_openai_signals: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span>Use OpenAI Ideas</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config?.require_consensus ?? false}
+                      onChange={(e) => updateConfig({ require_consensus: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span>Require Consensus (both AI agree)</span>
+                  </label>
                 </div>
+              </div>
+
+              {/* Execution Settings */}
+              <div className="p-4 rounded-lg border border-border bg-muted/30">
+                <h3 className="font-semibold text-sm flex items-center gap-2 mb-3">
+                  <Cpu className="w-4 h-4" />
+                  Execution Settings
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config?.auto_execute_high_confidence ?? true}
+                      onChange={(e) => updateConfig({ auto_execute_high_confidence: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span>Auto-execute high confidence patterns</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config?.follow_ai_recommendations ?? true}
+                      onChange={(e) => updateConfig({ follow_ai_recommendations: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span>Follow AI recommendations</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Follow AI recommendations</span>
