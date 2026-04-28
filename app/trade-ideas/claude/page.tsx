@@ -7,6 +7,15 @@ import { Brain, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp,
 type RiskLevel = 'low' | 'medium' | 'high'
 type Timeframe = 'short' | 'medium' | 'long'
 type IdeaCategory = 'macro' | 'technical' | 'fundamental' | 'catalyst' | 'quant'
+type SentimentCategory = 'bullish' | 'bearish' | 'hedge' | 'neutral'
+
+interface AnalystConsensus {
+  rating: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell'
+  score: number
+  priceTarget: { high: number; low: number; mean: number }
+  recentActivity: string
+  firms: { name: string; rating: string; action: string; date: string }[]
+}
 
 interface ResearchIdea {
   id: string
@@ -20,6 +29,7 @@ interface ResearchIdea {
   timeframe: Timeframe
   risk: RiskLevel
   category: IdeaCategory
+  sentimentCategory: SentimentCategory
   headline: string
   thesis: string
   keyPoints: string[]
@@ -28,6 +38,7 @@ interface ResearchIdea {
   fundamentals: { metric: string; value: string; vsIndustry: string }[]
   risks: string[]
   sentiment: { source: string; score: number }[]
+  analystConsensus: AnalystConsensus | null
   relatedTickers: string[]
   lastUpdated: string
   saved: boolean
@@ -46,6 +57,7 @@ const CLAUDE_IDEAS: ResearchIdea[] = [
     timeframe: 'medium',
     risk: 'medium',
     category: 'fundamental',
+    sentimentCategory: 'bullish',
     headline: 'AI Infrastructure Dominance Creates Multi-Year Runway',
     thesis: 'NVIDIA remains the undisputed leader in AI compute infrastructure with 80%+ market share in data center GPUs. The Blackwell architecture represents a generational leap in performance-per-watt, and enterprise adoption is still in early innings. While valuation appears stretched on trailing metrics, forward estimates consistently underestimate the exponential growth in AI training and inference workloads. Recent supply chain improvements and TSMC capacity expansion should alleviate allocation issues by Q3.',
     keyPoints: [
@@ -86,6 +98,17 @@ const CLAUDE_IDEAS: ResearchIdea[] = [
       { source: 'Social Sentiment', score: 82 },
       { source: 'Insider Activity', score: 45 }
     ],
+    analystConsensus: {
+      rating: 'strong_buy',
+      score: 88,
+      priceTarget: { high: 320, low: 180, mean: 265 },
+      recentActivity: '3 upgrades, 1 initiation in last 90 days',
+      firms: [
+        { name: 'Goldman Sachs', rating: 'Buy', action: 'upgrade', date: '2026-04-15' },
+        { name: 'Morgan Stanley', rating: 'Overweight', action: 'maintain', date: '2026-04-10' },
+        { name: 'JP Morgan', rating: 'Buy', action: 'upgrade', date: '2026-04-05' }
+      ]
+    },
     relatedTickers: ['AMD', 'AVGO', 'MRVL', 'TSM', 'SMCI'],
     lastUpdated: '2 hours ago',
     saved: false
@@ -102,6 +125,7 @@ const CLAUDE_IDEAS: ResearchIdea[] = [
     timeframe: 'long',
     risk: 'low',
     category: 'fundamental',
+    sentimentCategory: 'bullish',
     headline: 'GLP-1 Market Leadership with Pipeline Optionality',
     thesis: 'Eli Lilly is positioned to capture the majority of the $100B+ GLP-1 market through superior efficacy (tirzepatide) and manufacturing scale. Mounjaro/Zepbound demand continues to outstrip supply, with capacity expansion on track to triple production by 2027. Beyond obesity, the pipeline in Alzheimers (donanemab), cancer, and immunology provides diversified growth vectors. The companys disciplined capital allocation and premium-to-peers valuation is justified by best-in-class execution.',
     keyPoints: [
@@ -142,6 +166,16 @@ const CLAUDE_IDEAS: ResearchIdea[] = [
       { source: 'Institutional Ownership', score: 85 },
       { source: 'Insider Activity', score: 72 }
     ],
+    analystConsensus: {
+      rating: 'strong_buy',
+      score: 92,
+      priceTarget: { high: 1050, low: 720, mean: 890 },
+      recentActivity: '2 upgrades in last 90 days',
+      firms: [
+        { name: 'Bank of America', rating: 'Buy', action: 'upgrade', date: '2026-04-12' },
+        { name: 'Citi', rating: 'Buy', action: 'maintain', date: '2026-04-08' }
+      ]
+    },
     relatedTickers: ['NVO', 'PFE', 'AMGN', 'VRTX', 'REGN'],
     lastUpdated: '4 hours ago',
     saved: true
@@ -158,6 +192,7 @@ const CLAUDE_IDEAS: ResearchIdea[] = [
     timeframe: 'medium',
     risk: 'medium',
     category: 'catalyst',
+    sentimentCategory: 'bullish',
     headline: 'Profitability Inflection with Podcast Monetization Tailwinds',
     thesis: 'Spotify has successfully navigated the transition from growth-at-all-costs to sustainable profitability. Gross margins have expanded 400bps in the past year through pricing power, cost rationalization, and improved podcast unit economics. The audiobook expansion and AI-powered discovery features are driving engagement metrics to all-time highs. With the music streaming market consolidating and Apple showing minimal competitive aggression, Spotifys TAM expansion into spoken word positions it for durable 20%+ revenue growth.',
     keyPoints: [
@@ -198,6 +233,16 @@ const CLAUDE_IDEAS: ResearchIdea[] = [
       { source: 'Social Sentiment', score: 75 },
       { source: 'Short Interest', score: 70 }
     ],
+    analystConsensus: {
+      rating: 'buy',
+      score: 78,
+      priceTarget: { high: 480, low: 280, mean: 385 },
+      recentActivity: '1 upgrade, 1 initiation in last 90 days',
+      firms: [
+        { name: 'Wells Fargo', rating: 'Overweight', action: 'upgrade', date: '2026-04-08' },
+        { name: 'Barclays', rating: 'Equal Weight', action: 'maintain', date: '2026-03-25' }
+      ]
+    },
     relatedTickers: ['AAPL', 'GOOGL', 'NFLX', 'DIS', 'WMG'],
     lastUpdated: '6 hours ago',
     saved: false
@@ -214,6 +259,7 @@ const CLAUDE_IDEAS: ResearchIdea[] = [
     timeframe: 'short',
     risk: 'high',
     category: 'fundamental',
+    sentimentCategory: 'bearish',
     headline: 'Margin Compression and Competition Intensifying',
     thesis: 'Tesla faces a challenging 12-18 months as legacy OEMs and Chinese competitors gain EV share while pricing pressure compresses automotive margins. The robotaxi narrative remains speculative with regulatory hurdles and liability questions unresolved. Energy storage growth is real but insufficient to offset auto headwinds. While the brand retains value, the current valuation implies flawless execution across multiple moonshot initiatives simultaneously.',
     keyPoints: [
@@ -254,6 +300,16 @@ const CLAUDE_IDEAS: ResearchIdea[] = [
       { source: 'Social Sentiment', score: 65 },
       { source: 'Insider Activity', score: 30 }
     ],
+    analystConsensus: {
+      rating: 'hold',
+      score: 45,
+      priceTarget: { high: 280, low: 85, mean: 165 },
+      recentActivity: '2 downgrades, 1 maintain in last 90 days',
+      firms: [
+        { name: 'UBS', rating: 'Neutral', action: 'downgrade', date: '2026-04-18' },
+        { name: 'Deutsche Bank', rating: 'Hold', action: 'downgrade', date: '2026-04-02' }
+      ]
+    },
     relatedTickers: ['F', 'GM', 'RIVN', 'LCID', 'BYD'],
     lastUpdated: '3 hours ago',
     saved: false
@@ -270,6 +326,7 @@ const CLAUDE_IDEAS: ResearchIdea[] = [
     timeframe: 'medium',
     risk: 'medium',
     category: 'macro',
+    sentimentCategory: 'bullish',
     headline: 'Cybersecurity Leader in Elevated Threat Environment',
     thesis: 'CrowdStrike is the clear leader in endpoint security with expanding platform capabilities driving best-in-class net retention. The threat landscape continues to intensify with nation-state actors and AI-powered attacks creating urgency for enterprise security upgrades. The Falcon platform consolidation play is working, with customers adopting 7+ modules on average. While valuation is premium, the combination of 30%+ growth and improving profitability justifies the multiple.',
     keyPoints: [
@@ -310,6 +367,16 @@ const CLAUDE_IDEAS: ResearchIdea[] = [
       { source: 'Institutional Ownership', score: 88 },
       { source: 'Insider Activity', score: 65 }
     ],
+    analystConsensus: {
+      rating: 'buy',
+      score: 85,
+      priceTarget: { high: 480, low: 320, mean: 405 },
+      recentActivity: '2 upgrades in last 90 days',
+      firms: [
+        { name: 'Piper Sandler', rating: 'Overweight', action: 'upgrade', date: '2026-04-14' },
+        { name: 'Needham', rating: 'Buy', action: 'maintain', date: '2026-04-01' }
+      ]
+    },
     relatedTickers: ['PANW', 'ZS', 'FTNT', 'S', 'OKTA'],
     lastUpdated: '5 hours ago',
     saved: false
@@ -320,6 +387,20 @@ const riskColors: Record<RiskLevel, string> = {
   low: 'text-green-400 bg-green-500/10 border-green-500/30',
   medium: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
   high: 'text-red-400 bg-red-500/10 border-red-500/30'
+}
+
+const sentimentColors: Record<SentimentCategory, string> = {
+  bullish: 'text-green-400 bg-green-500/10 border-green-500/30',
+  bearish: 'text-red-400 bg-red-500/10 border-red-500/30',
+  hedge: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
+  neutral: 'text-slate-400 bg-slate-500/10 border-slate-500/30'
+}
+
+const sentimentLabels: Record<SentimentCategory, string> = {
+  bullish: 'Bullish',
+  bearish: 'Bearish',
+  hedge: 'Hedge',
+  neutral: 'Neutral'
 }
 
 const categoryIcons: Record<IdeaCategory, typeof Brain> = {
@@ -336,6 +417,7 @@ export default function ClaudeIdeasPage() {
   const [filterRisk, setFilterRisk] = useState<RiskLevel | 'all'>('all')
   const [filterTimeframe, setFilterTimeframe] = useState<Timeframe | 'all'>('all')
   const [filterCategory, setFilterCategory] = useState<IdeaCategory | 'all'>('all')
+  const [filterSentiment, setFilterSentiment] = useState<SentimentCategory | 'all'>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [selectedIdea, setSelectedIdea] = useState<ResearchIdea | null>(null)
@@ -396,6 +478,7 @@ export default function ClaudeIdeasPage() {
     if (filterRisk !== 'all' && idea.risk !== filterRisk) return false
     if (filterTimeframe !== 'all' && idea.timeframe !== filterTimeframe) return false
     if (filterCategory !== 'all' && idea.category !== filterCategory) return false
+    if (filterSentiment !== 'all' && idea.sentimentCategory !== filterSentiment) return false
     return true
   })
 
@@ -473,6 +556,18 @@ export default function ClaudeIdeasPage() {
             <option value="fundamental">Fundamental</option>
             <option value="catalyst">Catalyst</option>
             <option value="quant">Quantitative</option>
+          </select>
+          
+          <select
+            value={filterSentiment}
+            onChange={(e) => setFilterSentiment(e.target.value as SentimentCategory | 'all')}
+            className="px-3 py-1.5 rounded-lg bg-muted/50 border border-border text-xs font-mono"
+          >
+            <option value="all">All Sentiments</option>
+            <option value="bullish">Bullish</option>
+            <option value="bearish">Bearish</option>
+            <option value="hedge">Hedge</option>
+            <option value="neutral">Neutral</option>
           </select>
         </div>
 
