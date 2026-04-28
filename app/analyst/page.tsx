@@ -30,6 +30,7 @@ interface AnalystReport {
   previousTarget?: number
   summary: string
   keyPoints: string[]
+  fullReportUrl?: string
 }
 
 const MOCK_REPORTS: AnalystReport[] = [
@@ -139,9 +140,9 @@ const MOCK_REPORTS: AnalystReport[] = [
 ]
 
 export default function AnalystPage() {
-  const [reports] = useState<AnalystReport[]>(MOCK_REPORTS)
   const [searchQuery, setSearchQuery] = useState('')
   const [ratingFilter, setRatingFilter] = useState<string>('all')
+  const [selectedReport, setSelectedReport] = useState<AnalystReport | null>(null)
 
   const filtered = reports.filter((report) => {
     const matchesSearch =
@@ -322,7 +323,12 @@ export default function AnalystPage() {
 
               {/* Read Full Report */}
               <div className="flex justify-end">
-                <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="gap-1 text-xs hover:text-amber-400"
+                  onClick={() => setSelectedReport(report)}
+                >
                   Read Full Report
                   <ExternalLink className="w-3 h-3" />
                 </Button>
@@ -342,13 +348,117 @@ export default function AnalystPage() {
         )}
 
         {/* Disclaimer */}
-        <div className="max-w-4xl mx-auto mt-8 p-4 bg-muted/30 rounded-lg border border-border">
-          <p className="text-xs text-muted-foreground text-center">
-            <strong className="text-foreground/60">Disclaimer:</strong> Analyst reports are for informational purposes only.
-            Always verify with official sources and do your own research before making investment decisions.
+        <div className="mt-12 p-4 rounded-lg bg-muted/30 border border-border/50 text-xs text-muted-foreground">
+          <p className="mb-2">
+            <strong>Disclaimer:</strong> Analyst ratings and price targets are provided for informational purposes only.
+            These opinions are subject to change and may not represent our own views. Always conduct your own research
+            before making investment decisions.
           </p>
+          <p>Data sourced from public analyst reports. Past performance does not guarantee future results.</p>
         </div>
-      </main>
-    </div>
-  )
+      </div>
+
+      {/* Full Report Modal */}
+      {selectedReport && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedReport(null)}
+        >
+          <div 
+            className="bg-card rounded-lg border border-border max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 flex items-center justify-between p-6 border-b border-border bg-card">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  {selectedReport.ticker && (
+                    <Badge variant="outline" className="text-sm font-mono">
+                      {selectedReport.ticker}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className={`text-xs ${
+                    selectedReport.rating === 'BUY' || selectedReport.rating === 'UPGRADE' 
+                      ? 'bg-green-500/10 text-green-400' 
+                      : selectedReport.rating === 'SELL' || selectedReport.rating === 'DOWNGRADE'
+                      ? 'bg-red-500/10 text-red-400'
+                      : 'bg-yellow-500/10 text-yellow-400'
+                  }`}>
+                    {selectedReport.rating}
+                  </Badge>
+                </div>
+                <h2 className="text-xl font-bold text-foreground">{selectedReport.title}</h2>
+              </div>
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="ml-4 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Meta Info */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground font-mono text-xs mb-1">ANALYST</div>
+                  <div className="font-medium">{selectedReport.analyst}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground font-mono text-xs mb-1">FIRM</div>
+                  <div className="font-medium">{selectedReport.firm}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground font-mono text-xs mb-1">DATE</div>
+                  <div className="font-medium">{new Date(selectedReport.date).toLocaleDateString()}</div>
+                </div>
+                {selectedReport.priceTarget && (
+                  <div>
+                    <div className="text-muted-foreground font-mono text-xs mb-1">PRICE TARGET</div>
+                    <div className="font-medium">
+                      ${selectedReport.priceTarget}
+                      {selectedReport.previousTarget && (
+                        <span className="text-muted-foreground line-through ml-2">
+                          ${selectedReport.previousTarget}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Summary */}
+              <div>
+                <h3 className="font-semibold text-foreground mb-3">Summary</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{selectedReport.summary}</p>
+              </div>
+
+              {/* Key Points */}
+              <div>
+                <h3 className="font-semibold text-foreground mb-3">Key Points</h3>
+                <ul className="space-y-2">
+                  {selectedReport.keyPoints.map((point, idx) => (
+                    <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                      <span className="text-primary mt-1">•</span>
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end pt-4 border-t border-border">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setSelectedReport(null)}
+                  className="text-foreground hover:bg-primary/10"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 }

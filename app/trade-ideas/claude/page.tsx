@@ -338,6 +338,7 @@ export default function ClaudeIdeasPage() {
   const [filterCategory, setFilterCategory] = useState<IdeaCategory | 'all'>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [selectedIdea, setSelectedIdea] = useState<ResearchIdea | null>(null)
   const [researchData, setResearchData] = useState<Record<string, {
     darkPool: { sentiment: string; totalValue: number; recentTrades: number }
     optionsFlow: { sentiment: string; callPutRatio: number; unusualActivity: boolean }
@@ -779,7 +780,10 @@ export default function ClaudeIdeasPage() {
                         <span>Related: {idea.relatedTickers.join(', ')}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button className="px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm font-medium hover:bg-amber-500/20 transition-colors flex items-center gap-2">
+                        <button 
+                          onClick={() => setSelectedIdea(idea)}
+                          className="px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm font-medium hover:bg-amber-500/20 transition-colors flex items-center gap-2"
+                        >
                           <ExternalLink className="w-4 h-4" />
                           Full Report
                         </button>
@@ -800,6 +804,136 @@ export default function ClaudeIdeasPage() {
           })}
         </div>
       </main>
+
+      {/* Full Report Modal */}
+      {selectedIdea && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedIdea(null)}
+        >
+          <div 
+            className="bg-card rounded-lg border border-border max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 flex items-center justify-between p-6 border-b border-border bg-card">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-2xl font-mono font-bold">{selectedIdea.ticker}</span>
+                  <span className={`px-3 py-1 rounded text-sm font-bold ${
+                    selectedIdea.action === 'buy' 
+                      ? 'bg-green-500/20 text-green-400' 
+                      : selectedIdea.action === 'sell'
+                      ? 'bg-red-500/20 text-red-400'
+                      : 'bg-yellow-500/20 text-yellow-400'
+                  }`}>
+                    {selectedIdea.action.toUpperCase()}
+                  </span>
+                  <span className="text-sm text-muted-foreground">Conviction: {selectedIdea.conviction}%</span>
+                </div>
+                <h2 className="text-2xl font-bold text-foreground">{selectedIdea.headline}</h2>
+              </div>
+              <button
+                onClick={() => setSelectedIdea(null)}
+                className="ml-4 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Meta Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground font-mono text-xs mb-1">CURRENT PRICE</div>
+                  <div className="font-bold">${selectedIdea.currentPrice.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground font-mono text-xs mb-1">TARGET PRICE</div>
+                  <div className="font-bold text-green-400">${selectedIdea.priceTarget.toFixed(2)}</div>
+                  <div className="text-xs text-green-400 mt-1">+{((selectedIdea.priceTarget / selectedIdea.currentPrice - 1) * 100).toFixed(1)}%</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground font-mono text-xs mb-1">STOP LOSS</div>
+                  <div className="font-bold text-red-400">${selectedIdea.stopLoss.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground font-mono text-xs mb-1">TIMEFRAME</div>
+                  <div className="font-bold capitalize">{selectedIdea.timeframe}</div>
+                </div>
+              </div>
+
+              {/* Thesis */}
+              <div>
+                <h3 className="font-semibold text-foreground mb-3">Thesis</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{selectedIdea.thesis}</p>
+              </div>
+
+              {/* Key Points */}
+              {selectedIdea.keyPoints.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-3">Key Points</h3>
+                  <ul className="space-y-2">
+                    {selectedIdea.keyPoints.map((point, idx) => (
+                      <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <span className="text-primary mt-1">•</span>
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Catalysts */}
+              {selectedIdea.catalysts.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-3">Catalysts</h3>
+                  <div className="space-y-2">
+                    {selectedIdea.catalysts.map((cat, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-sm p-2 rounded border border-border/50">
+                        <span className="text-muted-foreground">{cat.event}</span>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          cat.impact === 'positive' ? 'bg-green-500/20 text-green-400' :
+                          cat.impact === 'negative' ? 'bg-red-500/20 text-red-400' :
+                          'bg-yellow-500/20 text-yellow-400'
+                        }`}>
+                          {cat.date}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Risks */}
+              {selectedIdea.risks.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-3">Risks</h3>
+                  <div className="p-3 rounded border border-red-500/20 bg-red-500/5 space-y-1">
+                    {selectedIdea.risks.map((risk, idx) => (
+                      <div key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <span className="text-red-400 mt-1">!</span>
+                        <span>{risk}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Close Button */}
+              <div className="flex justify-end pt-4 border-t border-border">
+                <button 
+                  onClick={() => setSelectedIdea(null)}
+                  className="px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
