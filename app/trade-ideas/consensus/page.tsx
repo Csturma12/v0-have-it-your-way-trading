@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
-import { TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Brain, Cpu, DollarSign, Activity, Filter, RefreshCw, Star, Bookmark, Bot, Hand, Target, Loader, CheckCircle } from 'lucide-react'
+import { TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Brain, Cpu, DollarSign, Activity, Filter, RefreshCw, Star, Bookmark, Bot, Hand, Target, Loader, CheckCircle, Search, X } from 'lucide-react'
 
 type SentimentCategory = 'bullish' | 'bearish' | 'hedge' | 'neutral'
 
@@ -151,6 +151,7 @@ const alignmentColors: Record<string, string> = {
 export default function ConsensusPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterSentiment, setFilterSentiment] = useState<SentimentCategory | 'all'>('all')
+  const [tickerSearch, setTickerSearch] = useState('')
   const [tradingMode, setTradingMode] = useState<'autonomous' | 'manual'>('manual')
   const [executingTrade, setExecutingTrade] = useState<string | null>(null)
   const [tradeResult, setTradeResult] = useState<{ id: string; success: boolean; message: string } | null>(null)
@@ -160,6 +161,10 @@ export default function ConsensusPage() {
   const { quotes: liveQuotes } = useLiveQuotes(tickers, { refreshInterval: 30000 })
 
   const filteredIdeas = CONSENSUS_IDEAS.filter(idea => {
+    if (tickerSearch) {
+      const q = tickerSearch.toUpperCase()
+      if (!idea.ticker.includes(q) && !idea.company.toUpperCase().includes(q)) return false
+    }
     if (filterSentiment !== 'all' && idea.sentimentCategory !== filterSentiment) return false
     return true
   })
@@ -182,6 +187,22 @@ export default function ConsensusPage() {
 
           {/* Filter and Trading Mode */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
+            {/* Ticker Search */}
+            <div className="relative flex items-center">
+              <Search className="absolute left-2.5 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={tickerSearch}
+                onChange={(e) => setTickerSearch(e.target.value.toUpperCase())}
+                placeholder="Search ticker or name..."
+                className="pl-8 pr-8 py-1.5 rounded-lg bg-muted/50 border border-border text-xs font-mono w-48 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              {tickerSearch && (
+                <button onClick={() => setTickerSearch('')} className="absolute right-2.5">
+                  <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                </button>
+              )}
+            </div>
             <select
               value={filterSentiment}
               onChange={(e) => setFilterSentiment(e.target.value as SentimentCategory | 'all')}
@@ -228,6 +249,23 @@ export default function ConsensusPage() {
 
           {/* Ideas Grid */}
           <div className="space-y-4">
+            {filteredIdeas.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <Search className="w-10 h-10 text-muted-foreground/40 mb-4" />
+                <p className="text-lg font-semibold text-muted-foreground">No ideas match your filters</p>
+                <p className="text-sm text-muted-foreground/60 mt-1">
+                  {tickerSearch
+                    ? `No results for "${tickerSearch}" — try a different ticker or clear the search`
+                    : 'Try adjusting or clearing your filters'}
+                </p>
+                <button
+                  onClick={() => { setTickerSearch(''); setFilterSentiment('all') }}
+                  className="mt-4 px-4 py-1.5 rounded-lg border border-border text-sm hover:bg-muted/50 transition-colors"
+                >
+                  Clear all filters
+                </button>
+              </div>
+            )}
             {filteredIdeas.map(idea => {
               const isExpanded = expandedId === idea.id
               const upside = ((idea.consensusPrice - idea.currentPrice) / idea.currentPrice * 100).toFixed(1)

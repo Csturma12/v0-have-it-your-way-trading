@@ -640,6 +640,23 @@ export default function OpenAIIdeasPage() {
 
         {/* Ideas Grid */}
         <div className="space-y-4">
+          {filteredIdeas.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Search className="w-10 h-10 text-muted-foreground/40 mb-4" />
+              <p className="text-lg font-semibold text-muted-foreground">No ideas match your filters</p>
+              <p className="text-sm text-muted-foreground/60 mt-1">
+                {tickerSearch
+                  ? `No results for "${tickerSearch}" — try a different ticker or clear the search`
+                  : 'Try adjusting or clearing your filters'}
+              </p>
+              <button
+                onClick={() => { setTickerSearch(''); setFilterRisk('all'); setFilterTimeframe('all'); setFilterCategory('all'); setFilterSentiment('all') }}
+                className="mt-4 px-4 py-1.5 rounded-lg border border-border text-sm hover:bg-muted/50 transition-colors"
+              >
+                Clear all filters
+              </button>
+            </div>
+          )}
           {filteredIdeas.map((idea, index) => {
             const CategoryIcon = categoryIcons[idea.category]
             const isExpanded = expandedId === idea.id
