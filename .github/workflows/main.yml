@@ -1,5 +1,5 @@
 - name: 'notify vercel'
   uses: 'vercel/repository-dispatch/actions/status@v1'
   with:
-    name: Vercel - v0-have-it-your-way-trading: lint
+    name: v0-have-it-your-way-trading: lint
     
