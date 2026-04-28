@@ -11,7 +11,18 @@ export async function GET(request: NextRequest) {
   // Check for required env vars
   const clientId = process.env.SCHWAB_CLIENT_ID
   const clientSecret = process.env.SCHWAB_CLIENT_SECRET
-  const redirectUri = process.env.SCHWAB_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin}/api/auth/schwab/callback`
+  
+  // Auto-detect callback URL from Vercel environment
+  let redirectUri = process.env.SCHWAB_REDIRECT_URI
+  
+  if (!redirectUri) {
+    // Use Vercel's automatic VERCEL_URL in production/preview
+    // Falls back to localhost in development
+    const host = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : request.nextUrl.origin
+    redirectUri = `${host}/api/auth/schwab/callback`
+  }
 
   if (!clientId) {
     return NextResponse.json(
