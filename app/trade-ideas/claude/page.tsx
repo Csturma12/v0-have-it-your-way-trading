@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
-import { Brain, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Target, Clock, BarChart3, Zap, BookOpen, Globe, DollarSign, Activity, Layers, Filter, RefreshCw, Star, Bookmark, Share2, ExternalLink } from 'lucide-react'
+import { Brain, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Target, Clock, BarChart3, Zap, BookOpen, Globe, DollarSign, Activity, Layers, Filter, RefreshCw, Star, Bookmark, Share2, ExternalLink, Search, X } from 'lucide-react'
 
 type RiskLevel = 'low' | 'medium' | 'high'
 type Timeframe = 'short' | 'medium' | 'long'
@@ -414,6 +414,7 @@ const categoryIcons: Record<IdeaCategory, typeof Brain> = {
 export default function ClaudeIdeasPage() {
   const [ideas, setIdeas] = useState<ResearchIdea[]>(CLAUDE_IDEAS)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [tickerSearch, setTickerSearch] = useState('')
   const [filterRisk, setFilterRisk] = useState<RiskLevel | 'all'>('all')
   const [filterTimeframe, setFilterTimeframe] = useState<Timeframe | 'all'>('all')
   const [filterCategory, setFilterCategory] = useState<IdeaCategory | 'all'>('all')
@@ -475,6 +476,10 @@ export default function ClaudeIdeasPage() {
   }
 
   const filteredIdeas = ideas.filter(idea => {
+    if (tickerSearch) {
+      const q = tickerSearch.toUpperCase()
+      if (!idea.ticker.includes(q) && !idea.company.toUpperCase().includes(q)) return false
+    }
     if (filterRisk !== 'all' && idea.risk !== filterRisk) return false
     if (filterTimeframe !== 'all' && idea.timeframe !== filterTimeframe) return false
     if (filterCategory !== 'all' && idea.category !== filterCategory) return false
@@ -521,6 +526,26 @@ export default function ClaudeIdeasPage() {
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs font-mono text-muted-foreground uppercase">Filters:</span>
+          </div>
+
+          {/* Ticker Search */}
+          <div className="relative flex items-center">
+            <Search className="absolute left-2.5 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={tickerSearch}
+              onChange={(e) => setTickerSearch(e.target.value.toUpperCase())}
+              placeholder="Search ticker or name..."
+              className="pl-7 pr-7 py-1.5 rounded-lg bg-muted/50 border border-border text-xs font-mono w-48 focus:outline-none focus:border-amber-500/50 focus:bg-card placeholder:text-muted-foreground/50 uppercase"
+            />
+            {tickerSearch && (
+              <button
+                onClick={() => setTickerSearch('')}
+                className="absolute right-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
           
           <select
