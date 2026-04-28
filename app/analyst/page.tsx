@@ -356,9 +356,11 @@ export default function AnalystPage() {
           </p>
           <p>Data sourced from public analyst reports. Past performance does not guarantee future results.</p>
         </div>
+      </div>
+      </main>
 
-        {/* Full Report Modal */}
-        {selectedReport && (
+      {/* Full Report Modal */}
+      {selectedReport && (
           <div 
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => setSelectedReport(null)}
@@ -458,10 +460,7 @@ export default function AnalystPage() {
               </div>
             </div>
           </div>
-          </div>
         )}
-      </div>
-      </main>
     </div>
   )
 }
