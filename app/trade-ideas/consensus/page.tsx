@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useLiveQuotes } from '@/hooks/useLiveQuotes'
+import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
-import { TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Brain, Cpu, DollarSign, Activity, Filter, RefreshCw, Star, Bookmark } from 'lucide-react'
+import { TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Brain, Cpu, DollarSign, Activity, Filter, RefreshCw, Star, Bookmark, Bot, Hand, Target, Loader, CheckCircle } from 'lucide-react'
 
 type SentimentCategory = 'bullish' | 'bearish' | 'hedge' | 'neutral'
 
@@ -150,7 +151,11 @@ const alignmentColors: Record<string, string> = {
 export default function ConsensusPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterSentiment, setFilterSentiment] = useState<SentimentCategory | 'all'>('all')
+  const [tradingMode, setTradingMode] = useState<'autonomous' | 'manual'>('manual')
+  const [executingTrade, setExecutingTrade] = useState<string | null>(null)
+  const [tradeResult, setTradeResult] = useState<{ id: string; success: boolean; message: string } | null>(null)
   
+  const { executeTrade } = useBrokerTrade('alpaca')
   const tickers = CONSENSUS_IDEAS.map(i => i.ticker)
   const { quotes: liveQuotes } = useLiveQuotes(tickers, { refreshInterval: 30000 })
 
@@ -175,8 +180,8 @@ export default function ConsensusPage() {
             </p>
           </div>
 
-          {/* Filter */}
-          <div className="flex gap-2">
+          {/* Filter and Trading Mode */}
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <select
               value={filterSentiment}
               onChange={(e) => setFilterSentiment(e.target.value as SentimentCategory | 'all')}
@@ -188,6 +193,37 @@ export default function ConsensusPage() {
               <option value="hedge">Hedge</option>
               <option value="neutral">Neutral</option>
             </select>
+            
+            {/* Trading Mode Toggle */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                Trading Mode:
+              </span>
+              <div className="flex items-center bg-muted/30 rounded-lg border border-border/50 p-0.5">
+                <button
+                  onClick={() => setTradingMode('autonomous')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-semibold transition-all ${
+                    tradingMode === 'autonomous'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Bot className="w-3.5 h-3.5" />
+                  Autonomous
+                </button>
+                <button
+                  onClick={() => setTradingMode('manual')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-semibold transition-all ${
+                    tradingMode === 'manual'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Hand className="w-3.5 h-3.5" />
+                  Manual
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Ideas Grid */}
@@ -319,6 +355,47 @@ export default function ConsensusPage() {
                       <div>
                         <div className="text-xs font-mono text-muted-foreground mb-2">SUMMARY</div>
                         <p className="text-sm text-muted-foreground leading-relaxed">{idea.summary}</p>
+                      </div>
+                      
+                      {/* Execute Trade Button */}
+                      <div className="pt-4 border-t border-border flex justify-end">
+                        <button 
+                          onClick={async () => {
+                            if (tradingMode === 'autonomous') {
+                              setExecutingTrade(idea.id)
+                              const result = await executeTrade({
+                                ticker: idea.ticker,
+                                side: idea.action === 'buy' ? 'buy' : 'sell',
+                                quantity: 10,
+                                orderType: 'market',
+                              })
+                              setTradeResult({ id: idea.id, success: result.success, message: result.message })
+                              setExecutingTrade(null)
+                              setTimeout(() => setTradeResult(null), 3000)
+                            } else {
+                              console.log(`[v0] Staged ${idea.action.toUpperCase()} trade for ${idea.ticker}`)
+                            }
+                          }}
+                          disabled={executingTrade === idea.id}
+                          className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 ${
+                            idea.action === 'buy' 
+                              ? 'bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30'
+                              : 'bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30'
+                          } ${executingTrade === idea.id ? 'opacity-50' : ''}`}
+                        >
+                          {executingTrade === idea.id ? (
+                            <Loader className="w-4 h-4 animate-spin" />
+                          ) : tradeResult?.id === idea.id && tradeResult.success ? (
+                            <CheckCircle className="w-4 h-4" />
+                          ) : (
+                            <Target className="w-4 h-4" />
+                          )}
+                          {executingTrade === idea.id 
+                            ? 'Executing...' 
+                            : tradeResult?.id === idea.id 
+                              ? (tradeResult.success ? 'Executed!' : 'Failed')
+                              : tradingMode === 'autonomous' ? 'Execute Trade' : 'Stage Trade'}
+                        </button>
                       </div>
                     </div>
                   )}

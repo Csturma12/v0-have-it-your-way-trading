@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
-import { Brain, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Target, Clock, BarChart3, Zap, BookOpen, Globe, DollarSign, Activity, Layers, Filter, RefreshCw, Star, Bookmark, Share2, ExternalLink, Search, X } from 'lucide-react'
+import { Brain, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Target, Clock, BarChart3, Zap, BookOpen, Globe, DollarSign, Activity, Layers, Filter, RefreshCw, Star, Bookmark, Share2, ExternalLink, Search, X, Bot, Hand, Loader, CheckCircle } from 'lucide-react'
+import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 
 type RiskLevel = 'low' | 'medium' | 'high'
 type Timeframe = 'short' | 'medium' | 'long'
@@ -419,6 +420,11 @@ export default function ClaudeIdeasPage() {
   const [filterTimeframe, setFilterTimeframe] = useState<Timeframe | 'all'>('all')
   const [filterCategory, setFilterCategory] = useState<IdeaCategory | 'all'>('all')
   const [filterSentiment, setFilterSentiment] = useState<SentimentCategory | 'all'>('all')
+  const [tradingMode, setTradingMode] = useState<'autonomous' | 'manual'>('manual')
+  const [executingTrade, setExecutingTrade] = useState<string | null>(null)
+  const [tradeResult, setTradeResult] = useState<{ id: string; success: boolean; message: string } | null>(null)
+  
+  const { executeTrade, loading: tradeLoading } = useBrokerTrade('alpaca')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [selectedIdea, setSelectedIdea] = useState<ResearchIdea | null>(null)
@@ -505,8 +511,39 @@ export default function ClaudeIdeasPage() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Trading Mode Toggle */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider hidden sm:block">
+                Trade Mode:
+              </span>
+              <div className="flex items-center bg-muted/30 rounded-lg border border-border/50 p-0.5">
+                <button
+                  onClick={() => setTradingMode('autonomous')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-semibold transition-all ${
+                    tradingMode === 'autonomous'
+                      ? 'bg-green-500 text-black shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Bot className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Auto</span>
+                </button>
+                <button
+                  onClick={() => setTradingMode('manual')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-semibold transition-all ${
+                    tradingMode === 'manual'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Hand className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Manual</span>
+                </button>
+              </div>
+            </div>
+            
             {lastUpdated && (
-              <span className="text-xs text-muted-foreground font-mono">
+              <span className="text-xs text-muted-foreground font-mono hidden md:block">
                 Last updated: {lastUpdated}
               </span>
             )}
@@ -516,7 +553,7 @@ export default function ClaudeIdeasPage() {
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Fetching...' : 'Refresh Prices'}
+              <span className="hidden sm:inline">{isRefreshing ? 'Fetching...' : 'Refresh Prices'}</span>
             </button>
           </div>
         </div>
@@ -907,13 +944,43 @@ export default function ClaudeIdeasPage() {
                           <ExternalLink className="w-4 h-4" />
                           Full Report
                         </button>
-                        <button className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 ${
-                          idea.action === 'buy' 
-                            ? 'bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30'
-                            : 'bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30'
-                        }`}>
-                          <Target className="w-4 h-4" />
-                          Stage Trade
+                        <button 
+                          onClick={async () => {
+                            if (tradingMode === 'autonomous') {
+                              setExecutingTrade(idea.id)
+                              const result = await executeTrade({
+                                ticker: idea.ticker,
+                                side: idea.action === 'buy' ? 'buy' : 'sell',
+                                quantity: 10, // Default quantity
+                                orderType: 'market',
+                              })
+                              setTradeResult({ id: idea.id, success: result.success, message: result.message })
+                              setExecutingTrade(null)
+                              setTimeout(() => setTradeResult(null), 3000)
+                            } else {
+                              // Manual mode - stage for review
+                              console.log(`[v0] Staged ${idea.action.toUpperCase()} trade for ${idea.ticker}`)
+                            }
+                          }}
+                          disabled={executingTrade === idea.id}
+                          className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 ${
+                            idea.action === 'buy' 
+                              ? 'bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30'
+                              : 'bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30'
+                          } ${executingTrade === idea.id ? 'opacity-50' : ''}`}
+                        >
+                          {executingTrade === idea.id ? (
+                            <Loader className="w-4 h-4 animate-spin" />
+                          ) : tradeResult?.id === idea.id && tradeResult.success ? (
+                            <CheckCircle className="w-4 h-4" />
+                          ) : (
+                            <Target className="w-4 h-4" />
+                          )}
+                          {executingTrade === idea.id 
+                            ? 'Executing...' 
+                            : tradeResult?.id === idea.id 
+                              ? (tradeResult.success ? 'Executed!' : 'Failed')
+                              : tradingMode === 'autonomous' ? 'Execute Trade' : 'Stage Trade'}
                         </button>
                       </div>
                     </div>

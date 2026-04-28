@@ -86,6 +86,7 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
   const [searchQuery, setSearchQuery] = useState('')
   const [newTicker,   setNewTicker]   = useState('')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [tradingMode, setTradingMode] = useState<'autonomous' | 'manual'>('manual')
   const refreshInterval = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => { setHydrated(true) }, [])
@@ -334,6 +335,8 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
       <QuickTradeBox
         selectedTicker={selectedTicker}
         price={watchlist.find(w => w.ticker === selectedTicker)?.price ?? null}
+        mode={tradingMode}
+        onModeChange={setTradingMode}
       />
 
       {/* Footer */}
