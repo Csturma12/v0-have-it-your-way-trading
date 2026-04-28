@@ -614,20 +614,18 @@ export default function OpenAIIdeasPage() {
               placeholder="Search any US ticker..."
               className="w-52"
             />
-            {tickerSearch && (
-              <button
-                onClick={() => generateIdea(tickerSearch)}
-                disabled={isGenerating}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-bold hover:bg-green-500/30 transition-colors disabled:opacity-50"
-              >
-                {isGenerating ? (
-                  <Loader className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="w-3.5 h-3.5" />
-                )}
-                {isGenerating ? 'Analyzing...' : 'Generate Idea'}
-              </button>
-            )}
+            <button
+              onClick={() => { if (tickerSearch) generateIdea(tickerSearch) }}
+              disabled={isGenerating || !tickerSearch}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-bold hover:bg-green-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isGenerating ? (
+                <Loader className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Search className="w-3.5 h-3.5" />
+              )}
+              {isGenerating ? 'Analyzing...' : 'Search'}
+            </button>
           </div>
           
           <select
