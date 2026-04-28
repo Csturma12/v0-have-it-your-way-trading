@@ -49,6 +49,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     items: [
       { label: 'Claude Ideas', href: '/trade-ideas/claude', icon: Brain, accent: 'gold' },
       { label: 'OpenAI Ideas', href: '/trade-ideas/openai', icon: Sparkles, accent: 'green' },
+      { label: 'Consensus Ideas', href: '/trade-ideas/consensus', icon: Brain, accent: 'cyan' },
     ],
   },
   {
