@@ -30,7 +30,7 @@ export default function QuickTradePage() {
   const [stopPrice, setStopPrice] = useState('')
   const [broker, setBroker] = useState<'alpaca' | 'tastytrade'>('alpaca')
   
-  const { executeTrade, isLoading, result, error } = useBrokerTrade(broker)
+  const { executeTrade, loading: isLoading, result } = useBrokerTrade(broker)
   const { quote: liveQuote } = useLiveQuote(ticker, { refreshInterval: 15000 })
   
   const handleTradeIdeaSelect = (ideaTicker: string, action: 'buy' | 'sell') => {
@@ -264,12 +264,12 @@ export default function QuickTradePage() {
             </div>
 
             {/* Error/Success Messages */}
-            {error && (
+            {result && !result.success && (
               <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 mb-6">
-                <p className="text-sm font-mono text-red-400">{error}</p>
+                <p className="text-sm font-mono text-red-400">{result.message}</p>
               </div>
             )}
-            {result && (
+            {result && result.success && (
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 mb-6">
                 <p className="text-sm font-mono text-green-400">Order executed! ID: {result.orderId}</p>
               </div>
@@ -335,15 +335,7 @@ export default function QuickTradePage() {
               </div>
             )}
 
-            {/* Error Alert */}
-            {error && (
-              <div className="mt-4 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-                <div className="flex items-center gap-2 text-red-400">
-                  <AlertTriangle className="w-4 h-4" />
-                  <span className="font-mono text-sm">{error}</span>
-                </div>
-              </div>
-            )}
+
           </div>
 
           {/* Trade Ideas Section */}

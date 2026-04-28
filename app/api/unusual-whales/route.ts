@@ -3,12 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 const UW_API_KEY = process.env.UNUSUAL_WHALES_API_KEY
 const BASE_URL = 'https://api.unusualwhales.com/api'
 
-interface UWHeaders {
-  Authorization: string
-  Accept: string
-}
-
-function getHeaders(): UWHeaders {
+function getHeaders(): Record<string, string> {
   return {
     Authorization: `Bearer ${UW_API_KEY}`,
     Accept: 'application/json',
