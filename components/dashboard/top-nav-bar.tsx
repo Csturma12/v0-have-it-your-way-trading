@@ -11,7 +11,6 @@ import {
   Signal,
   Briefcase,
   Newspaper,
-  FileText,
   Link2,
   ChevronDown,
   LayoutDashboard,
@@ -67,7 +66,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'Trade Ideas',
+    label: 'Trade Ideas & Analyst',
     icon: Sparkles,
     children: [
       { label: 'Claude Ideas', href: '/trade-ideas/claude', icon: Brain, accent: 'gold' },
@@ -107,11 +106,7 @@ const NAV_ITEMS: NavItem[] = [
     href: '/news',
     icon: Newspaper,
   },
-  {
-    label: 'Analyst',
-    href: '/analyst',
-    icon: FileText,
-  },
+
   {
     label: 'Account',
     icon: User,
