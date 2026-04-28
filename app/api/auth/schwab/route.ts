@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   // Check for required env vars
   const clientId = process.env.SCHWAB_CLIENT_ID
   const clientSecret = process.env.SCHWAB_CLIENT_SECRET
-  const redirectUri = process.env.SCHWAB_REDIRECT_URI || `${request.nextUrl.origin}/api/auth/schwab/callback`
+  const redirectUri = process.env.SCHWAB_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin}/api/auth/schwab/callback`
 
   if (!clientId) {
     return NextResponse.json(
