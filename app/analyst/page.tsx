@@ -144,7 +144,7 @@ export default function AnalystPage() {
   const [ratingFilter, setRatingFilter] = useState<string>('all')
   const [selectedReport, setSelectedReport] = useState<AnalystReport | null>(null)
 
-  const filtered = reports.filter((report) => {
+  const filtered = MOCK_REPORTS.filter((report) => {
     const matchesSearch =
       searchQuery === '' ||
       report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -356,7 +356,6 @@ export default function AnalystPage() {
           </p>
           <p>Data sourced from public analyst reports. Past performance does not guarantee future results.</p>
         </div>
-      </div>
       </main>
 
       {/* Full Report Modal */}
