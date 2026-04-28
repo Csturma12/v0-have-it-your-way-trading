@@ -356,6 +356,7 @@ export default function AnalystPage() {
           </p>
           <p>Data sourced from public analyst reports. Past performance does not guarantee future results.</p>
         </div>
+        </div>
       </main>
 
       {/* Full Report Modal */}
@@ -459,6 +460,7 @@ export default function AnalystPage() {
               </div>
             </div>
           </div>
+        </div>
         )}
     </div>
   )
