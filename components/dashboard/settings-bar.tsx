@@ -13,7 +13,6 @@ import {
   Signal,
   Briefcase,
   Newspaper,
-  FileText,
   Settings,
   Link2,
 } from 'lucide-react'
@@ -45,11 +44,12 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   },
   {
     id: 'trade-ideas',
-    title: 'Trade Ideas',
+    title: 'Analyst & AI Trade Ideas',
     icon: Sparkles,
     items: [
       { label: 'Claude Ideas', href: '/trade-ideas/claude', icon: Brain, accent: 'gold' },
       { label: 'OpenAI Ideas', href: '/trade-ideas/openai', icon: Sparkles, accent: 'green' },
+      { label: 'Consensus Ideas', href: '/trade-ideas/consensus', icon: Brain, accent: 'cyan' },
     ],
   },
   {
@@ -79,14 +79,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
       { label: 'Market News', href: '/news', icon: Newspaper },
     ],
   },
-  {
-    id: 'analyst',
-    title: 'Analyst Review',
-    icon: FileText,
-    items: [
-      { label: 'Analyst Blogs', href: '/analyst', icon: FileText },
-    ],
-  },
+
 ]
 
 const accentColors = {
