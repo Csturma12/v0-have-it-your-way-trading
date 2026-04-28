@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
+import { TickerAutocomplete } from '@/components/ui/ticker-autocomplete'
 import { Sparkles, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Target, Clock, BarChart3, Zap, BookOpen, Globe, DollarSign, Activity, Layers, Filter, RefreshCw, Star, Bookmark, Share2, ExternalLink, Brain, Cpu, Database, LineChart, Search, X, Bot, Hand, Loader, CheckCircle } from 'lucide-react'
 import { useBrokerTrade } from '@/hooks/useBrokerTrade'
+import { useTradeIdeas, TradeIdea } from '@/hooks/useTradeIdeas'
 
 type RiskLevel = 'low' | 'medium' | 'high'
 type Timeframe = 'short' | 'medium' | 'long'
@@ -458,6 +460,7 @@ export default function OpenAIIdeasPage() {
   const [tradeResult, setTradeResult] = useState<{ id: string; success: boolean; message: string } | null>(null)
   
   const { executeTrade, loading: tradeLoading } = useBrokerTrade('alpaca')
+  const { ideas: dynamicIdeas, isGenerating, generateIdea } = useTradeIdeas({ provider: 'openai' })
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
@@ -491,7 +494,37 @@ export default function OpenAIIdeasPage() {
     ))
   }
 
-  const filteredIdeas = ideas.filter(idea => {
+  // Convert dynamic ideas to the ResearchIdea format
+  const convertedDynamicIdeas: ResearchIdea[] = dynamicIdeas.map(di => ({
+    id: di.id,
+    ticker: di.ticker,
+    company: di.company,
+    action: di.action,
+    conviction: di.confidence,
+    priceTarget: di.priceTarget,
+    currentPrice: di.currentPrice,
+    stopLoss: di.stopLoss,
+    timeframe: di.timeframe === 'day' ? 'short' : di.timeframe === 'swing' ? 'medium' : 'long',
+    risk: di.risk,
+    category: di.category as IdeaCategory,
+    sentimentCategory: di.sentiment === 'bullish' ? 'bullish' : di.sentiment === 'bearish' ? 'bearish' : 'neutral',
+    headline: `${di.action.toUpperCase()} ${di.ticker}: ${di.thesis.slice(0, 60)}...`,
+    thesis: di.thesis,
+    keyPoints: di.keyPoints,
+    catalysts: di.catalysts.map(c => ({ event: c, date: 'Upcoming', impact: 'positive' as const })),
+    technicals: di.technicalSignals.map(t => ({ indicator: t.indicator, signal: t.signal, strength: t.strength === 'strong' ? 90 : t.strength === 'moderate' ? 60 : 30 })),
+    fundamentals: [],
+    risks: di.risks,
+    sentiment: [{ source: 'OpenAI', score: di.confidence }],
+    analystConsensus: null,
+    relatedTickers: [],
+    lastUpdated: di.generatedAt,
+    saved: false
+  }))
+
+  const allIdeas = [...convertedDynamicIdeas, ...ideas]
+
+  const filteredIdeas = allIdeas.filter(idea => {
     if (tickerSearch) {
       const q = tickerSearch.toUpperCase()
       if (!idea.ticker.includes(q) && !idea.company.toUpperCase().includes(q)) return false
@@ -570,22 +603,29 @@ export default function OpenAIIdeasPage() {
             <span className="text-xs font-mono text-muted-foreground uppercase">Filters:</span>
           </div>
 
-          {/* Ticker Search */}
-          <div className="relative flex items-center">
-            <Search className="absolute left-2.5 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
+          {/* Ticker Search with Autocomplete */}
+          <div className="flex items-center gap-2">
+            <TickerAutocomplete
               value={tickerSearch}
-              onChange={(e) => setTickerSearch(e.target.value.toUpperCase())}
-              placeholder="Search ticker or name..."
-              className="pl-7 pr-7 py-1.5 rounded-lg bg-muted/50 border border-border text-xs font-mono w-48 focus:outline-none focus:border-green-500/50 focus:bg-card placeholder:text-muted-foreground/50 uppercase"
+              onChange={setTickerSearch}
+              onSelect={(ticker) => {
+                setTickerSearch(ticker.symbol)
+              }}
+              placeholder="Search any US ticker..."
+              className="w-52"
             />
             {tickerSearch && (
               <button
-                onClick={() => setTickerSearch('')}
-                className="absolute right-2 text-muted-foreground hover:text-foreground"
+                onClick={() => generateIdea(tickerSearch)}
+                disabled={isGenerating}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-bold hover:bg-green-500/30 transition-colors disabled:opacity-50"
               >
-                <X className="w-3 h-3" />
+                {isGenerating ? (
+                  <Loader className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                {isGenerating ? 'Analyzing...' : 'Generate Idea'}
               </button>
             )}
           </div>
