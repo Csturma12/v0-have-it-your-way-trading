@@ -356,15 +356,15 @@ export default function AnalystPage() {
           </p>
           <p>Data sourced from public analyst reports. Past performance does not guarantee future results.</p>
         </div>
-        </div>
+      </div>
       </main>
 
       {/* Full Report Modal */}
-      {selectedReport && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedReport(null)}
-        >
+        {selectedReport && (
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedReport(null)}
+          >
           <div 
             className="bg-card rounded-lg border border-border max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -462,6 +462,7 @@ export default function AnalystPage() {
           </div>
         </div>
         )}
+      </main>
     </div>
   )
 }
