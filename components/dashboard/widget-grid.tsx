@@ -421,6 +421,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
+  
+  // Named layouts feature
+  const [savedLayouts, setSavedLayouts] = useState<Array<{ name: string; layout: Layout[]; widgets: RightWidget[] }>>([])
+  const [newLayoutName, setNewLayoutName] = useState('')
   const [wrapperWidth, setWrapperWidth] = useState(1200)
   const [wrapperHeight, setWrapperHeight] = useState(800)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -500,9 +504,11 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   useEffect(() => {
     try {
       const saved = localStorage.getItem('saved-layouts')
-      // Load saved layouts if they exist
       if (saved) {
-        // Keep for future use when implementing saved layouts UI
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) {
+          setSavedLayouts(parsed)
+        }
       }
     } catch { /* ignore */ }
   }, [])
@@ -530,6 +536,43 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ layout, rightWidgets, userSaved: true } satisfies SavedState))
       setLayoutSaved(true)
       setTimeout(() => setLayoutSaved(false), 2000)
+    } catch { /* ignore */ }
+  }
+
+  // Save layout with a custom name
+  const saveLayoutWithName = () => {
+    if (!newLayoutName.trim()) return
+    
+    const newSavedLayout = {
+      name: newLayoutName.trim(),
+      layout: [...layout],
+      widgets: [...rightWidgets],
+    }
+    
+    const updated = [...savedLayouts.filter(l => l.name !== newLayoutName.trim()), newSavedLayout]
+    setSavedLayouts(updated)
+    setNewLayoutName('')
+    
+    try {
+      localStorage.setItem('saved-layouts', JSON.stringify(updated))
+      setLayoutSaved(true)
+      setTimeout(() => setLayoutSaved(false), 2000)
+    } catch { /* ignore */ }
+  }
+
+  // Load a saved layout by name
+  const loadSavedLayout = (saved: { name: string; layout: Layout[]; widgets: RightWidget[] }) => {
+    setLayout(saved.layout)
+    setRightWidgets(saved.widgets)
+    setShowLayoutMenu(false)
+  }
+
+  // Delete a saved layout
+  const deleteSavedLayout = (name: string) => {
+    const updated = savedLayouts.filter(l => l.name !== name)
+    setSavedLayouts(updated)
+    try {
+      localStorage.setItem('saved-layouts', JSON.stringify(updated))
     } catch { /* ignore */ }
   }
 
