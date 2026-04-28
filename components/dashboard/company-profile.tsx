@@ -42,50 +42,7 @@ interface CompanyData {
   source: string
 }
 
-const MOCK_DATA: Record<string, CompanyData> = {
-  AAPL: {
-    quote: { price: 267.50, change: -3.45, changePercent: -1.27, afterHoursPrice: 267.39, afterHoursChange: -0.11, afterHoursChangePercent: -0.04, volume: 52340000, high: 271.20, low: 266.80, open: 270.50, prevClose: 270.95 },
-    profile: {
-      name: 'Apple Inc',
-      exchange: 'NASDAQ',
-      description: 'Apple Inc. designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services. Its product categories include iPhone, Mac, iPad, and Wearables, Home and Accessories. Its software platforms include iOS, iPadOS, macOS, watchOS, visionOS, and tvOS.',
-      sector: 'Technology',
-      industry: 'Consumer Electronics',
-      ceo: 'Tim Cook',
-      employees: 164000,
-      marketCap: 3420000000000,
-      website: 'https://apple.com',
-      executives: [
-        { name: 'Tim Cook', title: 'CEO' },
-        { name: 'Luca Maestri', title: 'CFO' },
-        { name: 'Jeff Williams', title: 'COO' },
-        { name: 'Katherine Adams', title: 'General Counsel' },
-      ]
-    },
-    aiSummary: 'Apple remains a dominant force in consumer tech with strong iPhone sales and growing Services revenue. Recent AI integrations and Vision Pro launch signal continued innovation. Solid balance sheet with $162B cash.',
-    source: 'mock'
-  },
-  NVDA: {
-    quote: { price: 875.50, change: 12.30, changePercent: 1.42, volume: 48200000, high: 882.00, low: 860.20, open: 863.00, prevClose: 863.20 },
-    profile: {
-      name: 'NVIDIA Corporation',
-      exchange: 'NASDAQ',
-      description: 'NVIDIA Corporation designs and manufactures computer graphics processors, chipsets, and related multimedia software. The company operates in two segments: Graphics and Compute & Networking, providing GPUs for gaming, data centers, AI, and autonomous vehicles.',
-      sector: 'Technology',
-      industry: 'Semiconductors',
-      ceo: 'Jensen Huang',
-      employees: 29600,
-      marketCap: 2150000000000,
-      website: 'https://nvidia.com',
-      executives: [
-        { name: 'Jensen Huang', title: 'CEO & President' },
-        { name: 'Colette Kress', title: 'CFO' },
-      ]
-    },
-    aiSummary: 'NVIDIA leads the AI chip revolution with dominant market share in data center GPUs. Record demand from hyperscalers and enterprise AI deployments. Supply constraints easing but demand continues to outpace.',
-    source: 'mock'
-  }
-}
+
 
 function formatNumber(num: number): string {
   if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`
@@ -108,35 +65,33 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setData(null)
     try {
-      // Try to fetch from API
-      const res = await fetch(`/api/market-data?symbol=${ticker}&type=profile`)
+      const res = await fetch(`/api/polygon/profile?ticker=${ticker}`)
       if (res.ok) {
         const json = await res.json()
         if (json.profile || json.quote) {
           setData({
-            quote: json.quote || null,
-            profile: json.profile || null,
-            aiSummary: json.aiSummary || null,
-            source: json.source || 'api'
+            quote: json.quote ?? null,
+            profile: json.profile ?? null,
+            aiSummary: json.aiSummary ?? null,
+            source: json.source ?? 'polygon',
           })
-          setSource(json.source || 'api')
-          setLoading(false)
+          setSource(json.source ?? 'polygon')
           return
         }
       }
     } catch {
-      // Fall through to mock data
+      // fall through
     }
-
-    // Use mock data
-    const mock = MOCK_DATA[ticker.toUpperCase()] || MOCK_DATA.AAPL
+    // Minimal fallback so the widget still renders with the correct ticker
     setData({
-      ...mock,
-      profile: mock.profile ? { ...mock.profile, name: ticker.toUpperCase() === 'AAPL' ? mock.profile.name : `${ticker.toUpperCase()} Inc` } : null
+      quote: null,
+      profile: { name: ticker, exchange: '', description: 'No data available.', sector: '', industry: '', ceo: '', employees: 0, marketCap: 0, website: '', executives: [] },
+      aiSummary: null,
+      source: 'unavailable',
     })
-    setSource('mock')
-    setLoading(false)
+    setSource('unavailable')
   }, [ticker])
 
   useEffect(() => {
@@ -183,9 +138,9 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
           <div className="flex items-center gap-1.5">
             <Badge 
               variant="outline" 
-              className={`text-[9px] ${source === 'mock' ? 'border-yellow-500/50 text-yellow-500' : 'border-theme-green/50 text-theme-green'}`}
+              className={`text-[9px] ${source === 'intrinio' ? 'border-blue-500/50 text-blue-400' : source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}
             >
-              {source === 'mock' ? 'DEMO' : 'LIVE'}
+              {source === 'intrinio' ? 'INTRINIO' : source === 'polygon' ? 'POLYGON' : 'DEMO'}
             </Badge>
             <button 
               onClick={fetchData}

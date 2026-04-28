@@ -27,10 +27,12 @@ interface Fundamentals {
 function formatValue(value: number | null, format: 'percent' | 'ratio' | 'count' | 'currency' = 'ratio'): string {
   if (value === null || value === undefined) return '—'
   
-  if (format === 'percent') return `${(value * 100).toFixed(1)}%`
+  // Percentages from API are already in % form (e.g., 46.2 not 0.462)
+  if (format === 'percent') return `${value.toFixed(1)}%`
   if (format === 'ratio') return value.toFixed(2)
-  if (format === 'count') return value > 1000000 ? `${(value / 1000000).toFixed(1)}M` : `${(value / 1000).toFixed(0)}K`
+  if (format === 'count') return value > 1000000 ? `${(value / 1000000).toFixed(1)}M` : value > 1000 ? `${(value / 1000).toFixed(0)}K` : value.toString()
   if (format === 'currency') {
+    if (value > 1000000000000) return `$${(value / 1000000000000).toFixed(2)}T`
     if (value > 1000000000) return `$${(value / 1000000000).toFixed(2)}B`
     if (value > 1000000) return `$${(value / 1000000).toFixed(1)}M`
     return `$${value.toFixed(2)}`
@@ -87,8 +89,8 @@ export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
       <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/20">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-muted-foreground/70 uppercase">Fundamentals</span>
-          <Badge variant="outline" className="text-[10px] px-1 py-0.5">
-            {source === 'polygon' ? 'LIVE' : 'DEMO'}
+          <Badge variant="outline" className={`text-[10px] px-1 py-0.5 ${source === 'intrinio' ? 'border-blue-500/50 text-blue-400' : source === 'polygon' ? 'border-green-500/50 text-green-400' : ''}`}>
+            {source === 'intrinio' ? 'INTRINIO' : source === 'polygon' ? 'POLYGON' : 'DEMO'}
           </Badge>
         </div>
         <button onClick={fetchFundamentals} className="hover:bg-white/5 p-1 rounded transition-colors">
