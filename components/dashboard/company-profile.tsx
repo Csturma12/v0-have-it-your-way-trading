@@ -138,9 +138,9 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
           <div className="flex items-center gap-1.5">
             <Badge 
               variant="outline" 
-              className={`text-[9px] ${source === 'mock' ? 'border-yellow-500/50 text-yellow-500' : 'border-theme-green/50 text-theme-green'}`}
+              className={`text-[9px] ${source === 'intrinio' ? 'border-blue-500/50 text-blue-400' : source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}
             >
-              {source === 'mock' ? 'DEMO' : 'LIVE'}
+              {source === 'intrinio' ? 'INTRINIO' : source === 'polygon' ? 'POLYGON' : 'DEMO'}
             </Badge>
             <button 
               onClick={fetchData}
