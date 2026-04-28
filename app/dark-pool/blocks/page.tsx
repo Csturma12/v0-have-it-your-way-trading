@@ -13,10 +13,12 @@ import {
   Filter,
   ArrowUpRight,
   ArrowDownRight,
-  Building2
+  Building2,
+  Search
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
+import { TickerAutocomplete } from '@/components/ui/ticker-autocomplete'
 
 interface BlockTrade {
   id: string
@@ -60,6 +62,7 @@ export default function BlockTradesPage() {
   const [filter, setFilter] = useState<'all' | 'bullish' | 'bearish'>('all')
   const [minValue, setMinValue] = useState<number>(10000000) // Default to $10M+ for block trades
   const [source, setSource] = useState<string>('unknown')
+  const [tickerSearch, setTickerSearch] = useState('')
 
   const fetchTrades = async () => {
     setLoading(true)
@@ -94,6 +97,7 @@ export default function BlockTradesPage() {
   const filtered = trades
     .filter(t => filter === 'all' || t.sentiment === filter)
     .filter(t => t.value >= minValue)
+    .filter(t => !tickerSearch || t.ticker.toUpperCase().includes(tickerSearch.toUpperCase()))
 
   const totalValue = filtered.reduce((sum, t) => sum + t.value, 0)
   const institutionalValue = filtered.filter(t => t.blockType === 'institutional').reduce((sum, t) => sum + t.value, 0)
@@ -114,6 +118,25 @@ export default function BlockTradesPage() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Ticker Search */}
+            <div className="flex items-center gap-2">
+              <TickerAutocomplete
+                value={tickerSearch}
+                onChange={setTickerSearch}
+                onSelect={(ticker) => setTickerSearch(ticker.symbol)}
+                placeholder="Search ticker..."
+                className="w-44"
+              />
+              <button
+                onClick={() => {}}
+                disabled={!tickerSearch}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold hover:bg-cyan-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Search className="w-3.5 h-3.5" />
+                Search
+              </button>
+            </div>
+
             <div className="flex items-center gap-2 text-xs font-mono">
               <span className="text-muted-foreground">Min:</span>
               <select
