@@ -5,6 +5,8 @@ import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 import { TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Brain, Cpu, DollarSign, Activity, Filter, RefreshCw, Star, Bookmark, Bot, Hand, Target, Loader, CheckCircle, Search, X } from 'lucide-react'
+import { TickerAutocomplete } from '@/components/ui/ticker-autocomplete'
+import { useTradeIdeas } from '@/hooks/useTradeIdeas'
 
 type SentimentCategory = 'bullish' | 'bearish' | 'hedge' | 'neutral'
 
@@ -157,6 +159,7 @@ export default function ConsensusPage() {
   const [tradeResult, setTradeResult] = useState<{ id: string; success: boolean; message: string } | null>(null)
   
   const { executeTrade } = useBrokerTrade('alpaca')
+  const { isGenerating, generateIdea } = useTradeIdeas({ provider: 'claude' })
   const tickers = CONSENSUS_IDEAS.map(i => i.ticker)
   const { quotes: liveQuotes } = useLiveQuotes(tickers, { refreshInterval: 30000 })
 
@@ -188,20 +191,26 @@ export default function ConsensusPage() {
           {/* Filter and Trading Mode */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
             {/* Ticker Search */}
-            <div className="relative flex items-center">
-              <Search className="absolute left-2.5 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-              <input
-                type="text"
+            <div className="flex items-center gap-2">
+              <TickerAutocomplete
                 value={tickerSearch}
-                onChange={(e) => setTickerSearch(e.target.value.toUpperCase())}
-                placeholder="Search ticker or name..."
-                className="pl-8 pr-8 py-1.5 rounded-lg bg-muted/50 border border-border text-xs font-mono w-48 focus:outline-none focus:ring-1 focus:ring-primary"
+                onChange={setTickerSearch}
+                onSelect={(ticker) => setTickerSearch(ticker.symbol)}
+                placeholder="Search any US ticker..."
+                className="w-52"
               />
-              {tickerSearch && (
-                <button onClick={() => setTickerSearch('')} className="absolute right-2.5">
-                  <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                </button>
-              )}
+              <button
+                onClick={() => { if (tickerSearch) generateIdea(tickerSearch) }}
+                disabled={isGenerating || !tickerSearch}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/20 border border-primary/30 text-primary text-xs font-bold hover:bg-primary/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isGenerating ? (
+                  <Loader className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Search className="w-3.5 h-3.5" />
+                )}
+                {isGenerating ? 'Analyzing...' : 'Search'}
+              </button>
             </div>
             <select
               value={filterSentiment}
