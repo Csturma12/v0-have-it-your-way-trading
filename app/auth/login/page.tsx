@@ -7,6 +7,11 @@ import Link from 'next/link'
 import { Eye, EyeOff, Lock, Mail, TrendingUp } from 'lucide-react'
 
 export default function LoginPage() {
+  // Debug: verify React is hydrating
+  if (typeof window !== 'undefined') {
+    console.log('[v0] LoginPage hydrated - React is active')
+  }
+  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
