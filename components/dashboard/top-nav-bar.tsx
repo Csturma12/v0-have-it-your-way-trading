@@ -77,7 +77,7 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Claude Ideas', href: '/trade-ideas/claude', icon: Brain, accent: 'gold' },
       { label: 'OpenAI Ideas', href: '/trade-ideas/openai', icon: Sparkles, accent: 'green' },
-      { label: 'AI Consensus', href: '/trade-ideas/consensus', icon: Bot, accent: 'cyan' },
+      { label: 'Analyst Research', href: '/trade-ideas/analyst', icon: BookOpen, accent: 'cyan' },
     ],
   },
   {

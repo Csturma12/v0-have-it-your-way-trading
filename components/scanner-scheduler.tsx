@@ -142,8 +142,8 @@ export function ScannerScheduler({
   const [scanCount, setScanCount] = useState(0)
   const [marketStatus, setMarketStatus] = useState(getMarketStatus())
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const countdownRef = useRef<NodeJS.Timeout | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const runScan = useCallback(async () => {
     if (watchlist.length === 0) return
@@ -175,8 +175,8 @@ export function ScannerScheduler({
   useEffect(() => {
     const updateStatus = () => setMarketStatus(getMarketStatus())
     updateStatus()
-    const statusInterval = window.setInterval(updateStatus, 60000)
-    return () => window.clearInterval(statusInterval)
+    const statusInterval = setInterval(updateStatus, 60000)
+    return () => clearInterval(statusInterval)
   }, [])
 
   // Handle scheduled scanning
@@ -217,10 +217,10 @@ export function ScannerScheduler({
     executeScan()
 
     // Set up interval
-    timerRef.current = window.setInterval(executeScan, intervalMs)
+    timerRef.current = setInterval(executeScan, intervalMs)
 
     // Set up countdown
-    countdownRef.current = window.setInterval(() => {
+    countdownRef.current = setInterval(() => {
       if (nextScanTime) {
         const remaining = nextScanTime.getTime() - Date.now()
         if (remaining > 0) {
