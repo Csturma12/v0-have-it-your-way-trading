@@ -16,11 +16,16 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('[v0] Form submitted! Email:', email)
+    
     const supabase = createClient()
+    console.log('[v0] Supabase client created:', !!supabase)
+    
     setIsLoading(true)
     setError(null)
 
     if (!supabase) {
+      console.log('[v0] ERROR: Supabase client is null')
       setError('Supabase is not configured. Please check environment variables.')
       setIsLoading(false)
       return
