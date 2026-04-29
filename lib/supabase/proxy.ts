@@ -58,12 +58,13 @@ export async function updateSession(request: NextRequest) {
   // API routes that should be accessible (for webhooks, etc.)
   const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
 
-  if (!user && !isPublicPath && !isApiRoute) {
-    // No user and trying to access protected route - redirect to login
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
-    return NextResponse.redirect(url)
-  }
+  // AUTH DISABLED - allow all access without login
+  // TODO: Re-enable once Supabase Site URL is configured
+  // if (!user && !isPublicPath && !isApiRoute) {
+  //   const url = request.nextUrl.clone()
+  //   url.pathname = '/auth/login'
+  //   return NextResponse.redirect(url)
+  // }
 
   return supabaseResponse
 }
