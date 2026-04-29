@@ -37,6 +37,8 @@ import {
   Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { TickerAutocomplete } from '@/components/ui/ticker-autocomplete'
+import { useTradingContext } from '@/contexts/TradingContext'
 
 interface NavItem {
   label: string
@@ -143,7 +145,14 @@ export function TopNavBar() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
   const router = useRouter()
+  const { setActiveTicker } = useTradingContext()
+
+  const handleTickerSelect = (ticker: { symbol: string }) => {
+    setActiveTicker(ticker.symbol)
+    setSearchValue('')
+  }
 
   useEffect(() => {
     const supabase = createClient()
@@ -256,8 +265,17 @@ export function TopNavBar() {
             })}
           </div>
 
-          {/* Right side: Beta + User Menu */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Right side: Search + Beta + User Menu */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Search Bar */}
+            <TickerAutocomplete
+              value={searchValue}
+              onChange={setSearchValue}
+              onSelect={handleTickerSelect}
+              placeholder="Search ticker..."
+              className="w-48"
+            />
+            
             <Button
               variant="outline"
               size="sm"
@@ -267,7 +285,21 @@ export function TopNavBar() {
               Beta
             </Button>
 
-            {/* User Menu */}
+            {/* Login Button when not logged in */}
+            {!userEmail && (
+              <Link href="/auth/login">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-7 text-[10px] font-mono uppercase tracking-wider"
+                >
+                  <User className="w-3 h-3" />
+                  Login
+                </Button>
+              </Link>
+            )}
+
+            {/* User Menu when logged in */}
             {userEmail && (
               <div className="relative">
                 <button
