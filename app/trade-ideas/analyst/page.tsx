@@ -140,7 +140,7 @@ function AnalystCard({ symbol, onRemove }: { symbol: string; onRemove: () => voi
           </div>
 
           <div className="flex items-center gap-4">
-            {analyst?.priceTarget?.mean > 0 && (
+            {analyst?.priceTarget?.mean && analyst.priceTarget.mean > 0 && (
               <div className="text-right">
                 <div className="text-xs text-muted-foreground">Avg Target</div>
                 <div className="font-bold text-foreground">${analyst.priceTarget.mean.toFixed(0)}</div>
