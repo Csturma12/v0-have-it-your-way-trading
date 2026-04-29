@@ -20,15 +20,25 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
 
+    if (!supabase) {
+      setError('Supabase is not configured. Please check environment variables.')
+      setIsLoading(false)
+      return
+    }
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('[v0] Attempting login for:', email)
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
+      console.log('[v0] Login result:', { user: data?.user?.email, error: error?.message })
       if (error) throw error
+      console.log('[v0] Login successful, redirecting to /')
       router.push('/')
       router.refresh()
     } catch (error: unknown) {
+      console.log('[v0] Login error:', error)
       setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
       setIsLoading(false)
