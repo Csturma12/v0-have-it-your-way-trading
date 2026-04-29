@@ -23,6 +23,10 @@ interface TradingContextType {
   activeBroker: BrokerConnection
   setActiveBroker: (broker: BrokerConnection) => void
   
+  // Active ticker (for nav search)
+  activeTicker: string
+  setActiveTicker: (ticker: string) => void
+
   // Execute trade helper
   executeTrade: (params: TradeParams) => Promise<TradeResult>
   
@@ -53,6 +57,7 @@ export function TradingProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<TradingMode>('manual')
   const [isExecuting, setIsExecuting] = useState(false)
   const [lastTradeResult, setLastTradeResult] = useState<TradeResult | null>(null)
+  const [activeTicker, setActiveTicker] = useState<string>('AAPL')
   const [activeBroker, setActiveBroker] = useState<BrokerConnection>({
     broker: 'alpaca',
     connected: true,
@@ -132,6 +137,8 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         setMode,
         activeBroker,
         setActiveBroker,
+        activeTicker,
+        setActiveTicker,
         executeTrade,
         isExecuting,
         lastTradeResult,

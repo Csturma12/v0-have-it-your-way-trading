@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { QuickTradeBox } from './quick-trade-box'
 import { QuickTradeIdeas } from './quick-trade-ideas'
+import { createClient } from '@/lib/supabase/client'
 
 interface WatchlistItem {
   ticker: string
@@ -90,6 +91,51 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
   const refreshInterval = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => { setHydrated(true) }, [])
+
+  // Load watchlist from Supabase if user is logged in
+  useEffect(() => {
+    const loadWatchlist = async () => {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data } = await supabase
+          .from('user_watchlists')
+          .select('tickers')
+          .eq('user_id', user.id)
+          .single()
+
+        if (data?.tickers && Array.isArray(data.tickers) && data.tickers.length > 0) {
+          setWatchlist(data.tickers.map((t: string) => blankItem(t)))
+        }
+      } catch {
+        // Table might not exist yet or user not logged in
+      }
+    }
+    loadWatchlist()
+  }, [])
+
+  // Save watchlist to Supabase when it changes
+  useEffect(() => {
+    if (!hydrated) return
+    const saveWatchlist = async () => {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const tickers = watchlist.map(w => w.ticker)
+        await supabase
+          .from('user_watchlists')
+          .upsert({ user_id: user.id, tickers }, { onConflict: 'user_id' })
+      } catch {
+        // Silent fail
+      }
+    }
+    const debounce = setTimeout(saveWatchlist, 1000)
+    return () => clearTimeout(debounce)
+  }, [hydrated, watchlist])
 
   // Fetch live quote + details for a single ticker
   const fetchTicker = useCallback(async (ticker: string) => {
