@@ -7,8 +7,8 @@ export async function updateSession(request: NextRequest) {
   })
 
   // Skip if Supabase env vars are not properly configured
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL2 || process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY2 || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
   if (!supabaseUrl || !supabaseKey) {
     return supabaseResponse
