@@ -9,8 +9,18 @@ export async function updateSession(request: NextRequest) {
   // Skip if Supabase env vars are not properly configured
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL2
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY2
-  
-  if (!supabaseUrl || !supabaseKey) {
+
+  // Validate URL format - must start with https:// or http://
+  // This prevents crashes when env vars are accidentally swapped (URL field has the key, etc.)
+  const isValidUrl = supabaseUrl && /^https?:\/\//i.test(supabaseUrl)
+
+  if (!supabaseUrl || !supabaseKey || !isValidUrl) {
+    if (supabaseUrl && !isValidUrl) {
+      console.warn(
+        '[v0] NEXT_PUBLIC_SUPABASE_URL is set but does not look like a valid URL. ' +
+        'It should start with https://. Got: ' + supabaseUrl.slice(0, 20) + '...'
+      )
+    }
     return supabaseResponse
   }
 
