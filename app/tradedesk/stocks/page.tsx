@@ -98,7 +98,7 @@ export default function StocksPage() {
   const [timeframeFilter, setTimeframeFilter] = useState<Timeframe | 'all'>('all')
   const [showFilters, setShowFilters] = useState(false)
   const [broker, setBroker] = useState<'alpaca' | 'tastytrade'>('alpaca')
-  const { executeTrade, isLoading: isExecuting } = useBrokerTrade(broker)
+  const { executeTrade, loading: isExecuting } = useBrokerTrade(broker)
   
   const [ideas, setIdeas] = useState<StockIdea[]>([...CLAUDE_IDEAS, ...OPENAI_IDEAS])
   const [stagedTrades, setStagedTrades] = useState<StagedTrade[]>([])
@@ -106,7 +106,7 @@ export default function StocksPage() {
   const [customIdeas, setCustomIdeas] = useState<CustomIdea[]>([])
   
   const [showCreateIdea, setShowCreateIdea] = useState(false)
-  const [newIdea, setNewIdea] = useState({ ticker: '', action: 'buy' as const, entry: '', stop: '', target: '', thesis: '' })
+  const [newIdea, setNewIdea] = useState<{ ticker: string; action: 'buy' | 'sell'; entry: string; stop: string; target: string; thesis: string }>({ ticker: '', action: 'buy', entry: '', stop: '', target: '', thesis: '' })
   
   const [activeTab, setActiveTab] = useState<'ideas' | 'staged' | 'history' | 'custom'>('ideas')
   const [refreshing, setRefreshing] = useState(false)

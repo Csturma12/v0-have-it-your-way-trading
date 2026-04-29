@@ -218,7 +218,7 @@ export function TopNavBar() {
                       <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                     </button>
 
-                    {isOpen && (
+                    {isOpen && item.children && (
                       <div className="absolute top-full left-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-2xl z-50 py-1">
                         {item.children.map((child) => {
                           const ChildIcon = child.icon

@@ -23,10 +23,10 @@ import {
   CheckCircle2,
   Timer,
 } from 'lucide-react'
-import type { WatchlistItem } from './watchlist-input'
+import type { TickerData } from './watchlist-input'
 
 interface ScannerSchedulerProps {
-  watchlist: WatchlistItem[]
+  watchlist: TickerData[]
   onScanComplete: (signals: TradingSignal[], summary: string) => void
   isScanning: boolean
   setIsScanning: (scanning: boolean) => void
@@ -134,7 +134,7 @@ export function ScannerScheduler({
   setIsScanning,
 }: ScannerSchedulerProps) {
   const [isEnabled, setIsEnabled] = useState(false)
-  const [interval, setInterval] = useState('5')
+  const [scanInterval, setScanInterval] = useState('5')
   const [automationEnabled, setAutomationEnabled] = useState(false)
   const [lastScanTime, setLastScanTime] = useState<Date | null>(null)
   const [nextScanTime, setNextScanTime] = useState<Date | null>(null)
@@ -175,8 +175,8 @@ export function ScannerScheduler({
   useEffect(() => {
     const updateStatus = () => setMarketStatus(getMarketStatus())
     updateStatus()
-    const statusInterval = setInterval(updateStatus, 60000)
-    return () => clearInterval(statusInterval)
+    const statusInterval = window.setInterval(updateStatus, 60000)
+    return () => window.clearInterval(statusInterval)
   }, [])
 
   // Handle scheduled scanning
@@ -195,9 +195,8 @@ export function ScannerScheduler({
       return
     }
 
-    const intervalMs = parseInt(interval) * 60 * 1000
-
-    const scheduleNextScan = () => {
+const intervalMs = parseInt(scanInterval) * 60 * 1000
+    const executeScan = () => {
       const next = new Date(Date.now() + intervalMs)
       setNextScanTime(next)
     }
@@ -217,10 +216,10 @@ export function ScannerScheduler({
     executeScan()
 
     // Set up interval
-    timerRef.current = setInterval(executeScan, intervalMs)
+    timerRef.current = window.setInterval(executeScan, intervalMs)
 
     // Set up countdown
-    countdownRef.current = setInterval(() => {
+    countdownRef.current = window.setInterval(() => {
       if (nextScanTime) {
         const remaining = nextScanTime.getTime() - Date.now()
         if (remaining > 0) {
@@ -235,12 +234,12 @@ export function ScannerScheduler({
       if (timerRef.current) clearInterval(timerRef.current)
       if (countdownRef.current) clearInterval(countdownRef.current)
     }
-  }, [isEnabled, interval, automationEnabled, watchlist, runScan, nextScanTime])
+  }, [isEnabled, scanInterval, automationEnabled, watchlist, runScan, nextScanTime])
 
   const handleManualScan = () => {
     runScan()
     if (isEnabled) {
-      const intervalMs = parseInt(interval) * 60 * 1000
+    const intervalMs = parseInt(scanInterval) * 60 * 1000
       setNextScanTime(new Date(Date.now() + intervalMs))
     }
   }
@@ -309,7 +308,7 @@ export function ScannerScheduler({
           {/* Scan Interval */}
           <Field>
             <FieldLabel className="text-sm">Scan Interval</FieldLabel>
-            <Select value={interval} onValueChange={setInterval} disabled={!isEnabled}>
+            <Select value={scanInterval} onValueChange={setScanInterval} disabled={!isEnabled}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

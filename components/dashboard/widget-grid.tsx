@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import GridLayout, { type Layout } from 'react-grid-layout'
+import GridLayoutImport from 'react-grid-layout'
+const GridLayout = GridLayoutImport as any
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check, Trash2 } from 'lucide-react'
@@ -394,7 +395,7 @@ const ADDON_WIDGETS: RightWidget[] = [
   { id: 'options-chain',     type: 'options-chain',     title: 'Options Chain' },
 ]
 
-const DEFAULT_LAYOUT: Layout[] = [
+const DEFAULT_LAYOUT: any[] = [
   { i: 'chart',           x: 0, y: 0, w: 8, h: 6, minH: 4 },
   { i: 'company-profile', x: 8, y: 0, w: 4, h: 4, minH: 3 },
   { i: 'watchlist',       x: 8, y: 4, w: 4, h: 4, minH: 3 },
@@ -402,7 +403,7 @@ const DEFAULT_LAYOUT: Layout[] = [
 ]
 
 interface SavedState {
-  layout: Layout[]
+  layout: any[]
   rightWidgets: RightWidget[]
   userSaved?: boolean
 }
@@ -415,7 +416,7 @@ interface WidgetGridProps {
 export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   
-  const [layout, setLayout] = useState<Layout[]>(DEFAULT_LAYOUT)
+  const [layout, setLayout] = useState(DEFAULT_LAYOUT)
   const [rightWidgets, setRightWidgets] = useState<RightWidget[]>(DEFAULT_RIGHT_WIDGETS)
   const [isEditMode, setIsEditMode] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
@@ -423,7 +424,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [layoutSaved, setLayoutSaved] = useState(false)
   
   // Named layouts feature
-  const [savedLayouts, setSavedLayouts] = useState<Array<{ name: string; layout: Layout[]; widgets: RightWidget[] }>>([])
+  const [savedLayouts, setSavedLayouts] = useState<Array<{ name: string; layout: any[]; widgets: RightWidget[] }>>([])
   const [newLayoutName, setNewLayoutName] = useState('')
   const [wrapperWidth, setWrapperWidth] = useState(1200)
   const [wrapperHeight, setWrapperHeight] = useState(800)
@@ -561,7 +562,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   }
 
   // Load a saved layout by name
-  const loadSavedLayout = (saved: { name: string; layout: Layout[]; widgets: RightWidget[] }) => {
+  const loadSavedLayout = (saved: { name: string; layout: any[]; widgets: RightWidget[] }) => {
     setLayout(saved.layout)
     setRightWidgets(saved.widgets)
     setShowLayoutMenu(false)
@@ -896,7 +897,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             draggableHandle=".widget-drag-handle"
             compactType={null}
             preventCollision={true}
-            onLayoutChange={(newLayout) => {
+            onLayoutChange={(newLayout: any) => {
               setLayout(newLayout)
             }}
             width={wrapperWidth}

@@ -333,7 +333,7 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
 
       {/* Quick Trade */}
       <QuickTradeBox
-        selectedTicker={selectedTicker}
+        selectedTicker={selectedTicker ?? null}
         price={watchlist.find(w => w.ticker === selectedTicker)?.price ?? null}
         mode={tradingMode}
         onModeChange={setTradingMode}

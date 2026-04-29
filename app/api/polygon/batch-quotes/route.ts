@@ -69,10 +69,10 @@ export async function GET(req: NextRequest) {
 
       if (ticker.preMarket?.o && isPreMarket) {
         extendedPrice = ticker.preMarket.o
-        extendedChangePct = prevClose > 0 ? ((extendedPrice - prevClose) / prevClose) * 100 : 0
+        extendedChangePct = prevClose > 0 && extendedPrice !== undefined ? ((extendedPrice - prevClose) / prevClose) * 100 : 0
       } else if (ticker.afterHours?.o && isPostMarket) {
         extendedPrice = ticker.afterHours.o
-        extendedChangePct = prevClose > 0 ? ((extendedPrice - prevClose) / prevClose) * 100 : 0
+        extendedChangePct = prevClose > 0 && extendedPrice !== undefined ? ((extendedPrice - prevClose) / prevClose) * 100 : 0
       }
 
       quotes[ticker.ticker] = {
