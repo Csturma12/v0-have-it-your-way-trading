@@ -195,8 +195,9 @@ export function ScannerScheduler({
       return
     }
 
-const intervalMs = parseInt(scanInterval) * 60 * 1000
-    const executeScan = () => {
+    const intervalMs = parseInt(scanInterval) * 60 * 1000
+    
+    const scheduleNextScan = () => {
       const next = new Date(Date.now() + intervalMs)
       setNextScanTime(next)
     }
