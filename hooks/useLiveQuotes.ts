@@ -5,6 +5,14 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 // Global deduplication - prevent multiple components from fetching the same tickers simultaneously
 const pendingFetches = new Map<string, Promise<Record<string, unknown>>>()
 
+// Global throttle - minimum time between ANY quote fetches (prevents API flooding)
+let lastGlobalFetch = 0
+const GLOBAL_THROTTLE_MS = 5000 // 5 seconds minimum between fetches
+
+// Global cache for quotes (shared across all hook instances)
+const globalQuoteCache = new Map<string, { quote: unknown; timestamp: number }>()
+const QUOTE_CACHE_TTL = 15000 // 15 seconds
+
 export interface LiveQuote {
   ticker: string
   price: number
@@ -74,6 +82,48 @@ export function useLiveQuotes(
   const fetchQuotes = useCallback(async () => {
     if (!enabled || tickers.length === 0) return
 
+    // Check if we can use cached data
+    const now = Date.now()
+    const allCached = tickers.every(t => {
+      const cached = globalQuoteCache.get(t)
+      return cached && (now - cached.timestamp) < QUOTE_CACHE_TTL
+    })
+
+    if (allCached) {
+      // Use cached data
+      setQuotes(prev => {
+        const next: Record<string, LiveQuote> = {}
+        tickers.forEach(t => {
+          const cached = globalQuoteCache.get(t)
+          if (cached) {
+            next[t] = parseQuoteData(cached.quote as Record<string, unknown>, t)
+          } else {
+            next[t] = prev[t] ?? { ticker: t, price: 0, change: 0, changePercent: 0, loading: false }
+          }
+        })
+        return next
+      })
+      return
+    }
+
+    // Global throttle check
+    if (now - lastGlobalFetch < GLOBAL_THROTTLE_MS) {
+      // Too soon - use whatever cache we have
+      setQuotes(prev => {
+        const next: Record<string, LiveQuote> = {}
+        tickers.forEach(t => {
+          const cached = globalQuoteCache.get(t)
+          if (cached) {
+            next[t] = parseQuoteData(cached.quote as Record<string, unknown>, t)
+          } else {
+            next[t] = prev[t] ?? { ticker: t, price: 0, change: 0, changePercent: 0, loading: false }
+          }
+        })
+        return next
+      })
+      return
+    }
+
     const tickerParam = tickers.join(',')
     
     // Deduplicate: if this exact request is already in flight, wait for it
@@ -106,15 +156,24 @@ export function useLiveQuotes(
       })
     
     pendingFetches.set(tickerParam, fetchPromise)
+    lastGlobalFetch = Date.now()
     
     try {
       const data = await fetchPromise
-      const fetchedQuotes = data.quotes ?? {}
+      const fetchedQuotes = (data as { quotes?: Record<string, unknown> }).quotes ?? {}
+      const fetchTime = Date.now()
+
+      // Update global cache
+      tickers.forEach(t => {
+        if (fetchedQuotes[t]) {
+          globalQuoteCache.set(t, { quote: fetchedQuotes[t], timestamp: fetchTime })
+        }
+      })
 
       setQuotes(prev => {
         const next: Record<string, LiveQuote> = {}
         tickers.forEach(t => {
-          const q = fetchedQuotes[t]
+          const q = fetchedQuotes[t] as Record<string, unknown> | undefined
           next[t] = q ? parseQuoteData(q, t) : { ...prev[t], loading: false, error: 'No data' }
         })
         return next
