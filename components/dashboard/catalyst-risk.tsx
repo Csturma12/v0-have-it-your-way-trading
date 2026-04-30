@@ -34,7 +34,7 @@ export function CatalystRisk({ ticker }: { ticker: string }) {
   const [risks, setRisks] = useState<Risk[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'catalysts' | 'risks'>('catalysts')
-  const [source, setSource] = useState<string>('demo')
+  const [source, setSource] = useState<string>('default')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -95,7 +95,7 @@ export function CatalystRisk({ ticker }: { ticker: string }) {
       }
 
       setRisks(newRisks.slice(0, 4))
-      setSource(newsData.source || 'demo')
+      setSource(newsData.source || 'default')
     } catch (err) {
       console.error('[CatalystRisk] Error:', err)
       setCatalysts([
@@ -140,8 +140,8 @@ export function CatalystRisk({ ticker }: { ticker: string }) {
       <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted/30">
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">Catalyst/Risk</span>
-          <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source !== 'demo' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
-            {source !== 'demo' ? 'LIVE' : 'DEMO'}
+          <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source !== 'default' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
+            {source !== 'default' ? 'LIVE' : 'DEFAULT'}
           </Badge>
         </div>
         <button onClick={fetchData} className="p-0.5 hover:bg-muted/50 rounded">

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Star, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useWatchlist } from '@/contexts/watchlist-context'
+import { WidgetEmptyState } from './widget-empty-state'
 
 interface TickerData {
   price: number
@@ -39,7 +40,8 @@ function formatCap(cap: number): string {
 export function TickerInfo({ ticker }: { ticker: string }) {
   const [data, setData] = useState<TickerData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [source, setSource] = useState<string>('demo')
+  const [error, setError] = useState<string | null>(null)
+  const [source, setSource] = useState<string>('unknown')
   const { tickers, addTicker, removeTicker } = useWatchlist()
 
   const isInWatchlist = tickers.includes(ticker)
@@ -54,6 +56,7 @@ export function TickerInfo({ ticker }: { ticker: string }) {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const [quoteRes, fundRes] = await Promise.all([
         fetch(`/api/polygon/quote?ticker=${ticker}`),
@@ -80,10 +83,11 @@ export function TickerInfo({ ticker }: { ticker: string }) {
           high52w: quoteData.quote.high52w || 0,
           low52w: quoteData.quote.low52w || 0,
         })
-        setSource(quoteData.source || 'demo')
+        setSource(quoteData.source || 'default')
       }
     } catch (err) {
-      console.error('[TickerInfo] Error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load ticker data')
+      setData(null)
     } finally {
       setLoading(false)
     }
@@ -104,7 +108,7 @@ export function TickerInfo({ ticker }: { ticker: string }) {
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">Ticker Info</span>
           <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
-            {source === 'polygon' ? 'LIVE' : 'DEMO'}
+            {source === 'polygon' ? 'LIVE' : 'DEFAULT'}
           </Badge>
         </div>
         <div className="flex items-center gap-1">
@@ -127,7 +131,11 @@ export function TickerInfo({ ticker }: { ticker: string }) {
           <div className="flex items-center justify-center h-full">
             <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
           </div>
-        ) : data ? (
+        ) : error ? (
+          <WidgetEmptyState type="error" message={error} onRetry={fetchData} />
+        ) : !data ? (
+          <WidgetEmptyState type="no-ticker" />
+        ) : (
           <div className="space-y-2">
             {/* Price + Change */}
             <div className="flex items-baseline gap-2">
@@ -196,8 +204,6 @@ export function TickerInfo({ ticker }: { ticker: string }) {
               </div>
             </div>
           </div>
-        ) : (
-          <div className="text-[9px] text-muted-foreground text-center py-4">No data</div>
         )}
       </div>
     </div>
