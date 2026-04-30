@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2, RefreshCw } from 'lucide-react'
+import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2, RefreshCw, Link2 } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { QuickTradeBox } from './quick-trade-box'
@@ -391,13 +392,23 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
       <div className="px-2 py-1 border-t border-border bg-card/50">
         <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground">
           <span>{watchlist.length} tickers · {watchlist.filter(i => i.starred).length} starred</span>
-          <button
-            onClick={() => refreshAll(watchlist.map(w => w.ticker))}
-            className="flex items-center gap-0.5 hover:text-foreground transition-colors"
-          >
-            <RefreshCw className="w-2.5 h-2.5" />
-            <span>{lastUpdated ? `${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'refresh'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/settings/brokers"
+              className="flex items-center gap-0.5 hover:text-cyan-400 transition-colors"
+              title="Sync from TradingView or Webull"
+            >
+              <Link2 className="w-2.5 h-2.5" />
+              <span>Sync</span>
+            </Link>
+            <button
+              onClick={() => refreshAll(watchlist.map(w => w.ticker))}
+              className="flex items-center gap-0.5 hover:text-foreground transition-colors"
+            >
+              <RefreshCw className="w-2.5 h-2.5" />
+              <span>{lastUpdated ? `${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'refresh'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

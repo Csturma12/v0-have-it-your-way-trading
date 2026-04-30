@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { TradingProvider } from '@/contexts/TradingContext'
+import { WatchlistProvider } from '@/contexts/watchlist-context'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -40,7 +41,9 @@ export default function RootLayout({
     <html lang="en" className="bg-background">
       <body className="font-sans antialiased">
         <TradingProvider>
-          {children}
+          <WatchlistProvider>
+            {children}
+          </WatchlistProvider>
         </TradingProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
         <SpeedInsights />
