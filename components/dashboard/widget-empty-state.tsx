@@ -2,6 +2,13 @@
 
 import { RefreshCw, AlertCircle, Search } from 'lucide-react'
 
+/**
+ * WidgetEmptyState component for displaying data states across all widgets.
+ * 
+ * DEFAULT data source: Fallback/calculated data when APIs are unavailable or return insufficient data.
+ * See /docs/data-sources.md for full documentation on data source definitions.
+ */
+
 interface WidgetEmptyStateProps {
   type: 'no-ticker' | 'error' | 'no-data'
   onRetry?: () => void

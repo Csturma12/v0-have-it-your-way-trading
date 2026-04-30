@@ -83,7 +83,7 @@ export function TickerInfo({ ticker }: { ticker: string }) {
           high52w: quoteData.quote.high52w || 0,
           low52w: quoteData.quote.low52w || 0,
         })
-        setSource(quoteData.source || 'demo')
+        setSource(quoteData.source || 'default')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load ticker data')
@@ -108,7 +108,7 @@ export function TickerInfo({ ticker }: { ticker: string }) {
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">Ticker Info</span>
           <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
-            {source === 'polygon' ? 'LIVE' : 'DEMO'}
+            {source === 'polygon' ? 'LIVE' : 'DEFAULT'}
           </Badge>
         </div>
         <div className="flex items-center gap-1">

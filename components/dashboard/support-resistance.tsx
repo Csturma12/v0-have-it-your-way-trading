@@ -67,7 +67,7 @@ export function SupportResistance({ ticker }: { ticker: string }) {
       const sma200 = techData?.data?.SMA200?.value || price * 0.90
 
       // Update source based on what data we got
-      const src = flashAlphaData?.data ? 'flash-alpha' : (quoteData?.source || 'demo')
+      const src = flashAlphaData?.data ? 'flash-alpha' : (quoteData?.source || 'default')
 
       // Use real OHLC highs/lows from quote data, not fake multipliers
       const monthlyHigh = quoteData?.quote?.monthHigh || quoteData?.quote?.high52w || high
@@ -124,7 +124,7 @@ export function SupportResistance({ ticker }: { ticker: string }) {
           <Target className="w-3 h-3 text-muted-foreground" />
           <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">Key S/R</span>
           <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
-            {source === 'polygon' ? 'LIVE' : 'DEMO'}
+            {source === 'polygon' ? 'LIVE' : 'DEFAULT'}
           </Badge>
         </div>
         <button onClick={fetchLevels} className="p-0.5 hover:bg-muted/50 rounded">
