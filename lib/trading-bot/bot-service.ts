@@ -57,15 +57,17 @@ export interface TradeRecord {
 // ===========================================
 
 export class TradingBotService {
-  private supabase = createClient()
+  private supabaseClient = createClient()
   private config: BotConfig | null = null
   private riskManager: RiskManager | null = null
   private patterns: Pattern[] = []
   private isInitialized = false
 
-  /**
-   * Initialize the bot with config from database
-   */
+  private get supabase() {
+    if (!this.supabaseClient) throw new Error('Supabase is not configured')
+    return this.supabaseClient
+  }
+
   async initialize(): Promise<void> {
     // Load bot config
     const { data: configData } = await this.supabase

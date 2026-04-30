@@ -44,6 +44,7 @@ export async function syncWatchlistToBot(symbols: string[]): Promise<{ success: 
     }
 
     const supabase = createClient()
+    if (!supabase) return { success: false, message: 'Supabase not configured' }
 
     // Get current bot config
     const { data: config, error: fetchError } = await supabase
@@ -84,6 +85,7 @@ export async function syncWatchlistToBot(symbols: string[]): Promise<{ success: 
 export async function exportBotWatchlist(): Promise<string> {
   try {
     const supabase = createClient()
+    if (!supabase) return ''
 
     const { data: config, error } = await supabase
       .from('bot_config')
