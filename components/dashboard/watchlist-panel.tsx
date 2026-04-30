@@ -97,7 +97,6 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
     const loadWatchlist = async () => {
       try {
         const supabase = createClient()
-        if (!supabase) return
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
@@ -123,7 +122,6 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
     const saveWatchlist = async () => {
       try {
         const supabase = createClient()
-        if (!supabase) return
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
