@@ -119,6 +119,12 @@ const NAV_ITEMS: NavItem[] = [
     href: '/news',
     icon: Newspaper,
   },
+  {
+    label: 'Compare',
+    href: '/compare',
+    icon: ArrowLeftRight,
+    accent: 'cyan',
+  },
 
   {
     label: 'Account',
