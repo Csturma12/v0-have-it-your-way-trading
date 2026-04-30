@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { QuickTradeBox } from './quick-trade-box'
 import { QuickTradeIdeas } from './quick-trade-ideas'
-import { createClient } from '@/lib/supabase/client'
+import { useWatchlist } from '@/contexts/watchlist-context'
 
 interface WatchlistItem {
   ticker: string
@@ -83,62 +83,32 @@ function getExtHoursSession(): 'pre' | 'post' | null {
 }
 
 export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPanelProps) {
-  const [hydrated,    setHydrated]    = useState(false)
-  const [watchlist,   setWatchlist]   = useState<WatchlistItem[]>(DEFAULT_TICKERS.map(blankItem))
+  // Use shared watchlist context for tickers (syncs to database automatically)
+  const { tickers: contextTickers, addTicker: contextAddTicker, removeTicker: contextRemoveTicker, source, lastSynced, isLoading: contextLoading } = useWatchlist()
+  
+  const [hydrated, setHydrated] = useState(false)
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [newTicker,   setNewTicker]   = useState('')
+  const [newTicker, setNewTicker] = useState('')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [tradingMode, setTradingMode] = useState<'autonomous' | 'manual'>('manual')
   const refreshInterval = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => { setHydrated(true) }, [])
 
-  // Load watchlist from Supabase if user is logged in
+  // Sync local watchlist state with context tickers
   useEffect(() => {
-    const loadWatchlist = async () => {
-      try {
-        const supabase = createClient()
-        if (!supabase) return
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data } = await supabase
-          .from('user_watchlists')
-          .select('tickers')
-          .eq('user_id', user.id)
-          .single()
-
-        if (data?.tickers && Array.isArray(data.tickers) && data.tickers.length > 0) {
-          setWatchlist(data.tickers.map((t: string) => blankItem(t)))
-        }
-      } catch {
-        // Table might not exist yet or user not logged in
-      }
-    }
-    loadWatchlist()
-  }, [])
-
-  // Save watchlist to Supabase when it changes
-  useEffect(() => {
-    if (!hydrated) return
-    const saveWatchlist = async () => {
-      try {
-        const supabase = createClient()
-        if (!supabase) return
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const tickers = watchlist.map(w => w.ticker)
-        await supabase
-          .from('user_watchlists')
-          .upsert({ user_id: user.id, tickers }, { onConflict: 'user_id' })
-      } catch {
-        // Silent fail
-      }
-    }
-    const debounce = setTimeout(saveWatchlist, 1000)
-    return () => clearTimeout(debounce)
-  }, [hydrated, watchlist])
+    if (contextLoading) return
+    
+    setWatchlist(prev => {
+      // Keep existing items that are still in context, add new ones
+      const newItems: WatchlistItem[] = contextTickers.map(ticker => {
+        const existing = prev.find(p => p.ticker === ticker)
+        return existing || blankItem(ticker)
+      })
+      return newItems
+    })
+  }, [contextTickers, contextLoading])
 
   // Fetch live quote + details for a single ticker
   const fetchTicker = useCallback(async (ticker: string) => {
@@ -228,14 +198,15 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
 
   const addTicker = useCallback(async () => {
     const t = newTicker.trim().toUpperCase()
-    if (!t || watchlist.some(w => w.ticker === t)) return
-    setWatchlist(prev => [...prev, blankItem(t)])
+    if (!t || contextTickers.includes(t)) return
+    contextAddTicker(t) // Add to context (auto-saves to DB)
     setNewTicker('')
     await fetchTicker(t)
-  }, [newTicker, watchlist, fetchTicker])
+  }, [newTicker, contextTickers, contextAddTicker, fetchTicker])
 
-  const removeTicker = (ticker: string) =>
-    setWatchlist(prev => prev.filter(w => w.ticker !== ticker))
+  const removeTicker = (ticker: string) => {
+    contextRemoveTicker(ticker) // Remove from context (auto-saves to DB)
+  }
 
   const toggleStar = (ticker: string) =>
     setWatchlist(prev => prev.map(w => w.ticker === ticker ? { ...w, starred: !w.starred } : w))
@@ -391,15 +362,23 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
       {/* Footer */}
       <div className="px-2 py-1 border-t border-border bg-card/50">
         <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground">
-          <span>{watchlist.length} tickers · {watchlist.filter(i => i.starred).length} starred</span>
+          <div className="flex items-center gap-1">
+            <span>{watchlist.length} tickers</span>
+            {source !== 'manual' && (
+              <span className="text-cyan-400 bg-cyan-500/10 px-1 rounded">{source}</span>
+            )}
+            {lastSynced && (
+              <span className="text-muted-foreground/70">saved</span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <Link
               href="/settings/brokers"
               className="flex items-center gap-0.5 hover:text-cyan-400 transition-colors"
-              title="Sync from TradingView or Webull"
+              title="Connect TradingView or Webull"
             >
               <Link2 className="w-2.5 h-2.5" />
-              <span>Sync</span>
+              <span>Connect</span>
             </Link>
             <button
               onClick={() => refreshAll(watchlist.map(w => w.ticker))}

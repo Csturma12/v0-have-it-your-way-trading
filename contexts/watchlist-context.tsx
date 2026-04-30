@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export interface WatchlistContextType {
@@ -15,7 +15,6 @@ export interface WatchlistContextType {
   removeTicker: (ticker: string) => void
   setTickers: (tickers: string[], source?: WatchlistContextType['source']) => void
   refreshFromDatabase: () => Promise<void>
-  syncToDatabase: () => Promise<void>
 }
 
 const WatchlistContext = createContext<WatchlistContextType | null>(null)
@@ -26,13 +25,17 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [tickers, setTickersState] = useState<string[]>(DEFAULT_TICKERS)
   const [source, setSource] = useState<WatchlistContextType['source']>('manual')
   const [lastSynced, setLastSynced] = useState<Date | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const hasLoadedRef = useRef(false)
 
   // Load user and watchlist on mount
   useEffect(() => {
+    if (hasLoadedRef.current) return
+    hasLoadedRef.current = true
+
     const loadUserWatchlist = async () => {
-      setIsLoading(true)
       try {
         const supabase = createClient()
         if (!supabase) {
@@ -48,19 +51,21 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         
         setUserId(user.id)
 
-        // Load from user_watchlists table
-        const { data } = await supabase
+        // Load from user_watchlists table (array approach - one row per user)
+        const { data, error } = await supabase
           .from('user_watchlists')
-          .select('ticker, source, last_synced')
+          .select('tickers, source, last_synced')
           .eq('user_id', user.id)
-          .order('added_at', { ascending: false })
+          .maybeSingle()
 
-        if (data && data.length > 0) {
-          const loadedTickers = data.map(d => d.ticker)
-          setTickersState(loadedTickers)
-          // Get source from first record (they should all have same source)
-          if (data[0].source) setSource(data[0].source as WatchlistContextType['source'])
-          if (data[0].last_synced) setLastSynced(new Date(data[0].last_synced))
+        if (error) {
+          console.error('[WatchlistContext] Load error:', error)
+        }
+
+        if (data?.tickers && Array.isArray(data.tickers) && data.tickers.length > 0) {
+          setTickersState(data.tickers)
+          if (data.source) setSource(data.source as WatchlistContextType['source'])
+          if (data.last_synced) setLastSynced(new Date(data.last_synced))
         }
       } catch (error) {
         console.error('[WatchlistContext] Load error:', error)
@@ -72,39 +77,49 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     loadUserWatchlist()
   }, [])
 
-  // Sync watchlist to database
-  const syncToDatabase = useCallback(async () => {
+  // Save watchlist to database (debounced)
+  const saveToDatabase = useCallback(async (tickersToSave: string[], sourceToSave: string) => {
     if (!userId) return
     
     try {
       const supabase = createClient()
       if (!supabase) return
 
-      // Delete existing watchlist items
+      const now = new Date().toISOString()
+      
       await supabase
         .from('user_watchlists')
-        .delete()
-        .eq('user_id', userId)
-
-      // Insert new items
-      if (tickers.length > 0) {
-        const records = tickers.map(ticker => ({
+        .upsert({
           user_id: userId,
-          ticker,
-          source,
-          last_synced: new Date().toISOString(),
-        }))
-
-        await supabase
-          .from('user_watchlists')
-          .insert(records)
-      }
+          tickers: tickersToSave,
+          source: sourceToSave,
+          last_synced: now,
+        }, { onConflict: 'user_id' })
 
       setLastSynced(new Date())
     } catch (error) {
-      console.error('[WatchlistContext] Sync error:', error)
+      console.error('[WatchlistContext] Save error:', error)
     }
-  }, [userId, tickers, source])
+  }, [userId])
+
+  // Debounced save when tickers change
+  useEffect(() => {
+    if (!userId || isLoading) return
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      saveToDatabase(tickers, source)
+    }, 1500)
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [tickers, source, userId, isLoading, saveToDatabase])
 
   // Refresh from database
   const refreshFromDatabase = useCallback(async () => {
@@ -117,14 +132,14 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
       const { data } = await supabase
         .from('user_watchlists')
-        .select('ticker, source, last_synced')
+        .select('tickers, source, last_synced')
         .eq('user_id', userId)
-        .order('added_at', { ascending: false })
+        .maybeSingle()
 
-      if (data && data.length > 0) {
-        setTickersState(data.map(d => d.ticker))
-        if (data[0].source) setSource(data[0].source as WatchlistContextType['source'])
-        if (data[0].last_synced) setLastSynced(new Date(data[0].last_synced))
+      if (data?.tickers && Array.isArray(data.tickers)) {
+        setTickersState(data.tickers)
+        if (data.source) setSource(data.source as WatchlistContextType['source'])
+        if (data.last_synced) setLastSynced(new Date(data.last_synced))
       }
     } catch (error) {
       console.error('[WatchlistContext] Refresh error:', error)
@@ -136,40 +151,32 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   // Add ticker
   const addTicker = useCallback((ticker: string) => {
     const upper = ticker.toUpperCase().trim()
-    if (!upper || tickers.includes(upper)) return
+    if (!upper) return
     
-    setTickersState(prev => [...prev, upper])
+    setTickersState(prev => {
+      if (prev.includes(upper)) return prev
+      return [...prev, upper]
+    })
     setSource('manual')
-  }, [tickers])
+  }, [])
 
   // Remove ticker
   const removeTicker = useCallback((ticker: string) => {
     setTickersState(prev => prev.filter(t => t !== ticker.toUpperCase()))
   }, [])
 
-  // Set all tickers (from sync)
+  // Set all tickers (from sync or bulk add)
   const setTickers = useCallback((newTickers: string[], newSource?: WatchlistContextType['source']) => {
     const uniqueTickers = [...new Set(newTickers.map(t => t.toUpperCase().trim()).filter(Boolean))]
     setTickersState(uniqueTickers)
     if (newSource) setSource(newSource)
-    setLastSynced(new Date())
   }, [])
 
-  // Auto-sync when tickers change (debounced)
+  // Broadcast watchlist changes to other components (WatchlistPanel, QuickTradeIdeas, etc.)
   useEffect(() => {
-    if (!userId) return
-    
-    const timer = setTimeout(() => {
-      syncToDatabase()
-    }, 2000)
-    
-    return () => clearTimeout(timer)
-  }, [tickers, userId, syncToDatabase])
-
-  // Broadcast watchlist changes to other components
-  useEffect(() => {
+    if (isLoading) return
     window.dispatchEvent(new CustomEvent('watchlist:updated', { detail: { tickers, source } }))
-  }, [tickers, source])
+  }, [tickers, source, isLoading])
 
   return (
     <WatchlistContext.Provider value={{
@@ -181,22 +188,30 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       removeTicker,
       setTickers,
       refreshFromDatabase,
-      syncToDatabase,
     }}>
       {children}
     </WatchlistContext.Provider>
   )
 }
 
-export function useWatchlist() {
-  const context = useContext(WatchlistContext)
-  if (!context) {
-    throw new Error('useWatchlist must be used within a WatchlistProvider')
-  }
-  return context
+const DEFAULT_CONTEXT: WatchlistContextType = {
+  tickers: DEFAULT_TICKERS,
+  source: 'manual',
+  lastSynced: null,
+  isLoading: false,
+  addTicker: () => {},
+  removeTicker: () => {},
+  setTickers: () => {},
+  refreshFromDatabase: async () => {},
 }
 
-// Hook for components that want to listen to watchlist without requiring the provider
+export function useWatchlist() {
+  const context = useContext(WatchlistContext)
+  // Return default context if not in provider (happens during SSR/static gen)
+  return context ?? DEFAULT_CONTEXT
+}
+
+// Hook for components that want to listen to watchlist without full context
 export function useWatchlistTickers(): string[] {
   const [tickers, setTickers] = useState<string[]>(DEFAULT_TICKERS)
 

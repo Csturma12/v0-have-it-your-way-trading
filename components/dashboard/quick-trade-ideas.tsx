@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingUp, TrendingDown, Zap, Flame, Target, ArrowRight, Search, Plus, X, Loader, RefreshCw } from 'lucide-react'
+import { TrendingUp, TrendingDown, Zap, Flame, Target, ArrowRight, Search, Plus, X, Loader } from 'lucide-react'
 import { useLiveQuotes } from '@/hooks/useLiveQuotes'
-import { useWatchlistTickers } from '@/contexts/watchlist-context'
 
 interface TradeIdea {
   ticker: string
@@ -32,22 +31,8 @@ export function QuickTradeIdeas({ onSelectIdea }: QuickTradeIdeasProps) {
   const [searchResults, setSearchResults] = useState<{ symbol: string; name: string }[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
-  const [useSyncedWatchlist, setUseSyncedWatchlist] = useState(true)
   
-  // Get tickers from watchlist context (synced from TradingView/Webull)
-  const syncedTickers = useWatchlistTickers()
-  
-  // Build trade ideas from synced watchlist OR defaults
-  const watchlistIdeas = useSyncedWatchlist && syncedTickers.length > 0
-    ? syncedTickers.slice(0, 10).map(ticker => ({
-        ticker,
-        action: 'buy' as const,
-        reason: 'From watchlist',
-        strength: 'medium' as const,
-      }))
-    : DEFAULT_IDEAS
-  
-  const IDEA_TICKERS = [...watchlistIdeas, ...customTickers.filter(c => !syncedTickers.includes(c.ticker))]
+  const IDEA_TICKERS = [...DEFAULT_IDEAS, ...customTickers]
   const tickers = IDEA_TICKERS.map(i => i.ticker)
   const { quotes, isLoading } = useLiveQuotes(tickers, { refreshInterval: 30000 })
 
@@ -131,22 +116,8 @@ export function QuickTradeIdeas({ onSelectIdea }: QuickTradeIdeasProps) {
         <div className="text-[9px] font-mono font-bold text-foreground/70 uppercase tracking-wide flex items-center gap-1">
           <Zap className="w-3 h-3 text-primary" />
           Trade Ideas
-          {syncedTickers.length > 0 && useSyncedWatchlist && (
-            <span className="text-[7px] font-mono text-cyan-400 bg-cyan-500/10 px-1 rounded">
-              Synced
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-1">
-          {syncedTickers.length > 0 && (
-            <button
-              onClick={() => setUseSyncedWatchlist(!useSyncedWatchlist)}
-              className={`p-0.5 rounded transition-colors ${useSyncedWatchlist ? 'text-cyan-400 hover:bg-cyan-500/20' : 'text-muted-foreground hover:bg-muted/50'}`}
-              title={useSyncedWatchlist ? 'Using synced watchlist' : 'Using default ideas'}
-            >
-              <RefreshCw className="w-3 h-3" />
-            </button>
-          )}
           <span className="text-[8px] font-mono text-muted-foreground">{ideas.length} active</span>
           <button
             onClick={() => setShowSearch(!showSearch)}

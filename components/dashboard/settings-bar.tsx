@@ -37,7 +37,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     icon: User,
     items: [
       { label: 'Account', href: '/account', icon: User },
-      { label: 'Broker Connections', href: '/settings/brokers', icon: Link2, accent: 'cyan' },
+      { label: 'Integrations', href: '/integrations', icon: Link2, accent: 'cyan' },
       { label: 'AI Assistant Trading', href: '/ai-assistant', icon: Bot, accent: 'cyan' },
       { label: 'Autonomous Trading', href: '/autonomous', icon: Zap, accent: 'green' },
     ],
