@@ -35,9 +35,12 @@ export function CatalystsRisk({ ticker }: { ticker?: string }) {
     if (!ticker) return
     setLoading(true)
     try {
-      const [catRes, riskRes] = await Promise.all([
+      // Fetch from multiple APIs in parallel: Finnhub catalysts, UW insider, Intrinio insider
+      const [catRes, riskRes, uwRes, intrinioRes] = await Promise.all([
         fetch(`/api/catalysts?symbol=${ticker}`),
         fetch(`/api/risk?symbol=${ticker}`),
+        fetch(`/api/unusual-whales?type=insider&ticker=${ticker}`),
+        fetch(`/api/intrinio?ticker=${ticker}&type=insider`),
       ])
 
       if (catRes.ok) {
@@ -45,10 +48,38 @@ export function CatalystsRisk({ ticker }: { ticker?: string }) {
         setCatalysts(catData.catalysts || [])
       }
 
+      // Combine risk data from multiple sources
+      let riskData: RiskData | null = null
       if (riskRes.ok) {
-        const riskData = await riskRes.json()
-        setRisk(riskData)
+        riskData = await riskRes.json()
       }
+
+      // Enrich with UW insider trades
+      if (uwRes.ok) {
+        const uwData = await uwRes.json()
+        const insiderTrades = uwData.data || []
+        const buying = insiderTrades.filter((t: any) => t.transaction_type === 'Purchase').length
+        const selling = insiderTrades.filter((t: any) => t.transaction_type === 'Sale').length
+        if (riskData) {
+          riskData.insiderBuying = buying || riskData.insiderBuying
+          riskData.insiderSelling = selling || riskData.insiderSelling
+        }
+      }
+
+      // Enrich with Intrinio insider data
+      if (intrinioRes.ok) {
+        const intrinioData = await intrinioRes.json()
+        const transactions = intrinioData.transactions || []
+        if (transactions.length > 0 && riskData) {
+          // Count recent buys/sells from Intrinio
+          const recentBuys = transactions.filter((t: any) => t.transaction_type?.includes('Purchase') || t.acquisition_disposition_code === 'A').length
+          const recentSells = transactions.filter((t: any) => t.transaction_type?.includes('Sale') || t.acquisition_disposition_code === 'D').length
+          riskData.insiderBuying = Math.max(riskData.insiderBuying || 0, recentBuys)
+          riskData.insiderSelling = Math.max(riskData.insiderSelling || 0, recentSells)
+        }
+      }
+
+      setRisk(riskData)
     } catch (err) {
       console.error('[CatalystsRisk] Error:', err)
     } finally {

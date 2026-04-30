@@ -35,30 +35,61 @@ export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/polygon/fundamentals?ticker=${ticker}`)
-      if (res.ok) {
-        const json = await res.json()
-        const f = json.fundamentals || {}
-        setData({
-          pe: f.pe || null,
-          ps: f.ps || null,
-          pb: f.pb || null,
-          eps: f.eps || null,
-          revenueGrowth: f.revenueGrowth || 65.47,
-          grossMargin: f.grossMargin || 71.31,
-          operatingMargin: f.operatingMargin || 60.38,
-          netMargin: f.netMargin || 55.60,
-          roe: f.roe || 104.37,
-          debtToEquity: f.debtToEquity || 0.05,
-          high52w: f.high52w || 216.82,
-          low52w: f.low52w || 104.08,
-          beta: f.beta || null,
-          divYield: f.divYield || null,
-        })
-        setSource(json.source || 'polygon')
-      } else {
-        throw new Error('fetch failed')
+      // Fetch from Polygon AND Intrinio in parallel for better data coverage
+      const [polygonRes, intrinioRes] = await Promise.all([
+        fetch(`/api/polygon/fundamentals?ticker=${ticker}`),
+        fetch(`/api/intrinio?ticker=${ticker}&type=fundamentals`),
+      ])
+
+      let f: any = {}
+      let src = 'unknown'
+
+      // Try Polygon first
+      if (polygonRes.ok) {
+        const json = await polygonRes.json()
+        f = json.fundamentals || {}
+        src = json.source || 'polygon'
       }
+
+      // Enrich/override with Intrinio data (usually more comprehensive)
+      if (intrinioRes.ok) {
+        const intrinioJson = await intrinioRes.json()
+        const ifund = intrinioJson.fundamentals || {}
+        if (Object.keys(ifund).length > 0) {
+          src = 'intrinio'
+          // Intrinio uses different key names
+          f.pe = ifund.pricetoearnings ?? f.pe
+          f.pb = ifund.pricetobook ?? f.pb
+          f.ps = ifund.pricetosales ?? f.ps
+          f.eps = ifund.dilutedeps ?? ifund.basiceps ?? f.eps
+          f.revenueGrowth = (ifund.revenueyoygrowth ?? ifund.revenueqoqgrowth) ? (ifund.revenueyoygrowth ?? ifund.revenueqoqgrowth) * 100 : f.revenueGrowth
+          f.grossMargin = ifund.grossmargin ? ifund.grossmargin * 100 : f.grossMargin
+          f.operatingMargin = ifund.operatingmargin ? ifund.operatingmargin * 100 : f.operatingMargin
+          f.netMargin = ifund.netmargin ? ifund.netmargin * 100 : f.netMargin
+          f.roe = ifund.roe ? ifund.roe * 100 : f.roe
+          f.debtToEquity = ifund.debttoequity ?? f.debtToEquity
+          f.beta = ifund.beta ?? f.beta
+          f.divYield = ifund.dividendyield ? ifund.dividendyield * 100 : f.divYield
+        }
+      }
+
+      setData({
+        pe: f.pe || null,
+        ps: f.ps || null,
+        pb: f.pb || null,
+        eps: f.eps || null,
+        revenueGrowth: f.revenueGrowth || null,
+        grossMargin: f.grossMargin || null,
+        operatingMargin: f.operatingMargin || null,
+        netMargin: f.netMargin || null,
+        roe: f.roe || null,
+        debtToEquity: f.debtToEquity || null,
+        high52w: f.high52w || null,
+        low52w: f.low52w || null,
+        beta: f.beta || null,
+        divYield: f.divYield || null,
+      })
+      setSource(src)
     } catch {
       // fallback demo data
       setData({

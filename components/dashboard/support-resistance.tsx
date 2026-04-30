@@ -30,31 +30,41 @@ export function SupportResistance({ ticker }: { ticker: string }) {
   const fetchLevels = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch technicals and quote data
-      const [techRes, quoteRes] = await Promise.all([
+      // Fetch technicals, quote data, AND Flash Alpha GEX levels in parallel
+      const [techRes, quoteRes, flashAlphaRes] = await Promise.all([
         fetch(`/api/technicals?ticker=${ticker}`),
         fetch(`/api/polygon/quote?ticker=${ticker}`),
+        fetch(`/api/flash-alpha?symbol=${ticker}&endpoint=levels`),
       ])
 
       const techData = techRes.ok ? await techRes.json() : null
       const quoteData = quoteRes.ok ? await quoteRes.json() : null
+      const flashAlphaData = flashAlphaRes.ok ? await flashAlphaRes.json() : null
 
       const price = quoteData?.quote?.price || 100
       const high = quoteData?.quote?.high || price * 1.02
       const low = quoteData?.quote?.low || price * 0.98
       const close = quoteData?.quote?.prevClose || price
 
-      // Calculate pivot points
+      // Use Flash Alpha GEX levels if available (more accurate for options-driven stocks)
+      const faLevels = flashAlphaData?.data?.levels || []
+      const faResistance = faLevels.filter((l: any) => l.type === 'resistance' || l.level > price).slice(0, 2)
+      const faSupport = faLevels.filter((l: any) => l.type === 'support' || l.level < price).slice(0, 2)
+
+      // Calculate pivot points (fallback)
       const pivot = (high + low + close) / 3
-      const r1 = 2 * pivot - low
-      const r2 = pivot + (high - low)
-      const s1 = 2 * pivot - high
-      const s2 = pivot - (high - low)
+      const r1 = faResistance[0]?.level || 2 * pivot - low
+      const r2 = faResistance[1]?.level || pivot + (high - low)
+      const s1 = faSupport[0]?.level || 2 * pivot - high
+      const s2 = faSupport[1]?.level || pivot - (high - low)
 
       // Get SMA values from technicals or estimate
       const sma20 = techData?.data?.SMA?.value || price * 0.98
       const sma50 = techData?.data?.SMA50?.value || price * 0.95
       const sma200 = techData?.data?.SMA200?.value || price * 0.90
+
+      // Update source based on what data we got
+      const src = flashAlphaData?.data ? 'flash-alpha' : (quoteData?.source || 'demo')
 
       setLevels({
         monthlyHigh: price * 1.08,
@@ -73,7 +83,7 @@ export function SupportResistance({ ticker }: { ticker: string }) {
         s2,
         currentPrice: price,
       })
-      setSource(quoteData?.source || 'demo')
+      setSource(src)
     } catch (err) {
       console.error('[SupportResistance] Error:', err)
     } finally {
