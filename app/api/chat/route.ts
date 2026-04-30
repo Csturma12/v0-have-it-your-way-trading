@@ -3,6 +3,7 @@ import { Octokit } from "octokit";
 import simpleGit from "simple-git";
 import fs from "fs";
 import path from "path";
+import { createClient } from "@/lib/supabase/server";
 
 const client = new Anthropic();
 
@@ -15,6 +16,17 @@ const octokit = new Octokit({ auth: GITHUB_TOKEN });
 const git = simpleGit(PROJECT_PATH);
 
 export async function POST(req: Request) {
+  // Verify authentication
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError || !user) {
+    return Response.json(
+      { error: "Unauthorized. Please log in to access this endpoint." },
+      { status: 401 }
+    );
+  }
+
   const { message } = await req.json();
 
   const tools = [
