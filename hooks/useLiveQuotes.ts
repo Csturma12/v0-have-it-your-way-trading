@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 
 // Global deduplication - prevent multiple components from fetching the same tickers simultaneously
 const pendingFetches = new Map<string, Promise<Record<string, unknown>>>()
@@ -64,90 +64,85 @@ export function useLiveQuotes(
   const [quotes, setQuotes] = useState<Record<string, LiveQuote>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const tickersRef = useRef(tickers.join(','))
-
-  // Initialize quotes with loading state
+  
+  // Stabilize tickers array - only change when actual tickers change
+  const tickerKey = tickers.sort().join(',')
+  const stableTickers = useMemo(() => tickers, [tickerKey])
+  
+  // Use ref to track current tickers without causing re-renders
+  const tickersRef = useRef<string[]>(stableTickers)
+  const mountedRef = useRef(true)
+  
+  // Update ref when tickers actually change
   useEffect(() => {
-    const tickerKey = tickers.join(',')
-    if (tickerKey !== tickersRef.current) {
-      tickersRef.current = tickerKey
-      const initial: Record<string, LiveQuote> = {}
-      tickers.forEach(t => {
+    tickersRef.current = stableTickers
+  }, [stableTickers])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+
+  // Initialize quotes with loading state when tickers change
+  useEffect(() => {
+    if (stableTickers.length === 0) return
+    
+    const initial: Record<string, LiveQuote> = {}
+    stableTickers.forEach(t => {
+      // Check cache first
+      const cached = globalQuoteCache.get(t)
+      if (cached && (Date.now() - cached.timestamp) < QUOTE_CACHE_TTL) {
+        initial[t] = parseQuoteData(cached.quote as Record<string, unknown>, t)
+      } else {
         initial[t] = { ticker: t, price: 0, change: 0, changePercent: 0, loading: true }
-      })
-      setQuotes(initial)
-    }
-  }, [tickers])
+      }
+    })
+    setQuotes(initial)
+  }, [stableTickers])
 
   const fetchQuotes = useCallback(async () => {
-    if (!enabled || tickers.length === 0) return
+    const currentTickers = tickersRef.current
+    if (!enabled || currentTickers.length === 0) return
 
-    // Check if we can use cached data
     const now = Date.now()
-    const allCached = tickers.every(t => {
+    
+    // Check if all tickers are cached
+    const allCached = currentTickers.every(t => {
       const cached = globalQuoteCache.get(t)
       return cached && (now - cached.timestamp) < QUOTE_CACHE_TTL
     })
 
     if (allCached) {
-      // Use cached data
-      setQuotes(prev => {
-        const next: Record<string, LiveQuote> = {}
-        tickers.forEach(t => {
-          const cached = globalQuoteCache.get(t)
-          if (cached) {
-            next[t] = parseQuoteData(cached.quote as Record<string, unknown>, t)
-          } else {
-            next[t] = prev[t] ?? { ticker: t, price: 0, change: 0, changePercent: 0, loading: false }
-          }
-        })
-        return next
+      // Use cached data without triggering unnecessary state updates
+      const cachedQuotes: Record<string, LiveQuote> = {}
+      currentTickers.forEach(t => {
+        const cached = globalQuoteCache.get(t)
+        if (cached) {
+          cachedQuotes[t] = parseQuoteData(cached.quote as Record<string, unknown>, t)
+        }
       })
+      if (mountedRef.current) {
+        setQuotes(cachedQuotes)
+      }
       return
     }
 
     // Global throttle check
     if (now - lastGlobalFetch < GLOBAL_THROTTLE_MS) {
-      // Too soon - use whatever cache we have
-      setQuotes(prev => {
-        const next: Record<string, LiveQuote> = {}
-        tickers.forEach(t => {
-          const cached = globalQuoteCache.get(t)
-          if (cached) {
-            next[t] = parseQuoteData(cached.quote as Record<string, unknown>, t)
-          } else {
-            next[t] = prev[t] ?? { ticker: t, price: 0, change: 0, changePercent: 0, loading: false }
-          }
-        })
-        return next
-      })
-      return
+      return // Too soon, skip fetch
     }
 
-    const tickerParam = tickers.join(',')
+    const tickerParam = currentTickers.join(',')
     
-    // Deduplicate: if this exact request is already in flight, wait for it
-    const existingFetch = pendingFetches.get(tickerParam)
-    if (existingFetch) {
-      try {
-        const data = await existingFetch
-        const fetchedQuotes = (data as { quotes?: Record<string, unknown> }).quotes ?? {}
-        setQuotes(prev => {
-          const next: Record<string, LiveQuote> = {}
-          tickers.forEach(t => {
-            const q = fetchedQuotes[t] as Record<string, unknown> | undefined
-            next[t] = q ? parseQuoteData(q, t) : { ...prev[t], loading: false, error: 'No data' }
-          })
-          return next
-        })
-        setLastUpdated(new Date())
-      } catch {
-        // Error already handled by original request
-      }
+    // Deduplicate: if this exact request is already in flight, skip
+    if (pendingFetches.has(tickerParam)) {
       return
     }
 
-    setIsLoading(true)
+    if (mountedRef.current) {
+      setIsLoading(true)
+    }
     
     const fetchPromise = fetch(`/api/polygon/batch-quotes?tickers=${tickerParam}`)
       .then(res => {
@@ -164,44 +159,53 @@ export function useLiveQuotes(
       const fetchTime = Date.now()
 
       // Update global cache
-      tickers.forEach(t => {
+      currentTickers.forEach(t => {
         if (fetchedQuotes[t]) {
           globalQuoteCache.set(t, { quote: fetchedQuotes[t], timestamp: fetchTime })
         }
       })
 
-      setQuotes(prev => {
+      if (mountedRef.current) {
         const next: Record<string, LiveQuote> = {}
-        tickers.forEach(t => {
+        currentTickers.forEach(t => {
           const q = fetchedQuotes[t] as Record<string, unknown> | undefined
-          next[t] = q ? parseQuoteData(q, t) : { ...prev[t], loading: false, error: 'No data' }
+          next[t] = q ? parseQuoteData(q, t) : { ticker: t, price: 0, change: 0, changePercent: 0, loading: false, error: 'No data' }
         })
-        return next
-      })
-      setLastUpdated(new Date())
+        setQuotes(next)
+        setLastUpdated(new Date())
+      }
     } catch (err) {
       console.error('[useLiveQuotes] Error:', err)
-      setQuotes(prev => {
+      if (mountedRef.current) {
         const next: Record<string, LiveQuote> = {}
-        tickers.forEach(t => {
-          next[t] = { ...prev[t], loading: false, error: 'Fetch failed' }
+        currentTickers.forEach(t => {
+          next[t] = { ticker: t, price: 0, change: 0, changePercent: 0, loading: false, error: 'Fetch failed' }
         })
-        return next
-      })
+        setQuotes(next)
+      }
     } finally {
       pendingFetches.delete(tickerParam)
-      setIsLoading(false)
+      if (mountedRef.current) {
+        setIsLoading(false)
+      }
     }
-  }, [tickers, enabled])
+  }, [enabled]) // Only depend on enabled, use ref for tickers
 
-  // Fetch on mount and at interval
+  // Fetch on mount and at interval - separate effect with stable dependencies
   useEffect(() => {
-    if (!enabled || tickers.length === 0) return
+    if (!enabled || stableTickers.length === 0) return
 
-    fetchQuotes()
+    // Initial fetch with small delay to batch multiple mounts
+    const initialTimeout = setTimeout(fetchQuotes, 100)
+    
+    // Set up interval for refresh
     const interval = setInterval(fetchQuotes, refreshInterval)
-    return () => clearInterval(interval)
-  }, [fetchQuotes, refreshInterval, enabled, tickers.length])
+    
+    return () => {
+      clearTimeout(initialTimeout)
+      clearInterval(interval)
+    }
+  }, [enabled, refreshInterval, stableTickers.length]) // Don't include fetchQuotes to prevent infinite loop
 
   return { quotes, isLoading, lastUpdated, refresh: fetchQuotes }
 }
@@ -210,10 +214,9 @@ export function useLiveQuotes(
  * Fetches a single live quote for one ticker.
  */
 export function useLiveQuote(ticker: string, options: UseLiveQuotesOptions = {}) {
-  const { quotes, isLoading, lastUpdated, refresh } = useLiveQuotes(
-    ticker ? [ticker] : [],
-    options
-  )
+  const tickerArray = useMemo(() => ticker ? [ticker] : [], [ticker])
+  const { quotes, isLoading, lastUpdated, refresh } = useLiveQuotes(tickerArray, options)
+  
   return {
     quote: quotes[ticker] ?? { ticker, price: 0, change: 0, changePercent: 0, loading: true },
     isLoading,

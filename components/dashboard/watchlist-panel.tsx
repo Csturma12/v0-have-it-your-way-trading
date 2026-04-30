@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2, RefreshCw, Link2, ChevronDown, Folder } from 'lucide-react'
+import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2, RefreshCw, Link2 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { QuickTradeBox } from './quick-trade-box'
 import { QuickTradeIdeas } from './quick-trade-ideas'
+import { PatternWatchlist } from './pattern-watchlist'
+import { CompanyProfile } from './company-profile'
 import { useWatchlist } from '@/contexts/watchlist-context'
 
 interface WatchlistItem {
@@ -98,6 +100,7 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
   const source = activeWatchlist?.source || 'manual'
   const lastSynced = activeWatchlist?.lastSynced || null
   
+  const [activeTab, setActiveTab] = useState<'watchlist' | 'patterns' | 'profile'>('watchlist')
   const [hydrated, setHydrated] = useState(false)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -231,7 +234,39 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
+      {/* Tabs */}
+      <div className="flex border-b border-border">
+        <button
+          onClick={() => setActiveTab('watchlist')}
+          className={`flex-1 py-1.5 text-[10px] font-mono font-bold tracking-wide transition-colors ${
+            activeTab === 'watchlist'
+              ? 'text-primary border-b-2 border-primary bg-primary/5'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          WATCHLIST
+        </button>
+        <button
+          onClick={() => setActiveTab('patterns')}
+          className={`flex-1 py-1.5 text-[10px] font-mono font-bold tracking-wide transition-colors ${
+            activeTab === 'patterns'
+              ? 'text-purple-400 border-b-2 border-purple-400 bg-purple-500/5'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          PATTERNS
+        </button>
+      </div>
+
+      {/* Pattern Watchlist tab */}
+      {activeTab === 'patterns' && (
+        <div className="flex-1 overflow-y-auto p-2">
+          <PatternWatchlist onSelectTicker={onSelectTicker} />
+        </div>
+      )}
+
+      {/* Watchlist tab header + inputs */}
+      {activeTab === 'watchlist' && (
       <div className="p-2 border-b border-border">
         <div className="flex items-center gap-2 mb-1.5">
           <div className="relative flex-1">
@@ -263,8 +298,10 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
           </div>
         </div>
       </div>
+      )}
 
-      {/* Watchlist Items */}
+      {/* Watchlist Items - only shown on watchlist tab */}
+      {activeTab === 'watchlist' && (
       <div className="flex-1 overflow-y-auto">
         <div className="p-1 space-y-0.5">
           {filtered.map((item) => {
@@ -357,8 +394,11 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
           })}
         </div>
       </div>
+      )}
 
-      {/* Quick Trade Ideas */}
+      {/* Quick Trade Ideas - only shown on watchlist tab */}
+      {activeTab === 'watchlist' && (
+      <>
       <QuickTradeIdeas
         onSelectIdea={(ticker) => onSelectTicker?.(ticker)}
       />
@@ -402,6 +442,8 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   )
 }
