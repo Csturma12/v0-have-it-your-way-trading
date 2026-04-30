@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { QuickTradeBox } from './quick-trade-box'
 import { QuickTradeIdeas } from './quick-trade-ideas'
 import { PatternWatchlist } from './pattern-watchlist'
+import { CompanyProfile } from './company-profile'
 import { useWatchlist } from '@/contexts/watchlist-context'
 
 interface WatchlistItem {
