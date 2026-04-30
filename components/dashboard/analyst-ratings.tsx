@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { RefreshCw } from 'lucide-react'
+import { WidgetEmptyState } from './widget-empty-state'
 
 interface AnalystRating {
   strongBuy: number
@@ -13,46 +14,38 @@ interface AnalystRating {
   date?: string
 }
 
-const MOCK_RATINGS: Record<string, AnalystRating> = {
-  AAPL: { strongBuy: 24, buy: 42, hold: 4, sell: 0, strongSell: 0, targetPrice: 235.50 },
-  NVDA: { strongBuy: 24, buy: 42, hold: 4, sell: 0, strongSell: 0, targetPrice: 185.75 },
-  MSFT: { strongBuy: 25, buy: 40, hold: 4, sell: 1, strongSell: 0, targetPrice: 485.00 },
-}
-
 export function AnalystRatings({ ticker = 'AAPL' }: { ticker: string }) {
   const [ratings, setRatings] = useState<AnalystRating | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [source, setSource] = useState<string>('unknown')
 
   const fetchRatings = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await fetch(`/api/research/aggregate?ticker=${ticker}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.analyst_ratings || data.recommendations) {
-          const ar = data.analyst_ratings || data.recommendations || {}
-          setRatings({
-            strongBuy: ar.strongBuy || ar.strong_buy || 0,
-            buy: ar.buy || 0,
-            hold: ar.hold || 0,
-            sell: ar.sell || 0,
-            strongSell: ar.strongSell || ar.strong_sell || 0,
-            targetPrice: ar.targetPrice || ar.target_price || null,
-            date: ar.date || new Date().toISOString().split('T')[0],
-          })
-          setSource(data.source || 'api')
-          return
-        }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.analyst_ratings || data.recommendations) {
+        const ar = data.analyst_ratings || data.recommendations || {}
+        setRatings({
+          strongBuy: ar.strongBuy || ar.strong_buy || 0,
+          buy: ar.buy || 0,
+          hold: ar.hold || 0,
+          sell: ar.sell || 0,
+          strongSell: ar.strongSell || ar.strong_sell || 0,
+          targetPrice: ar.targetPrice || ar.target_price || null,
+          date: ar.date || new Date().toISOString().split('T')[0],
+        })
+        setSource(data.source || 'api')
+      } else {
+        setRatings(null)
+        setError('No ratings available for ' + ticker)
       }
-      // Fallback
-      const base = MOCK_RATINGS[ticker] || MOCK_RATINGS.AAPL
-      setRatings({ ...base, date: new Date().toISOString().split('T')[0] })
-      setSource('demo')
-    } catch {
-      const mock = MOCK_RATINGS[ticker] || MOCK_RATINGS.AAPL
-      setRatings({ ...mock, date: new Date().toISOString().split('T')[0] })
-      setSource('demo')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load ratings')
+      setRatings(null)
     } finally {
       setLoading(false)
     }
@@ -64,9 +57,7 @@ export function AnalystRatings({ ticker = 'AAPL' }: { ticker: string }) {
     return () => clearInterval(interval)
   }, [fetchRatings])
 
-  if (!ratings && !loading) {
-    return <div className="h-full flex items-center justify-center text-[9px] text-muted-foreground">No data</div>
-  }
+
 
   const total = ratings ? ratings.strongBuy + ratings.buy + ratings.hold + ratings.sell + ratings.strongSell : 0
   const getWidth = (val: number) => total > 0 ? `${(val / total) * 100}%` : '0%'
@@ -90,7 +81,11 @@ export function AnalystRatings({ ticker = 'AAPL' }: { ticker: string }) {
           <div className="flex items-center justify-center h-full">
             <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />
           </div>
-        ) : ratings && (
+        ) : error ? (
+          <WidgetEmptyState type="error" message={error} onRetry={fetchRatings} />
+        ) : !ratings ? (
+          <WidgetEmptyState type="no-ticker" />
+        ) : (
           <>
             {/* Strong Buy */}
             <div className="flex items-center gap-1.5">

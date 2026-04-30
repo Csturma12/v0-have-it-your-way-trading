@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { TrendingUp, TrendingDown, RefreshCw, Target } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { WidgetEmptyState } from './widget-empty-state'
 
 interface Levels {
   monthlyHigh: number
@@ -25,10 +26,12 @@ interface Levels {
 export function SupportResistance({ ticker }: { ticker: string }) {
   const [levels, setLevels] = useState<Levels | null>(null)
   const [loading, setLoading] = useState(true)
-  const [source, setSource] = useState<string>('demo')
+  const [error, setError] = useState<string | null>(null)
+  const [source, setSource] = useState<string>('unknown')
 
   const fetchLevels = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       // Fetch technicals, quote data, AND Flash Alpha GEX levels in parallel
       const [techRes, quoteRes, flashAlphaRes] = await Promise.all([
@@ -66,16 +69,22 @@ export function SupportResistance({ ticker }: { ticker: string }) {
       // Update source based on what data we got
       const src = flashAlphaData?.data ? 'flash-alpha' : (quoteData?.source || 'demo')
 
+      // Use real OHLC highs/lows from quote data, not fake multipliers
+      const monthlyHigh = quoteData?.quote?.monthHigh || quoteData?.quote?.high52w || high
+      const weeklyHigh  = quoteData?.quote?.weekHigh  || high
+      const monthlyLow  = quoteData?.quote?.monthLow  || quoteData?.quote?.low52w  || low
+      const weeklyLow   = quoteData?.quote?.weekLow   || low
+
       setLevels({
-        monthlyHigh: price * 1.08,
-        weeklyHigh: price * 1.03,
-        monthlyLow: price * 0.92,
-        weeklyLow: price * 0.97,
+        monthlyHigh,
+        weeklyHigh,
+        monthlyLow,
+        weeklyLow,
         sma20,
         sma50,
         sma200,
-        ema9: price * 1.01,
-        ema21: price * 0.99,
+        ema9: techData?.data?.EMA9?.value  || price,
+        ema21: techData?.data?.EMA21?.value || price,
         pivotPoint: pivot,
         r1,
         r2,
@@ -85,7 +94,8 @@ export function SupportResistance({ ticker }: { ticker: string }) {
       })
       setSource(src)
     } catch (err) {
-      console.error('[SupportResistance] Error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load levels')
+      setLevels(null)
     } finally {
       setLoading(false)
     }
@@ -128,7 +138,11 @@ export function SupportResistance({ ticker }: { ticker: string }) {
           <div className="flex items-center justify-center h-full">
             <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
           </div>
-        ) : levels ? (
+        ) : error ? (
+          <WidgetEmptyState type="error" message={error} onRetry={fetchLevels} />
+        ) : !levels ? (
+          <WidgetEmptyState type="no-ticker" />
+        ) : (
           <div className="space-y-2">
             {/* Highs/Lows */}
             <div>
@@ -217,8 +231,6 @@ export function SupportResistance({ ticker }: { ticker: string }) {
               </div>
             </div>
           </div>
-        ) : (
-          <div className="text-muted-foreground text-center py-4">No data</div>
         )}
       </div>
     </div>

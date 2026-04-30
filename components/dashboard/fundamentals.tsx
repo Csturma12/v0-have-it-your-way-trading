@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { RefreshCw } from 'lucide-react'
+import { WidgetEmptyState } from './widget-empty-state'
 
 interface Fundamentals {
   pe: number | null
@@ -30,10 +31,12 @@ function fmt(value: number | null, type: 'pct' | 'ratio' | 'dollar' = 'ratio'): 
 export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
   const [data, setData] = useState<Fundamentals | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [source, setSource] = useState<string>('unknown')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       // Fetch from Polygon AND Intrinio in parallel for better data coverage
       const [polygonRes, intrinioRes] = await Promise.all([
@@ -90,14 +93,9 @@ export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
         divYield: f.divYield || null,
       })
       setSource(src)
-    } catch {
-      // fallback demo data
-      setData({
-        pe: 22.59, ps: null, pb: 28.81, eps: 4.90,
-        revenueGrowth: 65.47, grossMargin: 71.31, operatingMargin: 60.38, netMargin: 55.60,
-        roe: 104.37, debtToEquity: 0.05, high52w: 216.82, low52w: 104.08, beta: null, divYield: null,
-      })
-      setSource('demo')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load fundamentals')
+      setData(null)
     } finally {
       setLoading(false)
     }
@@ -130,7 +128,11 @@ export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
           <div className="flex items-center justify-center h-full">
             <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />
           </div>
-        ) : data && (
+        ) : error ? (
+          <WidgetEmptyState type="error" message={error} onRetry={fetchData} />
+        ) : !data ? (
+          <WidgetEmptyState type="no-ticker" />
+        ) : (
           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px]">
             {/* Left column */}
             <div className="space-y-1">
