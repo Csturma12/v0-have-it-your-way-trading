@@ -22,6 +22,31 @@ async function fetchIntrinioCompany(ticker: string) {
   }
 }
 
+// Fetch key executives/officers from Intrinio
+async function fetchIntrinioOfficers(ticker: string) {
+  if (!INTRINIO_KEY) return null
+
+  try {
+    const res = await fetch(
+      `https://api-v2.intrinio.com/companies/${ticker}/officers?api_key=${INTRINIO_KEY}`,
+      { next: { revalidate: 432000 } } // refresh once every 5 days (officer rosters change rarely)
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    // Intrinio shape: { officers: [{ first_name, last_name, title, ... }] }
+    const officers = data?.officers || data?.company_officers || []
+    return officers
+      .map((o: any) => ({
+        name: [o.first_name, o.middle_name, o.last_name].filter(Boolean).join(' ').trim() || o.name || '',
+        title: o.title || o.position || '',
+      }))
+      .filter((o: any) => o.name)
+      .slice(0, 12)
+  } catch {
+    return null
+  }
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const ticker = (searchParams.get('ticker') || 'AAPL').toUpperCase()
@@ -32,10 +57,11 @@ export async function GET(request: Request) {
 
   try {
     // Fetch from multiple sources in parallel
-    const [snapshotRes, detailsRes, intrinioCompany] = await Promise.all([
+    const [snapshotRes, detailsRes, intrinioCompany, intrinioOfficers] = await Promise.all([
       POLYGON_KEY ? fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apiKey=${POLYGON_KEY}`, { next: { revalidate: 15 } }) : Promise.resolve(null),
       POLYGON_KEY ? fetch(`https://api.polygon.io/v3/reference/tickers/${ticker}?apiKey=${POLYGON_KEY}`, { next: { revalidate: 3600 } }) : Promise.resolve(null),
       fetchIntrinioCompany(ticker),
+      fetchIntrinioOfficers(ticker),
     ])
 
     const snapshotData = snapshotRes && snapshotRes.ok ? await snapshotRes.json() : null
@@ -87,6 +113,7 @@ export async function GET(request: Request) {
       hqCountry: ic?.hq_country ?? null,
       entityStatus: ic?.entity_status ?? null,
       legalName: ic?.legal_name ?? null,
+      executives: intrinioOfficers ?? [],
     } : null
 
     // Build AI summary from available descriptions (prefer Intrinio's longer description)

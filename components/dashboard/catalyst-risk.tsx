@@ -135,15 +135,12 @@ export function CatalystRisk({ ticker }: { ticker: string }) {
   }
 
   return (
-    <div className="h-full bg-card border border-border rounded-lg overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">Catalyst/Risk</span>
-          <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source !== 'default' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
-            {source !== 'default' ? 'LIVE' : 'DEFAULT'}
-          </Badge>
-        </div>
+    <div className="h-full overflow-hidden flex flex-col relative">
+      {/* Floating actions */}
+      <div className="absolute top-1 right-1 z-10 flex items-center gap-1">
+        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source !== 'default' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
+          {source !== 'default' ? 'LIVE' : 'DEFAULT'}
+        </Badge>
         <button onClick={fetchData} className="p-0.5 hover:bg-muted/50 rounded">
           <RefreshCw className={`w-3 h-3 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
         </button>

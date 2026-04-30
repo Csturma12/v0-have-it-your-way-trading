@@ -102,27 +102,22 @@ export function TickerInfo({ ticker }: { ticker: string }) {
   const up = data ? data.change >= 0 : true
 
   return (
-    <div className="h-full bg-card border border-border rounded-lg overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">Ticker Info</span>
-          <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
-            {source === 'polygon' ? 'LIVE' : 'DEFAULT'}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={toggleWatchlist}
-            className={`p-0.5 rounded transition-colors ${isInWatchlist ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`}
-            title={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
-          >
-            <Star className={`w-3 h-3 ${isInWatchlist ? 'fill-yellow-400' : ''}`} />
-          </button>
-          <button onClick={fetchData} className="p-0.5 hover:bg-muted/50 rounded">
-            <RefreshCw className={`w-3 h-3 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+    <div className="h-full overflow-hidden flex flex-col relative">
+      {/* Floating actions */}
+      <div className="absolute top-1 right-1 z-10 flex items-center gap-1">
+        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
+          {source === 'polygon' ? 'LIVE' : 'DEFAULT'}
+        </Badge>
+        <button
+          onClick={toggleWatchlist}
+          className={`p-0.5 rounded transition-colors ${isInWatchlist ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`}
+          title={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
+        >
+          <Star className={`w-3 h-3 ${isInWatchlist ? 'fill-yellow-400' : ''}`} />
+        </button>
+        <button onClick={fetchData} className="p-0.5 hover:bg-muted/50 rounded">
+          <RefreshCw className={`w-3 h-3 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {/* Content */}

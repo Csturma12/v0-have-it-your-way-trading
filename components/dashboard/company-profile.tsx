@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Building2, Users, Globe, Briefcase } from 'lucide-react'
+import { RefreshCw, Users, Globe, Briefcase } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { WidgetEmptyState } from './widget-empty-state'
 
@@ -86,29 +86,21 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
   const { profile, source } = data ?? {}
 
   return (
-    <div className="h-full bg-card border border-border rounded-lg overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-1.5">
-          <Building2 className="w-3 h-3 text-muted-foreground" />
-          <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">Company Profile</span>
+    <div className="h-full overflow-hidden flex flex-col">
+      {/* Tabs */}
+      {profile && (
+        <div className="flex border-b border-border bg-muted/20 relative">
           {source && (
             <Badge
               variant="outline"
-              className={`text-[8px] px-1 py-0 ${source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}
+              className={`absolute right-7 top-1/2 -translate-y-1/2 text-[8px] px-1 py-0 ${source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}
             >
               {source === 'polygon' ? 'LIVE' : 'DEFAULT'}
             </Badge>
           )}
-        </div>
-        <button onClick={fetchData} className="p-0.5 hover:bg-muted/50 rounded">
-          <RefreshCw className={`w-3 h-3 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
-
-      {/* Tabs */}
-      {profile && (
-        <div className="flex border-b border-border bg-muted/20">
+          <button onClick={fetchData} className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 hover:bg-muted/50 rounded">
+            <RefreshCw className={`w-3 h-3 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
+          </button>
           <button
             onClick={() => setActiveTab('profile')}
             className={`flex-1 px-2 py-1 text-[9px] font-mono uppercase tracking-wide transition-colors ${
