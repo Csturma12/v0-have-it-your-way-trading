@@ -385,38 +385,32 @@ interface RightWidget {
   title: string
 }
 
-const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
-  { id: 'ticker-info',       type: 'ticker-info',       title: 'Ticker Info' },
-  { id: 'company-profile',   type: 'company-profile',   title: 'Company Profile' },
-  { id: 'chart',             type: 'chart',             title: 'Chart' },
-  { id: 'analyst-ratings',   type: 'analyst-ratings',   title: 'Analyst Ratings' },
-  { id: 'fundamentals',      type: 'fundamentals',      title: 'Fundamentals' },
-  { id: 'catalysts-risk',    type: 'catalysts-risk',    title: 'Catalysts & Risk' },
-  { id: 'news',              type: 'news',              title: 'Market News' },
-  { id: 'watchlist',         type: 'watchlist',         title: 'Watchlist' },
-  { id: 'quick-trade',       type: 'quick-trade',       title: 'Quick Trade' },
-  { id: 'trade-ideas',       type: 'trade-ideas',       title: 'Trade Ideas' },
+// Master widget registry — single source of truth, no duplicates
+const ALL_AVAILABLE_WIDGETS: RightWidget[] = [
+  { id: 'ticker-info',        type: 'ticker-info',        title: 'Ticker Info' },
+  { id: 'company-profile',    type: 'company-profile',    title: 'Company Profile' },
+  { id: 'chart',              type: 'chart',              title: 'Chart' },
+  { id: 'watchlist',          type: 'watchlist',          title: 'Watchlist' },
+  { id: 'news',               type: 'news',               title: 'Market News' },
+  { id: 'fundamentals',       type: 'fundamentals',       title: 'Fundamentals' },
+  { id: 'analyst-ratings',    type: 'analyst-ratings',    title: 'Analyst Ratings' },
+  { id: 'technicals',         type: 'technicals',         title: 'Technical Indicators' },
+  { id: 'support-resistance', type: 'support-resistance', title: 'Support & Resistance' },
+  { id: 'catalysts',          type: 'catalysts',          title: 'Catalysts' },
+  { id: 'catalysts-risk',     type: 'catalysts-risk',     title: 'Catalysts & Risk' },
+  { id: 'metrics',            type: 'metrics',            title: 'Metrics' },
+  { id: 'gex-levels',         type: 'gex-levels',         title: 'GEX Levels' },
+  { id: 'market-overview',    type: 'market-overview',    title: 'Market Overview' },
+  { id: 'options-chain',      type: 'options-chain',      title: 'Options Chain' },
+  { id: 'quick-trade',        type: 'quick-trade',        title: 'Quick Trade' },
+  { id: 'trade-ideas',        type: 'trade-ideas',        title: 'Trade Ideas' },
 ]
 
-// All widgets — any removed from the grid can be re-added from this pool
-const ADDON_WIDGETS: RightWidget[] = [
-  { id: 'chart',             type: 'chart',             title: 'Chart' },
-  { id: 'ticker-info',       type: 'ticker-info',       title: 'Ticker Info' },
-  { id: 'company-profile',   type: 'company-profile',   title: 'Company Profile' },
-  { id: 'watchlist',         type: 'watchlist',         title: 'Watchlist' },
-  { id: 'news',              type: 'news',              title: 'Market News' },
-  { id: 'fundamentals',      type: 'fundamentals',      title: 'Fundamentals' },
-  { id: 'analyst-ratings',   type: 'analyst-ratings',   title: 'Analyst Ratings' },
-  { id: 'metrics',           type: 'metrics',           title: 'Metrics' },
-  { id: 'catalysts',         type: 'catalysts',         title: 'Catalysts' },
-  { id: 'catalysts-risk',    type: 'catalysts-risk',    title: 'Catalysts & Risk' },
-  { id: 'gex-levels',        type: 'gex-levels',        title: 'GEX Levels (Flash Alpha)' },
-  { id: 'market-overview',   type: 'market-overview',   title: 'Market Overview' },
-  { id: 'technicals',        type: 'technicals',        title: 'Technical Indicators' },
-  { id: 'options-chain',     type: 'options-chain',     title: 'Options Chain' },
-  { id: 'quick-trade',       type: 'quick-trade',       title: 'Quick Trade' },
-  { id: 'trade-ideas',       type: 'trade-ideas',       title: 'Trade Ideas' },
-]
+// Default set shown on first load
+const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
+  ['ticker-info','company-profile','chart','analyst-ratings','fundamentals',
+   'catalysts-risk','news','watchlist','quick-trade','trade-ideas'].includes(w.id)
+)
 
 const DEFAULT_LAYOUT: any[] = [
   // Top row: Ticker Info (left) + Company Profile (right) — compact
@@ -454,7 +448,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [layout, setLayout] = useState(DEFAULT_LAYOUT)
   const [rightWidgets, setRightWidgets] = useState<RightWidget[]>(DEFAULT_RIGHT_WIDGETS)
   const [isEditMode, setIsEditMode] = useState(false)
-  const [showAddMenu, setShowAddMenu] = useState(false)
+
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
   
@@ -634,20 +628,12 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   }
 
   // All widgets that can be added (default + addon, minus currently visible)
-  const ALL_WIDGETS = useMemo(() => [...DEFAULT_RIGHT_WIDGETS, ...ADDON_WIDGETS], [])
-  const availableToAdd = useMemo(
-    () => ALL_WIDGETS.filter(d => !rightWidgets.find(w => w.id === d.id)),
-    [rightWidgets, ALL_WIDGETS]
-  )
-
   const addWidget = (meta: RightWidget) => {
-    // Find existing layout definition or create a sensible default
     const def = DEFAULT_LAYOUT.find(l => l.i === meta.id) ?? {
       i: meta.id, x: 0, y: Infinity, w: 4, h: 4, minH: 3,
     }
     setRightWidgets(w => [...w, meta])
     setLayout(l => [...l, def])
-    setShowAddMenu(false)
   }
 
   const visibleLayout = useMemo(
@@ -669,11 +655,11 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'market-overview') return <MarketOverview onSelectTicker={onSelectTicker} />
-  if (widget.type === 'technicals')      return <TechnicalIndicators ticker={selectedTicker} />
-  if (widget.type === 'options-chain')   return <OptionsChain ticker={selectedTicker} />
-  if (widget.type === 'quick-trade')     return <QuickTradeBox selectedTicker={selectedTicker} price={null} />
-  if (widget.type === 'trade-ideas')     return <QuickTradeIdeas onSelectIdea={(ticker) => onSelectTicker(ticker)} />
-  return null
+    if (widget.type === 'technicals')      return <TechnicalIndicators ticker={selectedTicker} />
+    if (widget.type === 'options-chain')   return <OptionsChain ticker={selectedTicker} />
+    if (widget.type === 'quick-trade')     return <QuickTradeBox selectedTicker={selectedTicker} price={null} />
+    if (widget.type === 'trade-ideas')     return <QuickTradeIdeas onSelectIdea={(ticker) => onSelectTicker(ticker)} />
+    return null
   }
 
   return (
@@ -783,29 +769,37 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                       <RotateCcw className="w-3 h-3" /> Reset to Default
                     </button>
 
-                    {/* Add Widget */}
-                    {availableToAdd.length > 0 && (
-                      <button
-                        onClick={() => setShowAddMenu(v => !v)}
-                        className="w-full text-left px-3 py-2 text-[10px] font-mono hover:bg-green-500/10 hover:text-green-400 border-b border-border flex items-center gap-2"
-                      >
-                        <Plus className="w-3 h-3" /> Add Widget
-                      </button>
-                    )}
-
-                    {showAddMenu && (
-                      <div className="pl-3 border-b border-border">
-                        {availableToAdd.map(w => (
+                    {/* Widgets — flat toggle list, all widgets in one place */}
+                    <div className="px-3 py-1.5 text-[8px] font-mono font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
+                      Widgets
+                    </div>
+                    <div className="max-h-64 overflow-y-auto border-b border-border">
+                      {ALL_AVAILABLE_WIDGETS.map(w => {
+                        const isActive = !!rightWidgets.find(rw => rw.id === w.id)
+                        return (
                           <button
                             key={w.id}
-                            onClick={() => { addWidget(w); setShowAddMenu(false); setShowLayoutMenu(false) }}
-                            className="w-full text-left px-3 py-1.5 text-[9px] font-mono hover:bg-green-500/10 hover:text-green-400"
+                            onClick={() => {
+                              if (isActive) {
+                                setRightWidgets(prev => prev.filter(rw => rw.id !== w.id))
+                              } else {
+                                addWidget(w)
+                              }
+                            }}
+                            className={`w-full text-left px-3 py-1.5 text-[9px] font-mono flex items-center justify-between group transition-colors ${
+                              isActive
+                                ? 'text-foreground hover:bg-red-500/10 hover:text-red-400'
+                                : 'text-muted-foreground hover:bg-green-500/10 hover:text-green-400'
+                            }`}
                           >
-                            + {w.title}
+                            <span>{w.title}</span>
+                            <span className={`text-[8px] ${isActive ? 'text-primary/60 group-hover:text-red-400' : 'text-muted-foreground/40 group-hover:text-green-400'}`}>
+                              {isActive ? 'visible' : '+ add'}
+                            </span>
                           </button>
-                        ))}
-                      </div>
-                    )}
+                        )
+                      })}
+                    </div>
 
                     {/* Save Current Layout */}
                     <div className="px-3 py-2 border-b border-border">
