@@ -427,7 +427,7 @@ const DEFAULT_LAYOUT: any[] = [
   // Bottom row: Fundamentals, Analyst Ratings, Catalyst/Risk, Watchlist, News
   { i: 'fundamentals',      x: 0, y: 8, w: 3,  h: 4, minH: 3 },
   { i: 'analyst-ratings',   x: 3, y: 8, w: 3,  h: 4, minH: 3 },
-  { i: 'catalysts-risk',    x: 6, y: 8, w: 3,  h: 4, minH: 3 },
+  { i: 'catalyst-risk',     x: 6, y: 8, w: 3,  h: 4, minH: 3 },
   { i: 'watchlist',         x: 9, y: 8, w: 3,  h: 3, minH: 2 },
   { i: 'news',              x: 9, y: 11,w: 3,  h: 2, minH: 2 },
 ]
