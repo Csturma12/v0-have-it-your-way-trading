@@ -375,7 +375,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info' | 'support-resistance' | 'catalyst-risk'
+type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info' | 'support-resistance' | 'catalysts-risk'
 
 interface RightWidget {
   id: string
@@ -387,13 +387,11 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
   { id: 'ticker-info',       type: 'ticker-info',       title: 'Ticker Info' },
   { id: 'company-profile',   type: 'company-profile',   title: 'Company Profile' },
   { id: 'chart',             type: 'chart',             title: 'Chart' },
-  { id: 'support-resistance',type: 'support-resistance',title: 'Key Support/Resistance' },
-  { id: 'technicals',        type: 'technicals',        title: 'Technical Indicators' },
-  { id: 'fundamentals',      type: 'fundamentals',      title: 'Fundamentals' },
   { id: 'analyst-ratings',   type: 'analyst-ratings',   title: 'Analyst Ratings' },
-  { id: 'catalyst-risk',     type: 'catalyst-risk',     title: 'Catalyst & Risk' },
-  { id: 'watchlist',         type: 'watchlist',         title: 'Watchlist' },
+  { id: 'fundamentals',      type: 'fundamentals',      title: 'Fundamentals' },
+  { id: 'catalysts-risk',    type: 'catalysts-risk',    title: 'Catalysts & Risk' },
   { id: 'news',              type: 'news',              title: 'Market News' },
+  { id: 'watchlist',         type: 'watchlist',         title: 'Watchlist' },
 ]
 
 // All widgets — any removed from the grid can be re-added from this pool
@@ -401,14 +399,13 @@ const ADDON_WIDGETS: RightWidget[] = [
   { id: 'chart',             type: 'chart',             title: 'Chart' },
   { id: 'ticker-info',       type: 'ticker-info',       title: 'Ticker Info' },
   { id: 'company-profile',   type: 'company-profile',   title: 'Company Profile' },
-  { id: 'support-resistance',type: 'support-resistance',title: 'Key Support/Resistance' },
   { id: 'watchlist',         type: 'watchlist',         title: 'Watchlist' },
   { id: 'news',              type: 'news',              title: 'Market News' },
   { id: 'fundamentals',      type: 'fundamentals',      title: 'Fundamentals' },
   { id: 'analyst-ratings',   type: 'analyst-ratings',   title: 'Analyst Ratings' },
   { id: 'metrics',           type: 'metrics',           title: 'Metrics' },
-  { id: 'catalyst-risk',     type: 'catalyst-risk',     title: 'Catalyst & Risk' },
-  { id: 'catalysts',         type: 'catalysts',         title: 'Catalysts (Legacy)' },
+  { id: 'catalysts',         type: 'catalysts',         title: 'Catalysts' },
+  { id: 'catalysts-risk',    type: 'catalysts-risk',    title: 'Catalysts & Risk' },
   { id: 'gex-levels',        type: 'gex-levels',        title: 'GEX Levels (Flash Alpha)' },
   { id: 'market-overview',   type: 'market-overview',   title: 'Market Overview' },
   { id: 'technicals',        type: 'technicals',        title: 'Technical Indicators' },
@@ -659,7 +656,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'analyst-ratings') return <AnalystRatings ticker={selectedTicker} />
     if (widget.type === 'metrics')         return <Metrics ticker={selectedTicker} />
     if (widget.type === 'catalysts')       return <Catalysts ticker={selectedTicker} />
-    if (widget.type === 'catalyst-risk')   return <CatalystRisk ticker={selectedTicker} />
+    if (widget.type === 'catalysts-risk')  return <CatalystsRisk ticker={selectedTicker} />
     if (widget.type === 'gex-levels')      return <GexLevels ticker={selectedTicker} />
     if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
