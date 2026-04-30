@@ -40,9 +40,9 @@ export function TickerInfo({ ticker }: { ticker: string }) {
   const [data, setData] = useState<TickerData | null>(null)
   const [loading, setLoading] = useState(true)
   const [source, setSource] = useState<string>('demo')
-  const { watchlist, addTicker, removeTicker } = useWatchlist()
+  const { tickers, addTicker, removeTicker } = useWatchlist()
 
-  const isInWatchlist = watchlist.some(w => w.ticker === ticker)
+  const isInWatchlist = tickers.includes(ticker)
 
   const toggleWatchlist = () => {
     if (isInWatchlist) {

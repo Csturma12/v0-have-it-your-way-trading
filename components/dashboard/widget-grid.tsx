@@ -41,7 +41,7 @@ import { TickerHeaderBar } from './ticker-header-bar'
 import { GexLevels } from './gex-levels'
 import { TickerInfo } from './ticker-info'
 import { SupportResistance } from './support-resistance'
-import { CatalystRisk } from './catalyst-risk'
+import { CatalystsRisk } from './catalysts-risk'
 import {
   Cpu,
   Scale,
@@ -375,7 +375,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info' | 'support-resistance' | 'catalysts-risk'
+type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info' | 'support-resistance' | 'catalyst-risk'
 
 interface RightWidget {
   id: string
@@ -427,7 +427,7 @@ const DEFAULT_LAYOUT: any[] = [
   // Bottom row: Fundamentals, Analyst Ratings, Catalyst/Risk, Watchlist, News
   { i: 'fundamentals',      x: 0, y: 8, w: 3,  h: 4, minH: 3 },
   { i: 'analyst-ratings',   x: 3, y: 8, w: 3,  h: 4, minH: 3 },
-  { i: 'catalyst-risk',     x: 6, y: 8, w: 3,  h: 4, minH: 3 },
+  { i: 'catalysts-risk',    x: 6, y: 8, w: 3,  h: 4, minH: 3 },
   { i: 'watchlist',         x: 9, y: 8, w: 3,  h: 3, minH: 2 },
   { i: 'news',              x: 9, y: 11,w: 3,  h: 2, minH: 2 },
 ]
@@ -659,7 +659,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'analyst-ratings') return <AnalystRatings ticker={selectedTicker} />
     if (widget.type === 'metrics')         return <Metrics ticker={selectedTicker} />
     if (widget.type === 'catalysts')       return <Catalysts ticker={selectedTicker} />
-    if (widget.type === 'catalyst-risk')   return <CatalystRisk ticker={selectedTicker} />
+    if (widget.type === 'catalysts-risk')  return <CatalystsRisk ticker={selectedTicker} />
     if (widget.type === 'gex-levels')      return <GexLevels ticker={selectedTicker} />
     if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
