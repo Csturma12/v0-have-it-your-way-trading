@@ -42,6 +42,8 @@ import { GexLevels } from './gex-levels'
 import { TickerInfo } from './ticker-info'
 import { SupportResistance } from './support-resistance'
 import { CatalystsRisk } from './catalysts-risk'
+import { QuickTradeBox } from './quick-trade-box'
+import { QuickTradeIdeas } from './quick-trade-ideas'
 import {
   Cpu,
   Scale,
@@ -375,7 +377,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info' | 'support-resistance' | 'catalysts-risk'
+type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info' | 'support-resistance' | 'catalysts-risk' | 'quick-trade' | 'trade-ideas'
 
 interface RightWidget {
   id: string
@@ -392,6 +394,8 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
   { id: 'catalysts-risk',    type: 'catalysts-risk',    title: 'Catalysts & Risk' },
   { id: 'news',              type: 'news',              title: 'Market News' },
   { id: 'watchlist',         type: 'watchlist',         title: 'Watchlist' },
+  { id: 'quick-trade',       type: 'quick-trade',       title: 'Quick Trade' },
+  { id: 'trade-ideas',       type: 'trade-ideas',       title: 'Trade Ideas' },
 ]
 
 // All widgets — any removed from the grid can be re-added from this pool
@@ -410,6 +414,8 @@ const ADDON_WIDGETS: RightWidget[] = [
   { id: 'market-overview',   type: 'market-overview',   title: 'Market Overview' },
   { id: 'technicals',        type: 'technicals',        title: 'Technical Indicators' },
   { id: 'options-chain',     type: 'options-chain',     title: 'Options Chain' },
+  { id: 'quick-trade',       type: 'quick-trade',       title: 'Quick Trade' },
+  { id: 'trade-ideas',       type: 'trade-ideas',       title: 'Trade Ideas' },
 ]
 
 const DEFAULT_LAYOUT: any[] = [
@@ -425,8 +431,10 @@ const DEFAULT_LAYOUT: any[] = [
   { i: 'fundamentals',      x: 0, y: 8, w: 3,  h: 4, minH: 3 },
   { i: 'analyst-ratings',   x: 3, y: 8, w: 3,  h: 4, minH: 3 },
   { i: 'catalyst-risk',     x: 6, y: 8, w: 3,  h: 4, minH: 3 },
-  { i: 'watchlist',         x: 9, y: 8, w: 3,  h: 3, minH: 2 },
-  { i: 'news',              x: 9, y: 11,w: 3,  h: 2, minH: 2 },
+  { i: 'watchlist',         x: 9, y: 8,  w: 3, h: 4, minH: 2 },
+  { i: 'news',              x: 9, y: 12, w: 3, h: 2, minH: 2 },
+  { i: 'quick-trade',       x: 0, y: 14, w: 4, h: 3, minH: 2 },
+  { i: 'trade-ideas',       x: 4, y: 14, w: 8, h: 3, minH: 2 },
 ]
 
 interface SavedState {
@@ -661,9 +669,11 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'market-overview') return <MarketOverview onSelectTicker={onSelectTicker} />
-    if (widget.type === 'technicals')      return <TechnicalIndicators ticker={selectedTicker} />
-    if (widget.type === 'options-chain')   return <OptionsChain ticker={selectedTicker} />
-    return null
+  if (widget.type === 'technicals')      return <TechnicalIndicators ticker={selectedTicker} />
+  if (widget.type === 'options-chain')   return <OptionsChain ticker={selectedTicker} />
+  if (widget.type === 'quick-trade')     return <QuickTradeBox selectedTicker={selectedTicker} price={null} />
+  if (widget.type === 'trade-ideas')     return <QuickTradeIdeas onSelectIdea={(ticker) => onSelectTicker(ticker)} />
+  return null
   }
 
   return (
