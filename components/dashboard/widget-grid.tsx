@@ -39,6 +39,9 @@ import { Catalysts } from './catalysts'
 import { PatternWatchlist } from './pattern-watchlist'
 import { TickerHeaderBar } from './ticker-header-bar'
 import { GexLevels } from './gex-levels'
+import { TickerInfo } from './ticker-info'
+import { SupportResistance } from './support-resistance'
+import { CatalystRisk } from './catalyst-risk'
 import {
   Cpu,
   Scale,
@@ -372,7 +375,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels'
+type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info' | 'support-resistance' | 'catalysts-risk'
 
 interface RightWidget {
   id: string
@@ -381,22 +384,31 @@ interface RightWidget {
 }
 
 const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
-  { id: 'chart',           type: 'chart',           title: 'Chart' },
-  { id: 'company-profile', type: 'company-profile', title: 'Company Profile' },
-  { id: 'watchlist',       type: 'watchlist',       title: 'Watchlist' },
-  { id: 'news',            type: 'news',            title: 'Market News' },
+  { id: 'ticker-info',       type: 'ticker-info',       title: 'Ticker Info' },
+  { id: 'company-profile',   type: 'company-profile',   title: 'Company Profile' },
+  { id: 'chart',             type: 'chart',             title: 'Chart' },
+  { id: 'support-resistance',type: 'support-resistance',title: 'Key Support/Resistance' },
+  { id: 'technicals',        type: 'technicals',        title: 'Technical Indicators' },
+  { id: 'fundamentals',      type: 'fundamentals',      title: 'Fundamentals' },
+  { id: 'analyst-ratings',   type: 'analyst-ratings',   title: 'Analyst Ratings' },
+  { id: 'catalyst-risk',     type: 'catalyst-risk',     title: 'Catalyst & Risk' },
+  { id: 'watchlist',         type: 'watchlist',         title: 'Watchlist' },
+  { id: 'news',              type: 'news',              title: 'Market News' },
 ]
 
 // All widgets — any removed from the grid can be re-added from this pool
 const ADDON_WIDGETS: RightWidget[] = [
   { id: 'chart',             type: 'chart',             title: 'Chart' },
+  { id: 'ticker-info',       type: 'ticker-info',       title: 'Ticker Info' },
   { id: 'company-profile',   type: 'company-profile',   title: 'Company Profile' },
+  { id: 'support-resistance',type: 'support-resistance',title: 'Key Support/Resistance' },
   { id: 'watchlist',         type: 'watchlist',         title: 'Watchlist' },
   { id: 'news',              type: 'news',              title: 'Market News' },
   { id: 'fundamentals',      type: 'fundamentals',      title: 'Fundamentals' },
   { id: 'analyst-ratings',   type: 'analyst-ratings',   title: 'Analyst Ratings' },
   { id: 'metrics',           type: 'metrics',           title: 'Metrics' },
-  { id: 'catalysts',         type: 'catalysts',         title: 'Catalysts' },
+  { id: 'catalyst-risk',     type: 'catalyst-risk',     title: 'Catalyst & Risk' },
+  { id: 'catalysts',         type: 'catalysts',         title: 'Catalysts (Legacy)' },
   { id: 'gex-levels',        type: 'gex-levels',        title: 'GEX Levels (Flash Alpha)' },
   { id: 'market-overview',   type: 'market-overview',   title: 'Market Overview' },
   { id: 'technicals',        type: 'technicals',        title: 'Technical Indicators' },
@@ -404,10 +416,20 @@ const ADDON_WIDGETS: RightWidget[] = [
 ]
 
 const DEFAULT_LAYOUT: any[] = [
-  { i: 'company-profile', x: 0, y: 0, w: 12, h: 2, minH: 2 },  // Top bar — full width, compact
-  { i: 'chart',           x: 0, y: 2, w: 8,  h: 5, minH: 3 },  // Main chart below profile
-  { i: 'watchlist',       x: 8, y: 2, w: 4,  h: 3, minH: 2 },  // Right side
-  { i: 'news',            x: 8, y: 5, w: 4,  h: 2, minH: 2 },  // Below watchlist
+  // Top row: Ticker Info (left) + Company Profile (right) — compact
+  { i: 'ticker-info',       x: 0, y: 0, w: 4,  h: 3, minH: 2 },
+  { i: 'company-profile',   x: 4, y: 0, w: 8,  h: 3, minH: 2 },
+  // Main chart (large)
+  { i: 'chart',             x: 0, y: 3, w: 8,  h: 5, minH: 3 },
+  // Right column: Support/Resistance, Technicals stacked
+  { i: 'support-resistance',x: 8, y: 3, w: 4,  h: 3, minH: 2 },
+  { i: 'technicals',        x: 8, y: 6, w: 4,  h: 3, minH: 2 },
+  // Bottom row: Fundamentals, Analyst Ratings, Catalyst/Risk, Watchlist, News
+  { i: 'fundamentals',      x: 0, y: 8, w: 3,  h: 4, minH: 3 },
+  { i: 'analyst-ratings',   x: 3, y: 8, w: 3,  h: 4, minH: 3 },
+  { i: 'catalyst-risk',     x: 6, y: 8, w: 3,  h: 4, minH: 3 },
+  { i: 'watchlist',         x: 9, y: 8, w: 3,  h: 3, minH: 2 },
+  { i: 'news',              x: 9, y: 11,w: 3,  h: 2, minH: 2 },
 ]
 
 interface SavedState {
@@ -630,11 +652,14 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
 
   const renderRight = (widget: RightWidget) => {
     if (widget.type === 'chart')           return <TradingViewAdvancedChart ticker={selectedTicker} onChangeTicker={onSelectTicker} />
-    if (widget.type === 'company-profile') return <CompanyProfile ticker={selectedTicker} />
-    if (widget.type === 'fundamentals')    return <Fundamentals ticker={selectedTicker} />
+    if (widget.type === 'company-profile')   return <CompanyProfile ticker={selectedTicker} />
+    if (widget.type === 'ticker-info')       return <TickerInfo ticker={selectedTicker} />
+    if (widget.type === 'support-resistance')return <SupportResistance ticker={selectedTicker} />
+    if (widget.type === 'fundamentals')      return <Fundamentals ticker={selectedTicker} />
     if (widget.type === 'analyst-ratings') return <AnalystRatings ticker={selectedTicker} />
     if (widget.type === 'metrics')         return <Metrics ticker={selectedTicker} />
     if (widget.type === 'catalysts')       return <Catalysts ticker={selectedTicker} />
+    if (widget.type === 'catalyst-risk')   return <CatalystRisk ticker={selectedTicker} />
     if (widget.type === 'gex-levels')      return <GexLevels ticker={selectedTicker} />
     if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
