@@ -404,10 +404,10 @@ const ADDON_WIDGETS: RightWidget[] = [
 ]
 
 const DEFAULT_LAYOUT: any[] = [
-  { i: 'chart',           x: 0, y: 0, w: 8, h: 6, minH: 4 },
-  { i: 'company-profile', x: 8, y: 0, w: 4, h: 4, minH: 3 },
-  { i: 'watchlist',       x: 8, y: 4, w: 4, h: 4, minH: 3 },
-  { i: 'news',            x: 0, y: 6, w: 12, h: 3, minH: 2 },
+  { i: 'company-profile', x: 0, y: 0, w: 12, h: 2, minH: 2 },  // Top bar — full width, compact
+  { i: 'chart',           x: 0, y: 2, w: 8,  h: 5, minH: 3 },  // Main chart below profile
+  { i: 'watchlist',       x: 8, y: 2, w: 4,  h: 3, minH: 2 },  // Right side
+  { i: 'news',            x: 8, y: 5, w: 4,  h: 2, minH: 2 },  // Below watchlist
 ]
 
 interface SavedState {
