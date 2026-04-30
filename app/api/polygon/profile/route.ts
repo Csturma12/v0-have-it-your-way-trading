@@ -29,7 +29,7 @@ async function fetchIntrinioOfficers(ticker: string) {
   try {
     const res = await fetch(
       `https://api-v2.intrinio.com/companies/${ticker}/officers?api_key=${INTRINIO_KEY}`,
-      { next: { revalidate: 86400 } } // refresh once a day
+      { next: { revalidate: 432000 } } // refresh once every 5 days (officer rosters change rarely)
     )
     if (!res.ok) return null
     const data = await res.json()
