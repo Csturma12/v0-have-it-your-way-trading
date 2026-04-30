@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2, RefreshCw, Link2 } from 'lucide-react'
+import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2, RefreshCw, Link2, ChevronDown, Folder } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -84,7 +84,19 @@ function getExtHoursSession(): 'pre' | 'post' | null {
 
 export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPanelProps) {
   // Use shared watchlist context for tickers (syncs to database automatically)
-  const { tickers: contextTickers, addTicker: contextAddTicker, removeTicker: contextRemoveTicker, source, lastSynced, isLoading: contextLoading } = useWatchlist()
+  const { 
+    tickers: contextTickers, 
+    addTicker: contextAddTicker, 
+    removeTicker: contextRemoveTicker, 
+    activeWatchlist,
+    watchlists,
+    setActiveWatchlist,
+    createWatchlist,
+    isLoading: contextLoading 
+  } = useWatchlist()
+  
+  const source = activeWatchlist?.source || 'manual'
+  const lastSynced = activeWatchlist?.lastSynced || null
   
   const [hydrated, setHydrated] = useState(false)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])

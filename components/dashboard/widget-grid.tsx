@@ -36,6 +36,7 @@ import { Fundamentals } from './fundamentals'
 import { AnalystRatings } from './analyst-ratings'
 import { Metrics } from './metrics'
 import { Catalysts } from './catalysts'
+import { PatternWatchlist } from './pattern-watchlist'
 import {
   Cpu,
   Scale,
@@ -701,6 +702,16 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             </span>
           </div>
           <MarketSectorPills onSelectTicker={onSelectTicker} />
+
+          {/* Pattern Scan Watchlists — bot actively scans these */}
+          <div className="px-2 pt-3 pb-2 border-t border-border/30 mt-2">
+            <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-muted-foreground">
+              PATTERN SCANNING
+            </span>
+          </div>
+          <div className="px-2 pb-2">
+            <PatternWatchlist onSelectTicker={onSelectTicker} />
+          </div>
 
         </div>
         </aside>

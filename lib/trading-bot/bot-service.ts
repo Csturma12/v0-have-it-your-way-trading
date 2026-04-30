@@ -61,6 +61,7 @@ export class TradingBotService {
   private config: BotConfig | null = null
   private riskManager: RiskManager | null = null
   private patterns: Pattern[] = []
+  private patternScanTickers: string[] = []  // Tickers from pattern scan watchlists
   private isInitialized = false
 
   /**
@@ -130,6 +131,19 @@ export class TradingBotService {
       this.patterns = patternsData as Pattern[]
     }
 
+    // Load pattern scan watchlists (watchlists with scan_enabled = true)
+    const { data: patternWatchlists } = await this.supabase
+      .from('user_watchlists')
+      .select('tickers')
+      .eq('scan_enabled', true)
+
+    if (patternWatchlists) {
+      // Combine all tickers from scan-enabled watchlists
+      this.patternScanTickers = [...new Set(
+        patternWatchlists.flatMap(w => Array.isArray(w.tickers) ? w.tickers : [])
+      )]
+    }
+
     this.isInitialized = true
   }
 
@@ -157,9 +171,15 @@ export class TradingBotService {
     const filteredClaudeIdeas = config.use_claude_signals ? claudeIdeas : []
     const filteredOpenaiIdeas = config.use_openai_signals ? openaiIdeas : []
 
+    // Combine bot config watchlist + pattern scan watchlists (from user_watchlists with scan_enabled)
+    const combinedWatchlist = [...new Set([
+      ...(config.watchlist || []),
+      ...this.patternScanTickers
+    ])]
+
     // Run pattern detection
     const detection = await runPatternDetection(
-      config.watchlist,
+      combinedWatchlist,
       indicatorsMap,
       pricesMap,
       filteredClaudeIdeas,
