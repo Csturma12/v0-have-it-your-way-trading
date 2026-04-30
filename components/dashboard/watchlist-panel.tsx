@@ -392,8 +392,11 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
           })}
         </div>
       </div>
+      )}
 
-      {/* Quick Trade Ideas */}
+      {/* Quick Trade Ideas - only shown on watchlist tab */}
+      {activeTab === 'watchlist' && (
+      <>
       <QuickTradeIdeas
         onSelectIdea={(ticker) => onSelectTicker?.(ticker)}
       />
@@ -437,6 +440,8 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   )
 }

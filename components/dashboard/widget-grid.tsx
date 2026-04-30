@@ -37,6 +37,7 @@ import { AnalystRatings } from './analyst-ratings'
 import { Metrics } from './metrics'
 import { Catalysts } from './catalysts'
 import { PatternWatchlist } from './pattern-watchlist'
+import { TickerHeaderBar } from './ticker-header-bar'
 import {
   Cpu,
   Scale,
