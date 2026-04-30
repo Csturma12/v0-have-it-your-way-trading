@@ -156,7 +156,8 @@ export function TopNavBar() {
 
   useEffect(() => {
     const supabase = createClient()
-    
+    if (!supabase) return // Supabase not configured - skip auth, render anonymously
+
     // Get initial user
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) {
@@ -186,6 +187,7 @@ export function TopNavBar() {
 
   const handleSignOut = async () => {
     const supabase = createClient()
+    if (!supabase) return
     await supabase.auth.signOut()
     router.push('/auth/login')
     router.refresh()

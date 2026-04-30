@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 
+// Global deduplication - prevent multiple components from fetching the same tickers simultaneously
+const pendingFetches = new Map<string, Promise<Record<string, unknown>>>()
+
 export interface LiveQuote {
   ticker: string
   price: number
@@ -18,6 +21,27 @@ export interface LiveQuote {
 interface UseLiveQuotesOptions {
   refreshInterval?: number // ms, default 30000
   enabled?: boolean
+}
+
+function formatVolume(vol: number): string {
+  if (vol >= 1e9) return `${(vol / 1e9).toFixed(1)}B`
+  if (vol >= 1e6) return `${(vol / 1e6).toFixed(1)}M`
+  if (vol >= 1e3) return `${(vol / 1e3).toFixed(1)}K`
+  return vol.toString()
+}
+
+function parseQuoteData(q: Record<string, unknown>, ticker: string): LiveQuote {
+  return {
+    ticker,
+    price: (q.price ?? q.last ?? 0) as number,
+    change: (q.change ?? 0) as number,
+    changePercent: (q.changePct ?? q.changePercent ?? 0) as number,
+    bid: q.bid as number | undefined,
+    ask: q.ask as number | undefined,
+    volume: q.volume ? formatVolume(q.volume as number) : undefined,
+    prevClose: q.prevClose as number | undefined,
+    loading: false,
+  }
 }
 
 /**
@@ -50,35 +74,48 @@ export function useLiveQuotes(
   const fetchQuotes = useCallback(async () => {
     if (!enabled || tickers.length === 0) return
 
-    setIsLoading(true)
-    try {
-      const tickerParam = tickers.join(',')
-      const res = await fetch(`/api/polygon/batch-quotes?tickers=${tickerParam}`)
-      if (!res.ok) throw new Error('Failed to fetch quotes')
+    const tickerParam = tickers.join(',')
+    
+    // Deduplicate: if this exact request is already in flight, wait for it
+    const existingFetch = pendingFetches.get(tickerParam)
+    if (existingFetch) {
+      try {
+        const data = await existingFetch
+        const fetchedQuotes = (data as { quotes?: Record<string, unknown> }).quotes ?? {}
+        setQuotes(prev => {
+          const next: Record<string, LiveQuote> = {}
+          tickers.forEach(t => {
+            const q = fetchedQuotes[t] as Record<string, unknown> | undefined
+            next[t] = q ? parseQuoteData(q, t) : { ...prev[t], loading: false, error: 'No data' }
+          })
+          return next
+        })
+        setLastUpdated(new Date())
+      } catch {
+        // Error already handled by original request
+      }
+      return
+    }
 
-      const data = await res.json()
+    setIsLoading(true)
+    
+    const fetchPromise = fetch(`/api/polygon/batch-quotes?tickers=${tickerParam}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch quotes')
+        return res.json()
+      })
+    
+    pendingFetches.set(tickerParam, fetchPromise)
+    
+    try {
+      const data = await fetchPromise
       const fetchedQuotes = data.quotes ?? {}
 
       setQuotes(prev => {
         const next: Record<string, LiveQuote> = {}
         tickers.forEach(t => {
           const q = fetchedQuotes[t]
-          if (q) {
-            next[t] = {
-              ticker: t,
-              price: q.price ?? q.last ?? 0,
-              change: q.change ?? 0,
-              changePercent: q.changePct ?? q.changePercent ?? 0,
-              bid: q.bid,
-              ask: q.ask,
-              volume: q.volume ? formatVolume(q.volume) : undefined,
-              prevClose: q.prevClose,
-              loading: false,
-            }
-          } else {
-            // Keep previous data but mark as not loading
-            next[t] = { ...prev[t], loading: false, error: 'No data' }
-          }
+          next[t] = q ? parseQuoteData(q, t) : { ...prev[t], loading: false, error: 'No data' }
         })
         return next
       })
@@ -93,6 +130,7 @@ export function useLiveQuotes(
         return next
       })
     } finally {
+      pendingFetches.delete(tickerParam)
       setIsLoading(false)
     }
   }, [tickers, enabled])
@@ -123,11 +161,4 @@ export function useLiveQuote(ticker: string, options: UseLiveQuotesOptions = {})
     lastUpdated,
     refresh,
   }
-}
-
-function formatVolume(vol: number): string {
-  if (vol >= 1e9) return `${(vol / 1e9).toFixed(1)}B`
-  if (vol >= 1e6) return `${(vol / 1e6).toFixed(1)}M`
-  if (vol >= 1e3) return `${(vol / 1e3).toFixed(1)}K`
-  return vol.toString()
 }

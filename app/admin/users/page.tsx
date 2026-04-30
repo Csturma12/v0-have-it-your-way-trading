@@ -32,6 +32,10 @@ export default function AdminUsersPage() {
 
   const checkAdminAndFetchUsers = async () => {
     const supabase = createClient()
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
     
     // Get current user
     const { data: { user } } = await supabase.auth.getUser()
@@ -74,6 +78,11 @@ export default function AdminUsersPage() {
     setIsAddingUser(true)
 
     const supabase = createClient()
+    if (!supabase) {
+      setError('Supabase not configured')
+      setIsAddingUser(false)
+      return
+    }
 
     try {
       const { error } = await supabase
@@ -105,6 +114,7 @@ export default function AdminUsersPage() {
 
   const handleToggleAdmin = async (userId: string, currentIsAdmin: boolean) => {
     const supabase = createClient()
+    if (!supabase) return
 
     const { error } = await supabase
       .from('allowed_users')
@@ -127,6 +137,7 @@ export default function AdminUsersPage() {
     }
 
     const supabase = createClient()
+    if (!supabase) return
 
     const { error } = await supabase
       .from('allowed_users')
