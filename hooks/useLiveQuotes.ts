@@ -205,7 +205,7 @@ export function useLiveQuotes(
       clearTimeout(initialTimeout)
       clearInterval(interval)
     }
-  }, [enabled, refreshInterval, stableTickers.length, fetchQuotes])
+  }, [enabled, refreshInterval, stableTickers.length]) // Don't include fetchQuotes to prevent infinite loop
 
   return { quotes, isLoading, lastUpdated, refresh: fetchQuotes }
 }
