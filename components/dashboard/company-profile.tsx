@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { TrendingUp, TrendingDown, Users, RefreshCw, Sparkles, Building2 } from 'lucide-react'
+import { WidgetEmptyState } from './widget-empty-state'
 
 interface CompanyProfileProps {
   ticker: string
@@ -57,10 +58,12 @@ function formatVolume(vol: number): string {
 export function CompanyProfile({ ticker }: CompanyProfileProps) {
   const [data, setData]           = useState<CompanyData | null>(null)
   const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'profile' | 'executives'>('profile')
 
   const fetchData = useCallback(async () => {
     if (data) setLoading(true)  // Only show spinner if we don't have cached data
+    setError(null)
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 8000)  // 8s timeout
@@ -84,7 +87,9 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
         }
       }
     } catch (err) { 
-      console.log(`[v0] Company profile fetch failed for ${ticker}:`, err instanceof Error ? err.message : 'unknown error')
+      const msg = err instanceof Error ? err.message : 'Failed to load profile'
+      console.log(`[v0] Company profile fetch failed for ${ticker}:`, msg)
+      setError(msg)
     }
     
     // Fallback data
@@ -112,6 +117,22 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
     return (
       <div className="h-full flex items-center justify-center bg-card">
         <RefreshCw className="w-5 h-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="h-full px-3 py-1 bg-card flex items-center">
+        <WidgetEmptyState type="error" message={error} onRetry={fetchData} />
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div className="h-full px-3 py-1 bg-card flex items-center">
+        <WidgetEmptyState type="no-ticker" />
       </div>
     )
   }
@@ -207,7 +228,7 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
             <span className={`text-[7px] font-mono px-1 py-0.5 rounded border ${
               source === 'polygon' ? 'border-green-500/40 text-green-400' : 'border-yellow-500/40 text-yellow-500'
             }`}>
-              {source === 'polygon' ? 'POLY' : 'DEMO'}
+              {source === 'polygon' ? 'POLY' : 'DEFAULT'}
             </span>
           )}
           <button onClick={fetchData} className="p-0.5 hover:bg-muted/50 rounded" title="Refresh">
