@@ -27,6 +27,19 @@ export async function POST(req: Request) {
     );
   }
 
+  const { data: allowedUser } = await supabase
+    .from("allowed_users")
+    .select("is_admin")
+    .eq("email", user.email)
+    .single();
+
+  if (!allowedUser?.is_admin) {
+    return Response.json(
+      { error: "Forbidden. Admin privileges required for this endpoint." },
+      { status: 403 }
+    );
+  }
+
   const { message } = await req.json();
 
   const tools = [
