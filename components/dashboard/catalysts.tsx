@@ -113,16 +113,12 @@ export function Catalysts({ ticker = 'AAPL' }: { ticker: string }) {
   }
 
   return (
-    <div className="h-full bg-card border border-border rounded-lg p-3 overflow-y-auto flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/20">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-3 h-3 text-muted-foreground/70" />
-          <span className="text-xs font-mono text-muted-foreground/70 uppercase">Catalysts</span>
-          <Badge variant="outline" className="text-[10px] px-1 py-0.5">
-            {source === 'polygon' || source === 'finnhub' ? 'LIVE' : 'DEMO'}
-          </Badge>
-        </div>
+    <div className="h-full p-3 overflow-y-auto flex flex-col relative">
+      {/* Floating actions */}
+      <div className="absolute top-1 right-1 z-10 flex items-center gap-1">
+        <Badge variant="outline" className="text-[10px] px-1 py-0.5">
+          {source === 'polygon' || source === 'finnhub' ? 'LIVE' : 'DEFAULT'}
+        </Badge>
         <button onClick={fetchCatalysts} className="hover:bg-white/5 p-1 rounded transition-colors">
           <RefreshCw className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
         </button>
