@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Flame, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Flame, RefreshCw, Search, Loader, ExternalLink } from 'lucide-react'
 
 type AccentColor = 'green' | 'gold' | 'red' | 'cyan'
 
@@ -44,7 +44,36 @@ export function SectorPillBox({ title, accent, tickers, onSelectTicker }: Sector
   const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({})
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<{ symbol: string; name: string }[]>([])
+  const [isSearching, setIsSearching] = useState(false)
   const s = accentStyles[accent]
+
+  // Search for any US stock
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return
+    setIsSearching(true)
+    try {
+      const res = await fetch(`/api/tickers/search?q=${encodeURIComponent(searchQuery)}&limit=5`)
+      if (res.ok) {
+        const data = await res.json()
+        setSearchResults(data.results || [])
+      }
+    } catch {
+      setSearchResults([])
+    }
+    setIsSearching(false)
+  }
+
+  // Search on Enter key
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    } else if (e.key === 'Escape') {
+      setSearchQuery('')
+      setSearchResults([])
+    }
+  }
 
   const fetchLivePrices = useCallback(async () => {
     setIsRefreshing(true)
@@ -120,6 +149,52 @@ export function SectorPillBox({ title, accent, tickers, onSelectTicker }: Sector
       {/* Expanded ticker table — no max-height, expands naturally with scrollable sidebar */}
       {isExpanded && (
         <div className="w-full">
+          {/* Search any US stock */}
+          <div className="px-2 py-1.5 border-b border-border/20 bg-muted/10">
+            <div className="flex items-center gap-1">
+              <div className="relative flex-1">
+                <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Search any stock..."
+                  className="w-full pl-5 pr-2 py-1 text-[10px] font-mono bg-background/50 border border-border/50 rounded focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
+                />
+              </div>
+              <button
+                onClick={handleSearch}
+                disabled={!searchQuery.trim() || isSearching}
+                className={`px-2 py-1 text-[9px] font-mono font-bold rounded border transition-colors ${s.headerBg} ${s.border} ${s.headerText} hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                {isSearching ? <Loader className="w-2.5 h-2.5 animate-spin" /> : 'GO'}
+              </button>
+            </div>
+            {/* Search results */}
+            {searchResults.length > 0 && (
+              <div className="mt-1.5 space-y-0.5">
+                {searchResults.map((r) => (
+                  <button
+                    key={r.symbol}
+                    onClick={() => {
+                      onSelectTicker?.(r.symbol)
+                      setSearchQuery('')
+                      setSearchResults([])
+                    }}
+                    className="w-full flex items-center justify-between px-1.5 py-1 rounded bg-background/50 hover:bg-white/10 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[10px] font-mono font-bold text-foreground">{r.symbol}</span>
+                      <span className="text-[8px] font-mono text-muted-foreground truncate">{r.name}</span>
+                    </div>
+                    <ExternalLink className="w-2.5 h-2.5 text-muted-foreground/50 flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Column headers */}
           <div className="grid grid-cols-[16px_1fr_58px_44px_36px] gap-x-1.5 px-2 py-1 border-b border-border/20">
             <span className="text-[8px] font-mono text-muted-foreground/50">#</span>

@@ -22,7 +22,11 @@ import {
   RefreshCw,
   CheckCircle2,
   Timer,
+  Search,
+  Plus,
+  X,
 } from 'lucide-react'
+import { TickerAutocomplete } from '@/components/ui/ticker-autocomplete'
 import { Spinner } from '@/components/ui/spinner'
 
 interface AnalysisResult {
@@ -186,6 +190,8 @@ export function WatchlistAnalyzer() {
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [quickTickers, setQuickTickers] = useState<string[]>([])
+  const [tickerSearch, setTickerSearch] = useState('')
 
   // Scanner state
   const [scannerEnabled, setScannerEnabled] = useState(false)
@@ -199,6 +205,74 @@ export function WatchlistAnalyzer() {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Add ticker to quick list
+  const addQuickTicker = (symbol: string) => {
+    const upper = symbol.toUpperCase()
+    if (!quickTickers.includes(upper)) {
+      setQuickTickers([...quickTickers, upper])
+    }
+    setTickerSearch('')
+  }
+
+  // Remove ticker from quick list
+  const removeQuickTicker = (symbol: string) => {
+    setQuickTickers(quickTickers.filter(t => t !== symbol))
+  }
+
+  // Generate payload from quick tickers and run analysis
+  const runQuickAnalysis = async () => {
+    if (quickTickers.length === 0) return
+    
+    const payload = {
+      timeframe: '15m',
+      market_session: 'regular',
+      account_context: {
+        paper_trading: true,
+        buying_power: 10000,
+        max_risk_per_trade_pct: 1,
+        max_position_value: 1000,
+      },
+      tickers: quickTickers.map(ticker => ({
+        ticker,
+        current_price: 100, // Will be fetched by backend
+        rsi_14: 50,
+        ema_9: 100,
+        ema_21: 100,
+        ema_50: 100,
+        vwap: 100,
+        atr_14: 2,
+        volume: 1000000,
+        avg_volume_20: 1000000,
+        trend: 'neutral',
+        above_vwap: true,
+        support: [],
+        resistance: [],
+      }))
+    }
+    setInput(JSON.stringify(payload, null, 2))
+    // Auto-run the scan
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to analyze')
+      const validatedSignals = data.signals.filter(validateSignal)
+      setResult({ ...data, signals: validatedSignals })
+      setLastScanTime(new Date())
+      setScanCount((prev) => prev + 1)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setResult(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const runScan = useCallback(async () => {
     if (!input.trim()) return
