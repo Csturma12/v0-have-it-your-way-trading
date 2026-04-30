@@ -2,197 +2,205 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { RefreshCw } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 
 interface Fundamentals {
   pe: number | null
   ps: number | null
   pb: number | null
   eps: number | null
-  revenue: number | null
-  revenuePerShare: number | null
+  revenueGrowth: number | null
   grossMargin: number | null
   operatingMargin: number | null
   netMargin: number | null
   roe: number | null
-  roa: number | null
   debtToEquity: number | null
-  currentRatio: number | null
-  marketCap: number | null
-  employees: number | null
-  sector: string | null
-  industry: string | null
+  high52w: number | null
+  low52w: number | null
+  beta: number | null
+  divYield: number | null
 }
 
-function formatValue(value: number | null, format: 'percent' | 'ratio' | 'count' | 'currency' = 'ratio'): string {
+function fmt(value: number | null, type: 'pct' | 'ratio' | 'dollar' = 'ratio'): string {
   if (value === null || value === undefined) return '—'
-  
-  // Percentages from API are already in % form (e.g., 46.2 not 0.462)
-  if (format === 'percent') return `${value.toFixed(1)}%`
-  if (format === 'ratio') return value.toFixed(2)
-  if (format === 'count') return value > 1000000 ? `${(value / 1000000).toFixed(1)}M` : value > 1000 ? `${(value / 1000).toFixed(0)}K` : value.toString()
-  if (format === 'currency') {
-    if (value > 1000000000000) return `$${(value / 1000000000000).toFixed(2)}T`
-    if (value > 1000000000) return `$${(value / 1000000000).toFixed(2)}B`
-    if (value > 1000000) return `$${(value / 1000000).toFixed(1)}M`
-    return `$${value.toFixed(2)}`
-  }
-  
+  if (type === 'pct') return `${value.toFixed(2)}%`
+  if (type === 'dollar') return `$${value.toFixed(2)}`
   return value.toFixed(2)
 }
 
 export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
-  const [fundamentals, setFundamentals] = useState<Fundamentals | null>(null)
+  const [data, setData] = useState<Fundamentals | null>(null)
   const [loading, setLoading] = useState(true)
   const [source, setSource] = useState<string>('unknown')
 
-  const fetchFundamentals = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await globalThis.fetch(`/api/polygon/fundamentals?ticker=${ticker}`)
-      if (!res.ok) throw new Error('Failed to fetch')
-      const data = await res.json()
-      setFundamentals(data.fundamentals)
-      setSource(data.source)
-    } catch (err) {
-      console.error('[Fundamentals] Error:', err)
+      // Fetch from Polygon AND Intrinio in parallel for better data coverage
+      const [polygonRes, intrinioRes] = await Promise.all([
+        fetch(`/api/polygon/fundamentals?ticker=${ticker}`),
+        fetch(`/api/intrinio?ticker=${ticker}&type=fundamentals`),
+      ])
+
+      let f: any = {}
+      let src = 'unknown'
+
+      // Try Polygon first
+      if (polygonRes.ok) {
+        const json = await polygonRes.json()
+        f = json.fundamentals || {}
+        src = json.source || 'polygon'
+      }
+
+      // Enrich/override with Intrinio data (usually more comprehensive)
+      if (intrinioRes.ok) {
+        const intrinioJson = await intrinioRes.json()
+        const ifund = intrinioJson.fundamentals || {}
+        if (Object.keys(ifund).length > 0) {
+          src = 'intrinio'
+          // Intrinio uses different key names
+          f.pe = ifund.pricetoearnings ?? f.pe
+          f.pb = ifund.pricetobook ?? f.pb
+          f.ps = ifund.pricetosales ?? f.ps
+          f.eps = ifund.dilutedeps ?? ifund.basiceps ?? f.eps
+          f.revenueGrowth = (ifund.revenueyoygrowth ?? ifund.revenueqoqgrowth) ? (ifund.revenueyoygrowth ?? ifund.revenueqoqgrowth) * 100 : f.revenueGrowth
+          f.grossMargin = ifund.grossmargin ? ifund.grossmargin * 100 : f.grossMargin
+          f.operatingMargin = ifund.operatingmargin ? ifund.operatingmargin * 100 : f.operatingMargin
+          f.netMargin = ifund.netmargin ? ifund.netmargin * 100 : f.netMargin
+          f.roe = ifund.roe ? ifund.roe * 100 : f.roe
+          f.debtToEquity = ifund.debttoequity ?? f.debtToEquity
+          f.beta = ifund.beta ?? f.beta
+          f.divYield = ifund.dividendyield ? ifund.dividendyield * 100 : f.divYield
+        }
+      }
+
+      setData({
+        pe: f.pe || null,
+        ps: f.ps || null,
+        pb: f.pb || null,
+        eps: f.eps || null,
+        revenueGrowth: f.revenueGrowth || null,
+        grossMargin: f.grossMargin || null,
+        operatingMargin: f.operatingMargin || null,
+        netMargin: f.netMargin || null,
+        roe: f.roe || null,
+        debtToEquity: f.debtToEquity || null,
+        high52w: f.high52w || null,
+        low52w: f.low52w || null,
+        beta: f.beta || null,
+        divYield: f.divYield || null,
+      })
+      setSource(src)
+    } catch {
+      // fallback demo data
+      setData({
+        pe: 22.59, ps: null, pb: 28.81, eps: 4.90,
+        revenueGrowth: 65.47, grossMargin: 71.31, operatingMargin: 60.38, netMargin: 55.60,
+        roe: 104.37, debtToEquity: 0.05, high52w: 216.82, low52w: 104.08, beta: null, divYield: null,
+      })
+      setSource('demo')
     } finally {
       setLoading(false)
     }
   }, [ticker])
 
   useEffect(() => {
-    fetchFundamentals()
-    const interval = setInterval(fetchFundamentals, 300000) // 5 min
+    fetchData()
+    const interval = setInterval(fetchData, 300000)
     return () => clearInterval(interval)
-  }, [fetchFundamentals])
-
-  if (loading) {
-    return (
-      <div className="h-full bg-card border border-border rounded-lg p-3 flex items-center justify-center">
-        <div className="animate-spin"><RefreshCw className="w-4 h-4 text-muted-foreground" /></div>
-      </div>
-    )
-  }
-
-  if (!fundamentals) {
-    return (
-      <div className="h-full bg-card border border-border rounded-lg p-3 flex items-center justify-center text-xs text-muted-foreground">
-        No data available
-      </div>
-    )
-  }
+  }, [fetchData])
 
   return (
-    <div className="h-full bg-card border border-border rounded-lg p-3 overflow-y-auto flex flex-col">
+    <div className="h-full flex flex-col bg-card overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/20">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-muted-foreground/70 uppercase">Fundamentals</span>
-          <Badge variant="outline" className={`text-[10px] px-1 py-0.5 ${source === 'intrinio' ? 'border-blue-500/50 text-blue-400' : source === 'polygon' ? 'border-green-500/50 text-green-400' : ''}`}>
-            {source === 'intrinio' ? 'INTRINIO' : source === 'polygon' ? 'POLYGON' : 'DEMO'}
-          </Badge>
+      <div className="flex items-center justify-between px-2 py-1 border-b border-border flex-shrink-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-wide">Fundamentals</span>
+          <span className={`text-[7px] font-mono px-1 py-0 rounded ${source === 'polygon' ? 'bg-green-500/20 text-green-400' : source === 'intrinio' ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-500'}`}>
+            {source === 'polygon' ? 'FINNHUB' : source === 'intrinio' ? 'INTRINIO' : 'DEMO'}
+          </span>
         </div>
-        <button onClick={fetchFundamentals} className="hover:bg-white/5 p-1 rounded transition-colors">
-          <RefreshCw className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
+        <button onClick={fetchData} className="p-0.5 hover:bg-muted/50 rounded">
+          <RefreshCw className={`w-2.5 h-2.5 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Valuation Metrics */}
-      <div className="space-y-2 mb-3">
-        <div className="text-[9px] font-mono text-muted-foreground/60 uppercase tracking-wider">Valuation</div>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">P/E</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.pe)}</div>
+      {/* Content — two-column grid */}
+      <div className="flex-1 overflow-y-auto p-2">
+        {loading && !data ? (
+          <div className="flex items-center justify-center h-full">
+            <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />
           </div>
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">P/S</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.ps)}</div>
-          </div>
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">P/B</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.pb)}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Profitability */}
-      <div className="space-y-2 mb-3">
-        <div className="text-[9px] font-mono text-muted-foreground/60 uppercase tracking-wider">Profitability</div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">EPS (TTM)</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.eps, 'currency')}</div>
-          </div>
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">Net Margin</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.netMargin, 'percent')}</div>
-          </div>
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">Operating Margin</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.operatingMargin, 'percent')}</div>
-          </div>
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">Gross Margin</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.grossMargin, 'percent')}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Returns */}
-      <div className="space-y-2 mb-3">
-        <div className="text-[9px] font-mono text-muted-foreground/60 uppercase tracking-wider">Returns</div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">ROE</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.roe, 'percent')}</div>
-          </div>
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">ROA</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.roa, 'percent')}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Financial Health */}
-      <div className="space-y-2 mb-3">
-        <div className="text-[9px] font-mono text-muted-foreground/60 uppercase tracking-wider">Financial Health</div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">Debt/Equity</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.debtToEquity)}</div>
-          </div>
-          <div className="bg-white/5 rounded p-2">
-            <div className="text-[9px] text-muted-foreground/60">Current Ratio</div>
-            <div className="text-sm font-semibold">{formatValue(fundamentals.currentRatio)}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Company Info */}
-      <div className="space-y-2 mt-auto pt-2 border-t border-border/20">
-        <div className="text-[9px] font-mono text-muted-foreground/60 uppercase tracking-wider">Company</div>
-        <div className="grid grid-cols-1 gap-1 text-[9px]">
-          {fundamentals.marketCap && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground/60">Market Cap</span>
-              <span className="font-semibold">{formatValue(fundamentals.marketCap, 'currency')}</span>
+        ) : data && (
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px]">
+            {/* Left column */}
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">P/E (TTM)</span>
+                <span className="font-mono font-bold">{fmt(data.pe)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">P/B</span>
+                <span className="font-mono font-bold">{fmt(data.pb)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">EPS (TTM)</span>
+                <span className="font-mono font-bold">{fmt(data.eps, 'dollar')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">EPS Growth</span>
+                <span className="font-mono font-bold text-green-400">{fmt(data.revenueGrowth, 'pct')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Operating Margin</span>
+                <span className="font-mono font-bold">{fmt(data.operatingMargin, 'pct')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Debt / Equity</span>
+                <span className="font-mono font-bold">{fmt(data.debtToEquity)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">52w High</span>
+                <span className="font-mono font-bold">{fmt(data.high52w, 'dollar')}</span>
+              </div>
             </div>
-          )}
-          {fundamentals.employees && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground/60">Employees</span>
-              <span className="font-semibold">{formatValue(fundamentals.employees, 'count')}</span>
+
+            {/* Right column */}
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">PEG</span>
+                <span className="font-mono font-bold">—</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Revenue Growth</span>
+                <span className="font-mono font-bold text-green-400">{fmt(data.revenueGrowth, 'pct')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Gross Margin</span>
+                <span className="font-mono font-bold">{fmt(data.grossMargin, 'pct')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Net Margin</span>
+                <span className="font-mono font-bold">{fmt(data.netMargin, 'pct')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">ROE</span>
+                <span className="font-mono font-bold">{fmt(data.roe, 'pct')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">52w Low</span>
+                <span className="font-mono font-bold">{fmt(data.low52w, 'dollar')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Beta</span>
+                <span className="font-mono font-bold">{data.beta ? fmt(data.beta) : '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Div Yield</span>
+                <span className="font-mono font-bold">{data.divYield ? fmt(data.divYield, 'pct') : '—'}</span>
+              </div>
             </div>
-          )}
-          {fundamentals.sector && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground/60">Sector</span>
-              <span className="font-semibold truncate">{fundamentals.sector}</span>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Building2, TrendingUp, TrendingDown, Users, RefreshCw, Sparkles } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { TrendingUp, TrendingDown, Users, RefreshCw, Sparkles, Building2 } from 'lucide-react'
 
 interface CompanyProfileProps {
   ticker: string
@@ -42,12 +41,10 @@ interface CompanyData {
   source: string
 }
 
-
-
 function formatNumber(num: number): string {
   if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`
-  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`
-  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`
+  if (num >= 1e9)  return `$${(num / 1e9).toFixed(2)}B`
+  if (num >= 1e6)  return `$${(num / 1e6).toFixed(2)}M`
   return num.toLocaleString()
 }
 
@@ -58,222 +55,165 @@ function formatVolume(vol: number): string {
 }
 
 export function CompanyProfile({ ticker }: CompanyProfileProps) {
-  const [data, setData] = useState<CompanyData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData]           = useState<CompanyData | null>(null)
+  const [loading, setLoading]     = useState(true)
   const [activeTab, setActiveTab] = useState<'profile' | 'executives'>('profile')
-  const [source, setSource] = useState<string>('unknown')
 
   const fetchData = useCallback(async () => {
-    setLoading(true)
-    setData(null)
+    if (data) setLoading(true)  // Only show spinner if we don't have cached data
     try {
-      const res = await fetch(`/api/polygon/profile?ticker=${ticker}`)
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 8000)  // 8s timeout
+      
+      const res = await fetch(`/api/polygon/profile?ticker=${ticker}`, {
+        signal: controller.signal
+      })
+      clearTimeout(timeout)
+      
       if (res.ok) {
         const json = await res.json()
         if (json.profile || json.quote) {
           setData({
-            quote: json.quote ?? null,
-            profile: json.profile ?? null,
+            quote:     json.quote     ?? null,
+            profile:   json.profile   ?? null,
             aiSummary: json.aiSummary ?? null,
-            source: json.source ?? 'polygon',
+            source:    json.source    ?? 'polygon',
           })
-          setSource(json.source ?? 'polygon')
+          setLoading(false)
           return
         }
       }
-    } catch {
-      // fall through
+    } catch (err) { 
+      console.log(`[v0] Company profile fetch failed for ${ticker}:`, err instanceof Error ? err.message : 'unknown error')
     }
-    // Minimal fallback so the widget still renders with the correct ticker
-    setData({
-      quote: null,
-      profile: { name: ticker, exchange: '', description: 'No data available.', sector: '', industry: '', ceo: '', employees: 0, marketCap: 0, website: '', executives: [] },
-      aiSummary: null,
-      source: 'unavailable',
-    })
-    setSource('unavailable')
-  }, [ticker])
+    
+    // Fallback data
+    if (!data) {
+      setData({
+        quote: null,
+        profile: { name: ticker, exchange: '', description: 'Unable to load profile.', sector: '', industry: '', ceo: '', employees: 0, marketCap: 0, website: '', executives: [] },
+        aiSummary: null,
+        source: 'unavailable',
+      })
+    }
+    setLoading(false)
+  }, [ticker, data])
 
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 30000)
+    const interval = setInterval(fetchData, 30_000)
     return () => clearInterval(interval)
   }, [fetchData])
 
+  const { quote, profile, aiSummary, source } = data ?? {}
+  const up = (quote?.change ?? 0) >= 0
+
   if (loading && !data) {
     return (
-      <div className="h-full flex flex-col bg-card rounded-lg border border-border">
-        <div className="flex items-center justify-between p-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-theme-green" />
-            <span className="font-semibold text-sm">Company Profile</span>
-          </div>
-          <Badge variant="outline" className="text-[9px] animate-pulse">Loading...</Badge>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <RefreshCw className="w-5 h-5 animate-spin text-muted-foreground" />
-        </div>
+      <div className="h-full flex items-center justify-center bg-card">
+        <RefreshCw className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
-  const { quote, profile, aiSummary } = data || {}
-
   return (
-    <div className="h-full flex flex-col bg-card overflow-hidden">
-      {/* Quote Section */}
-      <div className="p-3 border-b border-border bg-card/80">
-        <div className="flex items-start justify-between mb-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-base">{ticker}</span>
-              <span className="text-xs text-muted-foreground">{profile?.name || ticker}</span>
-              {profile?.exchange && (
-                <span className="text-[9px] px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">
-                  {profile.exchange}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Badge 
-              variant="outline" 
-              className={`text-[9px] ${source === 'intrinio' ? 'border-blue-500/50 text-blue-400' : source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}
-            >
-              {source === 'intrinio' ? 'INTRINIO' : source === 'polygon' ? 'POLYGON' : 'DEMO'}
-            </Badge>
-            <button 
-              onClick={fetchData}
-              className="p-1 hover:bg-muted/50 rounded transition-colors"
-              title="Refresh"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+    <div className="h-full w-full flex items-center bg-card overflow-hidden">
+      {/* Ultra-compact single-line profile bar */}
+      <div className="flex items-center gap-3 px-3 py-1 w-full overflow-x-auto min-w-0">
+        
+        {/* Ticker + Price */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className="text-xs font-mono font-bold text-foreground">{ticker}</span>
+          {quote && (
+            <>
+              <span className="text-xs font-mono font-bold text-foreground">${quote.price.toFixed(2)}</span>
+              <div className={`flex items-center gap-0.5 text-[9px] font-mono font-semibold ${up ? 'text-green-400' : 'text-red-400'}`}>
+                {up ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+                <span>{up ? '+' : ''}{quote.change.toFixed(2)}</span>
+                <span className="opacity-75">({up ? '+' : ''}{quote.changePercent.toFixed(2)}%)</span>
+              </div>
+            </>
+          )}
         </div>
 
-        {quote && (
-          <div className="flex items-baseline gap-3">
-            <span className="text-2xl font-bold font-mono">${quote.price.toFixed(2)}</span>
-            <div className={`flex items-center gap-1 ${quote.change >= 0 ? 'text-theme-green' : 'text-red-500'}`}>
-              {quote.change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-              <span className="font-mono font-semibold">
-                {quote.change >= 0 ? '+' : ''}{quote.change.toFixed(2)}
-              </span>
-              <span className="font-mono text-sm">
-                ({quote.change >= 0 ? '+' : ''}{quote.changePercent.toFixed(2)}%)
-              </span>
-            </div>
-          </div>
-        )}
+        {/* Divider */}
+        <div className="w-px h-3 bg-border/40 flex-shrink-0" />
 
-        {quote?.afterHoursPrice && (
-          <div className="mt-1 text-xs text-muted-foreground">
-            <span>After: </span>
-            <span className="font-mono">${quote.afterHoursPrice.toFixed(2)}</span>
-            <span className={quote.afterHoursChange && quote.afterHoursChange >= 0 ? 'text-theme-green' : 'text-red-500'}>
-              {' '}{quote.afterHoursChange && quote.afterHoursChange >= 0 ? '+' : ''}{quote.afterHoursChange?.toFixed(2)} ({quote.afterHoursChangePercent?.toFixed(2)}%)
-            </span>
-          </div>
-        )}
-
+        {/* OHLCV */}
         {quote && (
-          <div className="grid grid-cols-4 gap-2 mt-3 text-[10px]">
-            <div>
-              <span className="text-muted-foreground">Open</span>
-              <div className="font-mono">${quote.open.toFixed(2)}</div>
+          <div className="flex items-center gap-3 flex-shrink-0 text-[8px] font-mono">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-muted-foreground">O</span>
+              <span className="text-foreground font-semibold">${quote.open.toFixed(2)}</span>
             </div>
-            <div>
-              <span className="text-muted-foreground">High</span>
-              <div className="font-mono text-theme-green">${quote.high.toFixed(2)}</div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-muted-foreground">H</span>
+              <span className="text-green-400 font-semibold">${quote.high.toFixed(2)}</span>
             </div>
-            <div>
-              <span className="text-muted-foreground">Low</span>
-              <div className="font-mono text-red-500">${quote.low.toFixed(2)}</div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-muted-foreground">L</span>
+              <span className="text-red-400 font-semibold">${quote.low.toFixed(2)}</span>
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-muted-foreground">PC</span>
+              <span className="text-foreground font-semibold">${quote.prevClose.toFixed(2)}</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
               <span className="text-muted-foreground">Vol</span>
-              <div className="font-mono">{formatVolume(quote.volume)}</div>
+              <span className="text-foreground font-semibold">{formatVolume(quote.volume)}</span>
             </div>
           </div>
         )}
-      </div>
 
-      {/* AI Summary */}
-      {aiSummary && (
-        <div className="px-3 py-2 border-b border-border bg-theme-green/5">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Sparkles className="w-3 h-3 text-theme-green" />
-            <span className="text-[9px] font-semibold text-theme-green uppercase tracking-wide">AI Summary</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">{aiSummary}</p>
-        </div>
-      )}
+        {/* Divider */}
+        <div className="w-px h-3 bg-border/40 flex-shrink-0" />
 
-      {/* Profile Tabs */}
-      <div className="flex border-b border-border">
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-            activeTab === 'profile'
-              ? 'text-theme-green border-b-2 border-theme-green bg-theme-green/5'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Profile
-        </button>
-        <button
-          onClick={() => setActiveTab('executives')}
-          className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-            activeTab === 'executives'
-              ? 'text-theme-green border-b-2 border-theme-green bg-theme-green/5'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Key Executives
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto p-3">
-        {activeTab === 'profile' && profile && (
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground leading-relaxed">{profile.description}</p>
-            
-            <div className="grid grid-cols-2 gap-2 text-[10px]">
-              <div>
+        {/* Company info */}
+        {profile && (
+          <div className="flex items-center gap-3 flex-shrink-0 text-[8px]">
+            {profile.exchange && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-muted-foreground">Exch</span>
+                <span className="text-foreground font-semibold">{profile.exchange}</span>
+              </div>
+            )}
+            {profile.sector && (
+              <div className="flex flex-col gap-0.5">
                 <span className="text-muted-foreground">Sector</span>
-                <div className="font-medium">{profile.sector}</div>
+                <span className="text-foreground font-semibold truncate max-w-[50px]">{profile.sector}</span>
               </div>
-              <div>
+            )}
+            {profile.marketCap > 0 && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-muted-foreground">Cap</span>
+                <span className="text-foreground font-semibold">{formatNumber(profile.marketCap).replace('$', '')}</span>
+              </div>
+            )}
+            {profile.industry && (
+              <div className="flex flex-col gap-0.5">
                 <span className="text-muted-foreground">Industry</span>
-                <div className="font-medium">{profile.industry}</div>
+                <span className="text-foreground font-semibold truncate max-w-[80px]">{profile.industry}</span>
               </div>
-              <div>
-                <span className="text-muted-foreground">Market Cap</span>
-                <div className="font-mono font-medium">{formatNumber(profile.marketCap)}</div>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Employees</span>
-                <div className="font-mono font-medium">{profile.employees.toLocaleString()}</div>
-              </div>
-            </div>
+            )}
           </div>
         )}
 
-        {activeTab === 'executives' && profile?.executives && (
-          <div className="space-y-2">
-            {profile.executives.map((exec, i) => (
-              <div key={i} className="flex items-center gap-2 p-2 rounded bg-muted/30">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <div className="text-xs font-medium">{exec.name}</div>
-                  <div className="text-[10px] text-muted-foreground">{exec.title}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Right: Source + Refresh */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {source && (
+            <span className={`text-[7px] font-mono px-1 py-0.5 rounded border ${
+              source === 'polygon' ? 'border-green-500/40 text-green-400' : 'border-yellow-500/40 text-yellow-500'
+            }`}>
+              {source === 'polygon' ? 'POLY' : 'DEMO'}
+            </span>
+          )}
+          <button onClick={fetchData} className="p-0.5 hover:bg-muted/50 rounded" title="Refresh">
+            <RefreshCw className={`w-3 h-3 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
     </div>
   )
