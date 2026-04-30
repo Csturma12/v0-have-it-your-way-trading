@@ -136,12 +136,3 @@ export function TickerHeaderBar({ ticker }: TickerHeaderBarProps) {
     </div>
   )
 }
-
-function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div className="flex items-baseline gap-1">
-      <span className="text-[9px] font-mono text-muted-foreground">{label}</span>
-      <span className={`text-[10px] font-mono font-semibold ${color ?? 'text-foreground'}`}>{value}</span>
-    </div>
-  )
-}
