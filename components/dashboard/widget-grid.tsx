@@ -38,6 +38,7 @@ import { Metrics } from './metrics'
 import { Catalysts } from './catalysts'
 import { PatternWatchlist } from './pattern-watchlist'
 import { TickerHeaderBar } from './ticker-header-bar'
+import { GexLevels } from './gex-levels'
 import {
   Cpu,
   Scale,
@@ -371,7 +372,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts'
+type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels'
 
 interface RightWidget {
   id: string
@@ -392,10 +393,11 @@ const ADDON_WIDGETS: RightWidget[] = [
   { id: 'analyst-ratings',   type: 'analyst-ratings',   title: 'Analyst Ratings' },
   { id: 'metrics',           type: 'metrics',           title: 'Metrics' },
   { id: 'catalysts',         type: 'catalysts',         title: 'Catalysts' },
+  { id: 'gex-levels',        type: 'gex-levels',        title: 'GEX Levels (Flash Alpha)' },
   { id: 'market-overview',   type: 'market-overview',   title: 'Market Overview' },
   { id: 'technicals',        type: 'technicals',        title: 'Technical Indicators' },
   { id: 'options-chain',     type: 'options-chain',     title: 'Options Chain' },
-]
+  ]
 
 const DEFAULT_LAYOUT: any[] = [
   { i: 'chart',           x: 0, y: 0, w: 8, h: 6, minH: 4 },
@@ -629,6 +631,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'analyst-ratings') return <AnalystRatings ticker={selectedTicker} />
     if (widget.type === 'metrics')         return <Metrics ticker={selectedTicker} />
     if (widget.type === 'catalysts')       return <Catalysts ticker={selectedTicker} />
+    if (widget.type === 'gex-levels')      return <GexLevels ticker={selectedTicker} />
     if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'market-overview') return <MarketOverview onSelectTicker={onSelectTicker} />
