@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2, RefreshCw, Link2 } from 'lucide-react'
+import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2, RefreshCw, Link2, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { QuickTradeBox } from './quick-trade-box'
-import { QuickTradeIdeas } from './quick-trade-ideas'
 import { PatternWatchlist } from './pattern-watchlist'
 import { CompanyProfile } from './company-profile'
 import { useWatchlist } from '@/contexts/watchlist-context'
@@ -108,6 +107,25 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [tradingMode, setTradingMode] = useState<'autonomous' | 'manual'>('manual')
   const refreshInterval = useRef<NodeJS.Timeout | null>(null)
+
+  // AI trade ideas: keyed by ticker, stored as { idea, action, loading }
+  const [tradeIdeas, setTradeIdeas] = useState<Record<string, { idea: string; action: 'buy' | 'sell' | 'hold'; loading: boolean }>>({})
+
+  const fetchTradeIdea = useCallback(async (ticker: string) => {
+    if (tradeIdeas[ticker] && !tradeIdeas[ticker].loading) return // already loaded
+    setTradeIdeas(prev => ({ ...prev, [ticker]: { idea: '', action: 'hold', loading: true } }))
+    try {
+      const res = await fetch(`/api/trade-ideas/brief?ticker=${ticker}`)
+      if (res.ok) {
+        const data = await res.json()
+        setTradeIdeas(prev => ({ ...prev, [ticker]: { idea: data.idea, action: data.action, loading: false } }))
+      } else {
+        throw new Error('fetch failed')
+      }
+    } catch {
+      setTradeIdeas(prev => ({ ...prev, [ticker]: { idea: 'No idea available', action: 'hold', loading: false } }))
+    }
+  }, [tradeIdeas])
 
   useEffect(() => { setHydrated(true) }, [])
 
@@ -313,8 +331,8 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
                 key={item.ticker}
                 role="button"
                 tabIndex={0}
-                onClick={() => onSelectTicker?.(item.ticker)}
-                onKeyDown={(e) => e.key === 'Enter' && onSelectTicker?.(item.ticker)}
+                onClick={() => { onSelectTicker?.(item.ticker); fetchTradeIdea(item.ticker) }}
+                onKeyDown={(e) => e.key === 'Enter' && (onSelectTicker?.(item.ticker), fetchTradeIdea(item.ticker))}
                 className={`w-full text-left p-1.5 rounded transition-colors cursor-pointer group ${
                   isSelected
                     ? 'bg-primary/10 border border-primary/30'
@@ -370,7 +388,7 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
                   </div>
                 )}
 
-                {/* Row 3: Open/Close | 52W H/L | DP %/Amt */}
+                {/* Row 3: Open/Close | 52W H/L | Vol */}
                 <div className="grid grid-cols-3 gap-1 text-center text-[9px] font-mono">
                   <div>
                     <div className="text-muted-foreground/70 uppercase tracking-wide">Open/Close</div>
@@ -389,6 +407,27 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
                     <div className="text-foreground">{item.volume}</div>
                   </div>
                 </div>
+
+                {/* Row 4: AI Trade Idea — shown only when selected or idea loaded */}
+                {tradeIdeas[item.ticker] && (
+                  <div className="mt-1 flex items-start gap-1 px-0.5">
+                    <Sparkles className="w-2.5 h-2.5 flex-shrink-0 mt-0.5 text-primary/70" />
+                    {tradeIdeas[item.ticker].loading ? (
+                      <span className="text-[9px] text-muted-foreground animate-pulse">Generating idea...</span>
+                    ) : (
+                      <span className={`text-[9px] leading-tight ${
+                        tradeIdeas[item.ticker].action === 'buy'  ? 'text-green-400' :
+                        tradeIdeas[item.ticker].action === 'sell' ? 'text-red-400'   :
+                        'text-muted-foreground'
+                      }`}>
+                        <span className="font-mono font-bold uppercase mr-1 text-[8px]">
+                          {tradeIdeas[item.ticker].action}
+                        </span>
+                        {tradeIdeas[item.ticker].idea}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}
@@ -396,14 +435,11 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
       </div>
       )}
 
-      {/* Quick Trade Ideas - only shown on watchlist tab */}
-      {activeTab === 'watchlist' && (
-      <>
-      <QuickTradeIdeas
-        onSelectIdea={(ticker) => onSelectTicker?.(ticker)}
-      />
+      {/* Quick Trade Ideas removed — now inline under each ticker row */}
 
       {/* Quick Trade */}
+      {activeTab === 'watchlist' && (
+      <>
       <QuickTradeBox
         selectedTicker={selectedTicker ?? null}
         price={watchlist.find(w => w.ticker === selectedTicker)?.price ?? null}
