@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Search, BookmarkPlus, BookmarkCheck } from 'lucide-react'
+import { Search, BookmarkPlus, BookmarkCheck, LogIn, ExternalLink, User } from 'lucide-react'
 
 interface ChartProps {
   ticker: string
   onChangeTicker?: (ticker: string) => void
 }
+
+// Store premium mode preference in localStorage
+const PREMIUM_MODE_KEY = 'tradingview-premium-mode'
 
 declare global {
   interface Window {
@@ -21,6 +24,29 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
   const tickerInputRef = useRef<HTMLInputElement>(null)
   const widgetRef = useRef<any>(null)
   const [addedToWatchlist, setAddedToWatchlist] = useState(false)
+  const [premiumMode, setPremiumMode] = useState(false)
+  const [showPremiumMenu, setShowPremiumMenu] = useState(false)
+
+  // Load premium mode preference
+  useEffect(() => {
+    const saved = localStorage.getItem(PREMIUM_MODE_KEY)
+    if (saved === 'true') setPremiumMode(true)
+  }, [])
+
+  // Toggle premium mode
+  const togglePremiumMode = (enabled: boolean) => {
+    setPremiumMode(enabled)
+    localStorage.setItem(PREMIUM_MODE_KEY, String(enabled))
+    setShowPremiumMenu(false)
+  }
+
+  // Close premium menu when clicking outside
+  useEffect(() => {
+    if (!showPremiumMenu) return
+    const handleClick = () => setShowPremiumMenu(false)
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [showPremiumMenu])
 
   // Reset confirmation badge when ticker changes
   useEffect(() => { setAddedToWatchlist(false) }, [ticker])
@@ -49,7 +75,7 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
     }
   }, [])
 
-  // Create/update the widget when ticker changes
+  // Create/update the widget when ticker or premium mode changes
   useEffect(() => {
     if (!window.TradingView || !containerRef.current) return
 
@@ -58,27 +84,31 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
       containerRef.current.innerHTML = ''
     }
 
-    // Create new widget
+    // Create new widget with premium features if enabled
     try {
       widgetRef.current = new window.TradingView.widget({
         autosize: true,
         symbol: `${ticker}`,
-        interval: '1H',
+        interval: premiumMode ? 'D' : '1H',
         timezone: 'Etc/UTC',
         theme: 'dark',
         style: '1',
         locale: 'en',
-        enable_publishing: false,
+        enable_publishing: premiumMode, // Enable for premium users
         withdateranges: true,
         hide_side_toolbar: false,
-        allow_symbol_change: false,
+        allow_symbol_change: premiumMode, // Premium users can change symbols in widget
         save_image: true,
+        studies: premiumMode ? ['MASimple@tv-basicstudies', 'RSI@tv-basicstudies', 'MACD@tv-basicstudies'] : [],
+        show_popup_button: premiumMode, // Opens in tradingview.com
+        popup_width: '1000',
+        popup_height: '650',
         container_id: containerRef.current.id || 'tradingview-chart',
       })
     } catch (error) {
       console.error('[v0] TradingView widget error:', error)
     }
-  }, [ticker])
+  }, [ticker, premiumMode])
 
   // Add ID to container if it doesn't have one
   useEffect(() => {
@@ -142,6 +172,63 @@ export function TradingViewChart({ ticker, onChangeTicker }: ChartProps) {
             : <><BookmarkPlus className="w-3.5 h-3.5" /> Watchlist</>
           }
         </button>
+
+        {/* TradingView Premium Toggle */}
+        <div className="relative">
+          <button
+            onClick={() => setShowPremiumMenu(!showPremiumMenu)}
+            title={premiumMode ? 'Premium Mode Active' : 'Login to TradingView'}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-semibold border transition-all duration-200 flex-shrink-0 ${
+              premiumMode
+                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400'
+                : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-cyan-500/10 hover:border-cyan-500/40 hover:text-cyan-400'
+            }`}
+          >
+            {premiumMode ? <User className="w-3.5 h-3.5" /> : <LogIn className="w-3.5 h-3.5" />}
+            {premiumMode ? 'Premium' : 'Login'}
+          </button>
+
+          {/* Dropdown menu */}
+          {showPremiumMenu && (
+            <div className="absolute right-0 top-full mt-1 w-56 bg-[#1a1a2e] border border-[#2d2d44] rounded-lg shadow-xl z-50 overflow-hidden">
+              <div className="p-3 border-b border-[#2d2d44]">
+                <p className="text-[10px] font-mono text-muted-foreground mb-2">
+                  Connect your TradingView account for premium features
+                </p>
+              </div>
+              
+              <button
+                onClick={() => togglePremiumMode(false)}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-mono transition-colors ${
+                  !premiumMode ? 'bg-cyan-500/10 text-cyan-400' : 'text-foreground hover:bg-white/5'
+                }`}
+              >
+                <div className={`w-3 h-3 rounded-full border-2 ${!premiumMode ? 'border-cyan-400 bg-cyan-400' : 'border-muted-foreground'}`} />
+                Free Charts (No Login)
+              </button>
+              
+              <button
+                onClick={() => togglePremiumMode(true)}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-mono transition-colors ${
+                  premiumMode ? 'bg-cyan-500/10 text-cyan-400' : 'text-foreground hover:bg-white/5'
+                }`}
+              >
+                <div className={`w-3 h-3 rounded-full border-2 ${premiumMode ? 'border-cyan-400 bg-cyan-400' : 'border-muted-foreground'}`} />
+                Premium Mode (Advanced Features)
+              </button>
+
+              <a
+                href="https://www.tradingview.com/accounts/signin/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors border-t border-[#2d2d44]"
+              >
+                Open TradingView Login
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* TradingView Chart */}

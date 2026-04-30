@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingUp, TrendingDown, Zap, Flame, Target, ArrowRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, Zap, Flame, Target, ArrowRight, Search, Plus, X, Loader } from 'lucide-react'
 import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 
 interface TradeIdea {
@@ -17,7 +17,7 @@ interface QuickTradeIdeasProps {
   onSelectIdea?: (ticker: string, action: 'buy' | 'sell') => void
 }
 
-const IDEA_TICKERS = [
+const DEFAULT_IDEAS = [
   { ticker: 'NVDA', action: 'buy' as const, reason: 'AI momentum', strength: 'high' as const },
   { ticker: 'TSLA', action: 'buy' as const, reason: 'Breakout setup', strength: 'medium' as const },
   { ticker: 'META', action: 'buy' as const, reason: 'Dark pool activity', strength: 'high' as const },
@@ -26,8 +26,51 @@ const IDEA_TICKERS = [
 ]
 
 export function QuickTradeIdeas({ onSelectIdea }: QuickTradeIdeasProps) {
+  const [customTickers, setCustomTickers] = useState<typeof DEFAULT_IDEAS>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<{ symbol: string; name: string }[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
+  
+  const IDEA_TICKERS = [...DEFAULT_IDEAS, ...customTickers]
   const tickers = IDEA_TICKERS.map(i => i.ticker)
   const { quotes, isLoading } = useLiveQuotes(tickers, { refreshInterval: 30000 })
+
+  // Search for any stock globally
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return
+    setIsSearching(true)
+    try {
+      const res = await fetch(`/api/tickers/search?q=${encodeURIComponent(searchQuery)}&limit=8`)
+      if (res.ok) {
+        const data = await res.json()
+        setSearchResults(data.results || [])
+      }
+    } catch {
+      setSearchResults([])
+    }
+    setIsSearching(false)
+  }
+
+  // Add ticker to ideas
+  const addTicker = (symbol: string) => {
+    if (!customTickers.find(t => t.ticker === symbol) && !DEFAULT_IDEAS.find(t => t.ticker === symbol)) {
+      setCustomTickers([...customTickers, {
+        ticker: symbol,
+        action: 'buy' as const,
+        reason: 'User added',
+        strength: 'medium' as const
+      }])
+    }
+    setSearchQuery('')
+    setSearchResults([])
+    setShowSearch(false)
+  }
+
+  // Remove custom ticker
+  const removeTicker = (symbol: string) => {
+    setCustomTickers(customTickers.filter(t => t.ticker !== symbol))
+  }
 
   const ideas: TradeIdea[] = IDEA_TICKERS.map(idea => {
     const q = quotes[idea.ticker]
@@ -74,54 +117,117 @@ export function QuickTradeIdeas({ onSelectIdea }: QuickTradeIdeasProps) {
           <Zap className="w-3 h-3 text-primary" />
           Trade Ideas
         </div>
-        <span className="text-[8px] font-mono text-muted-foreground">{ideas.length} active</span>
+        <div className="flex items-center gap-1">
+          <span className="text-[8px] font-mono text-muted-foreground">{ideas.length} active</span>
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            className="p-0.5 rounded hover:bg-muted/50 transition-colors"
+            title="Search any stock"
+          >
+            {showSearch ? <X className="w-3 h-3 text-muted-foreground" /> : <Search className="w-3 h-3 text-muted-foreground" />}
+          </button>
+        </div>
       </div>
+
+      {/* Universal Stock Search */}
+      {showSearch && (
+        <div className="mb-2 p-1.5 rounded border border-border/50 bg-muted/10">
+          <div className="flex items-center gap-1">
+            <div className="relative flex-1">
+              <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Search any stock worldwide..."
+                className="w-full pl-5 pr-2 py-1 text-[10px] font-mono bg-background/50 border border-border/50 rounded focus:outline-none focus:border-primary/50"
+              />
+            </div>
+            <button
+              onClick={handleSearch}
+              disabled={!searchQuery.trim() || isSearching}
+              className="px-2 py-1 text-[9px] font-mono font-bold rounded border bg-primary/20 border-primary/30 text-primary hover:bg-primary/30 disabled:opacity-40"
+            >
+              {isSearching ? <Loader className="w-2.5 h-2.5 animate-spin" /> : 'GO'}
+            </button>
+          </div>
+          {searchResults.length > 0 && (
+            <div className="mt-1.5 space-y-0.5 max-h-32 overflow-y-auto">
+              {searchResults.map((r) => (
+                <button
+                  key={r.symbol}
+                  onClick={() => addTicker(r.symbol)}
+                  className="w-full flex items-center justify-between px-1.5 py-1 rounded bg-background/50 hover:bg-primary/10 transition-colors text-left group"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[10px] font-mono font-bold text-foreground">{r.symbol}</span>
+                    <span className="text-[8px] font-mono text-muted-foreground truncate">{r.name}</span>
+                  </div>
+                  <Plus className="w-2.5 h-2.5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Horizontal scrollable pill box */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
         {ideas.map((idea) => {
           const StrengthIcon = strengthIcons[idea.strength]
           const isPositive = idea.action === 'buy'
+          const isCustom = customTickers.some(t => t.ticker === idea.ticker)
           
           return (
-            <button
-              key={idea.ticker}
-              onClick={() => onSelectIdea?.(idea.ticker, idea.action)}
-              className={`flex-shrink-0 p-1.5 rounded border transition-all hover:scale-105 cursor-pointer ${
-                isPositive 
-                  ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20' 
-                  : 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20'
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                {/* Action indicator */}
-                <div className={`p-0.5 rounded ${isPositive ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
-                  {isPositive 
-                    ? <TrendingUp className="w-2.5 h-2.5 text-green-400" />
-                    : <TrendingDown className="w-2.5 h-2.5 text-red-400" />
-                  }
-                </div>
-                
-                {/* Ticker + info */}
-                <div className="text-left">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-mono font-bold text-foreground">{idea.ticker}</span>
-                    <span className={`text-[8px] font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                      {isPositive ? '+' : ''}{idea.change?.toFixed(2)}%
-                    </span>
+            <div key={idea.ticker} className="relative flex-shrink-0 group">
+              {isCustom && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeTicker(idea.ticker) }}
+                  className="absolute -top-1 -right-1 z-10 p-0.5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove"
+                >
+                  <X className="w-2 h-2" />
+                </button>
+              )}
+              <button
+                onClick={() => onSelectIdea?.(idea.ticker, idea.action)}
+                className={`p-1.5 rounded border transition-all hover:scale-105 cursor-pointer ${
+                  isPositive 
+                    ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20' 
+                    : 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20'
+                } ${isCustom ? 'ring-1 ring-primary/30' : ''}`}
+              >
+                <div className="flex items-center gap-1.5">
+                  {/* Action indicator */}
+                  <div className={`p-0.5 rounded ${isPositive ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                    {isPositive 
+                      ? <TrendingUp className="w-2.5 h-2.5 text-green-400" />
+                      : <TrendingDown className="w-2.5 h-2.5 text-red-400" />
+                    }
                   </div>
-                  <div className="flex items-center gap-1">
-                    <StrengthIcon className={`w-2 h-2 ${strengthColors[idea.strength].split(' ')[2]}`} />
-                    <span className="text-[7px] font-mono text-muted-foreground truncate max-w-[60px]">
-                      {idea.reason}
-                    </span>
+                  
+                  {/* Ticker + info */}
+                  <div className="text-left">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-mono font-bold text-foreground">{idea.ticker}</span>
+                      <span className={`text-[8px] font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                        {isPositive ? '+' : ''}{idea.change?.toFixed(2)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <StrengthIcon className={`w-2 h-2 ${strengthColors[idea.strength].split(' ')[2]}`} />
+                      <span className="text-[7px] font-mono text-muted-foreground truncate max-w-[60px]">
+                        {idea.reason}
+                      </span>
+                    </div>
                   </div>
+                  
+                  {/* Arrow */}
+                  <ArrowRight className={`w-2.5 h-2.5 ${isPositive ? 'text-green-400/50' : 'text-red-400/50'}`} />
                 </div>
-                
-                {/* Arrow */}
-                <ArrowRight className={`w-2.5 h-2.5 ${isPositive ? 'text-green-400/50' : 'text-red-400/50'}`} />
-              </div>
-            </button>
+              </button>
+            </div>
           )
         })}
       </div>

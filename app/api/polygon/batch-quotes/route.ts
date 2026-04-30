@@ -2,6 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const POLYGON_API_KEY = process.env.POLYGON_API_KEY
 
+// Rate limiting: max 5 requests per minute to Polygon
+const rateLimitWindow = 60 * 1000 // 1 minute
+const maxRequests = 5
+const requestTimestamps: number[] = []
+
+// In-memory cache for responses (15 second TTL)
+const cache = new Map<string, { data: Record<string, unknown>; timestamp: number }>()
+const CACHE_TTL = 15 * 1000 // 15 seconds
+
+function isRateLimited(): boolean {
+  const now = Date.now()
+  // Remove timestamps older than the window
+  while (requestTimestamps.length > 0 && requestTimestamps[0] < now - rateLimitWindow) {
+    requestTimestamps.shift()
+  }
+  return requestTimestamps.length >= maxRequests
+}
+
+function recordRequest(): void {
+  requestTimestamps.push(Date.now())
+}
+
+function getCacheKey(tickers: string[]): string {
+  return tickers.sort().join(',')
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const tickersParam = searchParams.get('tickers')
@@ -15,6 +41,36 @@ export async function GET(req: NextRequest) {
   if (!POLYGON_API_KEY) {
     return NextResponse.json({ error: 'POLYGON_API_KEY not configured' }, { status: 500 })
   }
+
+  // Check cache first
+  const cacheKey = getCacheKey(tickers)
+  const cached = cache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return NextResponse.json({ 
+      ...cached.data, 
+      cached: true, 
+      updatedAt: new Date(cached.timestamp).toISOString() 
+    })
+  }
+
+  // Check rate limit before making external request
+  if (isRateLimited()) {
+    // Return stale cache if available, otherwise return rate limit error
+    if (cached) {
+      return NextResponse.json({ 
+        ...cached.data, 
+        cached: true, 
+        stale: true,
+        updatedAt: new Date(cached.timestamp).toISOString() 
+      })
+    }
+    return NextResponse.json({ 
+      error: 'Rate limited - please wait before refreshing', 
+      retryAfter: 60 
+    }, { status: 429 })
+  }
+
+  recordRequest()
 
   try {
     // Use Polygon snapshot endpoint which returns all tickers in one call
@@ -90,9 +146,31 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ quotes, session, updatedAt: new Date().toISOString() })
+    const response = { quotes, session, updatedAt: new Date().toISOString() }
+    
+    // Store in cache
+    cache.set(cacheKey, { data: response, timestamp: Date.now() })
+    
+    // Clean up old cache entries (keep cache under 100 entries)
+    if (cache.size > 100) {
+      const oldestKey = cache.keys().next().value
+      if (oldestKey) cache.delete(oldestKey)
+    }
+    
+    return NextResponse.json(response)
   } catch (err) {
     console.error('[batch-quotes]', err)
+    
+    // Return stale cache on error if available
+    if (cached) {
+      return NextResponse.json({ 
+        ...cached.data, 
+        cached: true, 
+        stale: true,
+        error: 'Using cached data due to API error'
+      })
+    }
+    
     return NextResponse.json({ error: 'Failed to fetch quotes' }, { status: 500 })
   }
 }
