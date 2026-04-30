@@ -99,7 +99,7 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
   const source = activeWatchlist?.source || 'manual'
   const lastSynced = activeWatchlist?.lastSynced || null
   
-  const [activeTab, setActiveTab] = useState<'watchlist' | 'patterns'>('watchlist')
+  const [activeTab, setActiveTab] = useState<'watchlist' | 'patterns' | 'profile'>('watchlist')
   const [hydrated, setHydrated] = useState(false)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -300,7 +300,8 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
       )}
 
       {/* Watchlist Items - only shown on watchlist tab */}
-      {activeTab === 'watchlist' && <div className="flex-1 overflow-y-auto">
+      {activeTab === 'watchlist' && (
+      <div className="flex-1 overflow-y-auto">
         <div className="p-1 space-y-0.5">
           {filtered.map((item) => {
             const isPositive = item.change >= 0

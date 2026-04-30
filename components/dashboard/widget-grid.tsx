@@ -37,6 +37,7 @@ import { AnalystRatings } from './analyst-ratings'
 import { Metrics } from './metrics'
 import { Catalysts } from './catalysts'
 import { PatternWatchlist } from './pattern-watchlist'
+import { TickerBar } from './ticker-bar'
 import { TickerHeaderBar } from './ticker-header-bar'
 import {
   Cpu,
@@ -704,22 +705,15 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           </div>
           <MarketSectorPills onSelectTicker={onSelectTicker} />
 
-          {/* Pattern Scan Watchlists — bot actively scans these */}
-          <div className="px-2 pt-3 pb-2 border-t border-border/30 mt-2">
-            <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-muted-foreground">
-              PATTERN SCANNING
-            </span>
-          </div>
-          <div className="px-2 pb-2">
-            <PatternWatchlist onSelectTicker={onSelectTicker} />
-          </div>
-
         </div>
         </aside>
       )}
 
-      {/* ── RIGHT AREA: toolbar + draggable/resizable grid ── */}
+      {/* ── RIGHT AREA: ticker header + toolbar + draggable/resizable grid ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        {/* Compact ticker header bar — always visible above everything */}
+        <TickerHeaderBar ticker={selectedTicker} />
 
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-card/30 flex-shrink-0">

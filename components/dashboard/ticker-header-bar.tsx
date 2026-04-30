@@ -85,79 +85,51 @@ export function TickerHeaderBar({ ticker }: TickerHeaderBarProps) {
   const up = (data?.changePercent ?? 0) >= 0
 
   return (
-    <div className="flex items-center gap-3 px-3 py-1.5 border-b border-border bg-card/40 flex-shrink-0 overflow-x-auto min-w-0">
+    <div className="flex items-center gap-2 px-2 py-1 border-b border-border bg-card/40 flex-shrink-0 overflow-x-auto min-w-0">
 
       {/* Ticker + name + exchange */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-sm font-mono font-bold text-foreground">{ticker}</span>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <span className="text-xs font-mono font-bold text-foreground">{ticker}</span>
         {data?.name && data.name !== ticker && (
-          <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[160px]">
+          <span className="text-[9px] font-mono text-muted-foreground truncate max-w-[100px]">
             {data.name}
           </span>
         )}
         {data?.exchange && (
-          <span className="text-[8px] font-mono border border-border/50 bg-muted/30 text-muted-foreground px-1.5 py-0.5 rounded">
+          <span className="text-[7px] font-mono border border-primary/30 text-primary px-1 py-0 rounded">
             {data.exchange}
           </span>
         )}
       </div>
 
-      {/* Divider */}
-      <div className="w-px h-4 bg-border/50 flex-shrink-0" />
-
       {/* Price + change */}
       {data ? (
-        <div className="flex items-baseline gap-2 flex-shrink-0">
-          <span className="text-sm font-mono font-bold text-foreground">
+        <div className="flex items-baseline gap-1.5 flex-shrink-0">
+          <span className="text-xs font-mono font-bold text-foreground">
             ${fmt(data.price)}
           </span>
-          <div className={`flex items-center gap-1 text-[10px] font-mono font-semibold ${up ? 'text-green-400' : 'text-red-400'}`}>
-            {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+          <div className={`flex items-center gap-0.5 text-[9px] font-mono font-semibold ${up ? 'text-green-400' : 'text-red-400'}`}>
+            {up ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
             {up ? '+' : ''}{fmt(data.change)} ({up ? '+' : ''}{fmt(data.changePercent)}%)
           </div>
         </div>
       ) : loading ? (
-        <RefreshCw className="w-3.5 h-3.5 animate-spin text-muted-foreground flex-shrink-0" />
+        <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground flex-shrink-0" />
       ) : null}
 
-      {/* Divider */}
-      {data && <div className="w-px h-4 bg-border/50 flex-shrink-0" />}
-
-      {/* OHLV stats */}
+      {/* Compact OHLV stats */}
       {data && (
-        <div className="flex items-center gap-4 flex-shrink-0">
-          <Stat label="O" value={`$${fmt(data.open)}`} />
-          <Stat label="H" value={`$${fmt(data.high)}`} color="text-green-400" />
-          <Stat label="L" value={`$${fmt(data.low)}`} color="text-red-400" />
-          <Stat label="Prev C" value={`$${fmt(data.prevClose)}`} />
-          <Stat label="Vol" value={fmtVolume(data.volume)} />
-          {data.marketCap > 0 && (
-            <Stat label="Mkt Cap" value={fmtCap(data.marketCap)} />
-          )}
-          {data.sector && (
-            <Stat label="Sector" value={data.sector} />
-          )}
-        </div>
-      )}
-
-      {/* Source badge — pushed right */}
-      {data && (
-        <div className="ml-auto flex-shrink-0 flex items-center gap-1.5">
-          <span
-            className={`text-[8px] font-mono font-bold border px-1.5 py-0.5 rounded ${
-              data.source === 'polygon'
-                ? 'border-green-500/40 text-green-400 bg-green-500/10'
-                : 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10'
-            }`}
-          >
-            {data.source === 'polygon' ? 'POLYGON' : 'DEMO'}
-          </span>
+        <div className="flex items-center gap-2 flex-shrink-0 text-[8px] font-mono ml-auto">
+          <span className="text-muted-foreground">O<span className="text-foreground ml-0.5">${fmt(data.open)}</span></span>
+          <span className="text-muted-foreground">H<span className="text-green-400 ml-0.5">${fmt(data.high)}</span></span>
+          <span className="text-muted-foreground">L<span className="text-red-400 ml-0.5">${fmt(data.low)}</span></span>
+          <span className="text-muted-foreground">V<span className="text-foreground ml-0.5">{fmtVolume(data.volume)}</span></span>
           <button
             onClick={fetchData}
-            className="p-1 hover:bg-muted/50 rounded transition-colors"
+            className="p-0.5 hover:bg-muted/50 rounded transition-colors"
             title="Refresh"
           >
-            <RefreshCw className={`w-3 h-3 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-2.5 h-2.5 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       )}
