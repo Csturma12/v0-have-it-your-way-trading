@@ -659,7 +659,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'analyst-ratings') return <AnalystRatings ticker={selectedTicker} />
     if (widget.type === 'metrics')         return <Metrics ticker={selectedTicker} />
     if (widget.type === 'catalysts')       return <Catalysts ticker={selectedTicker} />
-    if (widget.type === 'catalysts-risk')  return <CatalystsRisk ticker={selectedTicker} />
+    if (widget.type === 'catalyst-risk')   return <CatalystRisk ticker={selectedTicker} />
     if (widget.type === 'gex-levels')      return <GexLevels ticker={selectedTicker} />
     if (widget.type === 'watchlist')       return <WatchlistPanel onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
     if (widget.type === 'news')            return <NewsWidget onSelectTicker={onSelectTicker} selectedTicker={selectedTicker} />
@@ -869,10 +869,6 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
               </div>
             )}
           </div>
-
-          <span className="text-[9px] font-mono text-muted-foreground">
-            Layout locked
-          </span>
         </div>
 
         {/* Grid */}

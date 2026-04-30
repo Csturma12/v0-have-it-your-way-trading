@@ -75,16 +75,26 @@ function NewsFeed({
     setLoading(true)
     setError(null)
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 8000)  // 8s timeout
+      
       const params = new URLSearchParams()
       if (fetchTicker) params.set('ticker', fetchTicker)
-      const res = await fetch(`/api/news?${params.toString()}`)
+      const res = await fetch(`/api/news?${params.toString()}`, {
+        signal: controller.signal
+      })
+      clearTimeout(timeout)
+      
       if (!res.ok) throw new Error('Failed to fetch news')
       const data = await res.json()
       setNews(data.news || [])
       setSources(data.sources || { finnhub: false, polygon: false })
       setLastRefresh(new Date())
-    } catch {
-      setError('Failed to load news')
+      setError(null)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load news'
+      setError(message === 'The user aborted a request.' ? 'News fetch timeout' : message)
+      setNews([])
     } finally {
       setLoading(false)
     }

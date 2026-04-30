@@ -60,9 +60,16 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'executives'>('profile')
 
   const fetchData = useCallback(async () => {
-    setLoading(true)
+    if (data) setLoading(true)  // Only show spinner if we don't have cached data
     try {
-      const res = await fetch(`/api/polygon/profile?ticker=${ticker}`)
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 8000)  // 8s timeout
+      
+      const res = await fetch(`/api/polygon/profile?ticker=${ticker}`, {
+        signal: controller.signal
+      })
+      clearTimeout(timeout)
+      
       if (res.ok) {
         const json = await res.json()
         if (json.profile || json.quote) {
@@ -72,17 +79,25 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
             aiSummary: json.aiSummary ?? null,
             source:    json.source    ?? 'polygon',
           })
+          setLoading(false)
           return
         }
       }
-    } catch { /* fall through */ }
-    setData({
-      quote: null,
-      profile: { name: ticker, exchange: '', description: 'No data available.', sector: '', industry: '', ceo: '', employees: 0, marketCap: 0, website: '', executives: [] },
-      aiSummary: null,
-      source: 'unavailable',
-    })
-  }, [ticker])
+    } catch (err) { 
+      console.log(`[v0] Company profile fetch failed for ${ticker}:`, err instanceof Error ? err.message : 'unknown error')
+    }
+    
+    // Fallback data
+    if (!data) {
+      setData({
+        quote: null,
+        profile: { name: ticker, exchange: '', description: 'Unable to load profile.', sector: '', industry: '', ceo: '', employees: 0, marketCap: 0, website: '', executives: [] },
+        aiSummary: null,
+        source: 'unavailable',
+      })
+    }
+    setLoading(false)
+  }, [ticker, data])
 
   useEffect(() => {
     fetchData()
