@@ -32,6 +32,12 @@ export default function SignUpPage() {
     setIsLoading(true)
     const supabase = createClient()
 
+    if (!supabase) {
+      setError('Unable to connect to authentication service')
+      setIsLoading(false)
+      return
+    }
+
     try {
       // First check if email is in the allowed_users list
       const { data: allowedUser, error: checkError } = await supabase
