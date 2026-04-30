@@ -387,8 +387,12 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = [
   { id: 'news',            type: 'news',            title: 'Market News' },
 ]
 
-// Available add-on widgets (can be added via edit mode)
+// All widgets — any removed from the grid can be re-added from this pool
 const ADDON_WIDGETS: RightWidget[] = [
+  { id: 'chart',             type: 'chart',             title: 'Chart' },
+  { id: 'company-profile',   type: 'company-profile',   title: 'Company Profile' },
+  { id: 'watchlist',         type: 'watchlist',         title: 'Watchlist' },
+  { id: 'news',              type: 'news',              title: 'Market News' },
   { id: 'fundamentals',      type: 'fundamentals',      title: 'Fundamentals' },
   { id: 'analyst-ratings',   type: 'analyst-ratings',   title: 'Analyst Ratings' },
   { id: 'metrics',           type: 'metrics',           title: 'Metrics' },
@@ -397,7 +401,7 @@ const ADDON_WIDGETS: RightWidget[] = [
   { id: 'market-overview',   type: 'market-overview',   title: 'Market Overview' },
   { id: 'technicals',        type: 'technicals',        title: 'Technical Indicators' },
   { id: 'options-chain',     type: 'options-chain',     title: 'Options Chain' },
-  ]
+]
 
 const DEFAULT_LAYOUT: any[] = [
   { i: 'chart',           x: 0, y: 0, w: 8, h: 6, minH: 4 },
@@ -711,15 +715,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
         </aside>
       )}
 
-      {/* ── RIGHT AREA: company profile + chart grid ── */}
+      {/* ── RIGHT AREA: toolbar + draggable/resizable grid ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-
-        {/* Compact Company Profile Bar Above Chart */}
-        {selectedTicker && (
-          <div className="flex-shrink-0 border-b border-border bg-card/40 h-24 overflow-hidden">
-            <CompanyProfile ticker={selectedTicker} />
-          </div>
-        )}
 
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-card/30 flex-shrink-0">
