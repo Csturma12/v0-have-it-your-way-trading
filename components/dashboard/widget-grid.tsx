@@ -89,7 +89,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v33'
+const STORAGE_KEY = 'trading-dashboard-rgl-v34'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -451,25 +451,25 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
    'catalysts-risk','news','watchlist','quick-trade','trade-ideas'].includes(w.id)
 )
 
-// Default sizes only — no minW/minH so users can shrink any widget to 1x1
-// if they want. Widget content is wrapped in overflow-y-auto so it stays
-// usable at any size.
+// Default sizes. minH:1 lets users shrink any widget down to a single
+// row (~30px) — essentially just the title bar — which is what we
+// want as the practical floor. minW:1 same for horizontal.
 const DEFAULT_LAYOUT: any[] = [
   // TOP ROW: Ticker Info (with Quote/Levels/Metrics/Fund tabs) + Company Profile
-  { i: 'ticker-info',       x: 0, y: 0,  w: 4, h: 4 },
-  { i: 'company-profile',   x: 4, y: 0,  w: 8, h: 4 },
+  { i: 'ticker-info',       x: 0, y: 0,  w: 4, h: 4, minH: 1, minW: 1 },
+  { i: 'company-profile',   x: 4, y: 0,  w: 8, h: 4, minH: 1, minW: 1 },
   // MAIN CHART
-  { i: 'chart',             x: 0, y: 4,  w: 12, h: 5 },
+  { i: 'chart',             x: 0, y: 4,  w: 12, h: 5, minH: 1, minW: 1 },
   // BOTTOM ROW: Technicals + Analyst + Catalyst/Risk
-  { i: 'technicals',        x: 0, y: 9,  w: 4, h: 4 },
-  { i: 'analyst-ratings',   x: 4, y: 9,  w: 4, h: 4 },
-  { i: 'catalyst-risk',     x: 8, y: 9,  w: 4, h: 4 },
+  { i: 'technicals',        x: 0, y: 9,  w: 4, h: 4, minH: 1, minW: 1 },
+  { i: 'analyst-ratings',   x: 4, y: 9,  w: 4, h: 4, minH: 1, minW: 1 },
+  { i: 'catalyst-risk',     x: 8, y: 9,  w: 4, h: 4, minH: 1, minW: 1 },
   // BOTTOM ROW 2: Watchlist + News
-  { i: 'watchlist',         x: 0, y: 13, w: 6, h: 4 },
-  { i: 'news',              x: 6, y: 13, w: 6, h: 4 },
+  { i: 'watchlist',         x: 0, y: 13, w: 6, h: 4, minH: 1, minW: 1 },
+  { i: 'news',              x: 6, y: 13, w: 6, h: 4, minH: 1, minW: 1 },
   // BOTTOM ROW 3: Quick trade + Ideas
-  { i: 'quick-trade',       x: 0, y: 17, w: 4, h: 3 },
-  { i: 'trade-ideas',       x: 4, y: 17, w: 8, h: 3 },
+  { i: 'quick-trade',       x: 0, y: 17, w: 4, h: 3, minH: 1, minW: 1 },
+  { i: 'trade-ideas',       x: 4, y: 17, w: 8, h: 3, minH: 1, minW: 1 },
 ]
 
 interface SavedState {
@@ -671,10 +671,11 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   }
 
   // All widgets that can be added (default + addon, minus currently visible).
-  // No minW/minH constraints so users can freely shrink any added widget.
+  // minH/minW set to 1 so users can freely shrink any added widget all
+  // the way down to title-bar height (~30px) without ever disappearing.
   const addWidget = (meta: RightWidget) => {
     const def = DEFAULT_LAYOUT.find(l => l.i === meta.id) ?? {
-      i: meta.id, x: 0, y: Infinity, w: 4, h: 4,
+      i: meta.id, x: 0, y: Infinity, w: 4, h: 4, minH: 1, minW: 1,
     }
     setRightWidgets(w => [...w, meta])
     setLayout(l => [...l, def])
@@ -966,14 +967,17 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           .react-resizable-handle-w:hover, .react-resizable-handle-e:hover { transform: translateY(-50%) scale(1.1); }
           .react-resizable-handle-n:hover, .react-resizable-handle-s:hover { transform: translateX(-50%) scale(1.1); }
         `}</style>
-        <div ref={wrapperRef} className={`flex-1 p-2 overflow-y-auto overflow-x-hidden ${isEditMode ? '' : 'rgl-locked'}`}>
+        <div ref={wrapperRef} className={`flex-1 overflow-y-auto overflow-x-hidden widget-scroll ${isEditMode ? '' : 'rgl-locked'}`}>
           <GridLayout
             className="layout"
             layout={visibleLayout}
             cols={12}
             rowHeight={rowHeight}
-            margin={[1, 1]}
-            containerPadding={[4, 4]}
+            // Zero margin/padding so widgets sit flush against each
+            // other (no gap stripes between cards). Borders provide
+            // the visual separation.
+            margin={[0, 0]}
+            containerPadding={[0, 0]}
             isDraggable={isEditMode}
             isResizable={isEditMode}
             resizeHandles={['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}

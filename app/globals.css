@@ -254,3 +254,59 @@
 .rgl-locked .react-resizable-handle {
   display: none;
 }
+
+/* ============================================================
+   Custom thin black/green scrollbars — matches widget aesthetic.
+   Applied to:
+     - .widget-scroll (the dashboard wrapper)
+     - any overflow scroller inside a react-grid-item (so individual
+       widget bodies get the same styling without each widget needing
+       to opt in manually)
+   ============================================================ */
+.widget-scroll,
+.widget-scroll *,
+.react-grid-item,
+.react-grid-item * {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-green) #000000;
+}
+
+.widget-scroll::-webkit-scrollbar,
+.widget-scroll *::-webkit-scrollbar,
+.react-grid-item::-webkit-scrollbar,
+.react-grid-item *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.widget-scroll::-webkit-scrollbar-track,
+.widget-scroll *::-webkit-scrollbar-track,
+.react-grid-item::-webkit-scrollbar-track,
+.react-grid-item *::-webkit-scrollbar-track {
+  background: #000000;
+  border-radius: 3px;
+}
+
+.widget-scroll::-webkit-scrollbar-thumb,
+.widget-scroll *::-webkit-scrollbar-thumb,
+.react-grid-item::-webkit-scrollbar-thumb,
+.react-grid-item *::-webkit-scrollbar-thumb {
+  background: var(--theme-green);
+  border-radius: 3px;
+  border: 1px solid #000000;
+}
+
+.widget-scroll::-webkit-scrollbar-thumb:hover,
+.widget-scroll *::-webkit-scrollbar-thumb:hover,
+.react-grid-item::-webkit-scrollbar-thumb:hover,
+.react-grid-item *::-webkit-scrollbar-thumb:hover {
+  background: #16a34a; /* slightly darker green on hover */
+}
+
+.widget-scroll::-webkit-scrollbar-corner,
+.widget-scroll *::-webkit-scrollbar-corner,
+.react-grid-item::-webkit-scrollbar-corner,
+.react-grid-item *::-webkit-scrollbar-corner {
+  background: #000000;
+}
