@@ -87,7 +87,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v28'
+const STORAGE_KEY = 'trading-dashboard-rgl-v29'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -449,21 +449,19 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
 )
 
 const DEFAULT_LAYOUT: any[] = [
-  // TOP-LEFT TALL COLUMN: Ticker Info — full height of top section (8 rows)
-  // Has room for symbol/name, price, ext hours, OHLC, day's range, 52w range,
-  // volume bars, valuation grid (mkt cap, P/E, EPS, beta, div yield, shares).
-  { i: 'ticker-info',       x: 0, y: 0,  w: 4, h: 8, minH: 6 },
-  // TOP-RIGHT: Company Profile (description + executives tabs)
+  // TOP ROW: Ticker Info (left) + Company Profile (right) — both compact
+  // and freely resizable. TickerInfo content auto-scrolls if user shrinks it.
+  { i: 'ticker-info',       x: 0, y: 0,  w: 4, h: 3, minH: 2 },
   { i: 'company-profile',   x: 4, y: 0,  w: 8, h: 3, minH: 2 },
-  // MAIN CHART (under company profile, takes remaining right space)
-  { i: 'chart',             x: 4, y: 3,  w: 8, h: 5, minH: 3 },
-  // BOTTOM ROW 1: Technicals + Support/Resistance + Fundamentals + Analyst
-  { i: 'support-resistance',x: 0, y: 8,  w: 3, h: 4, minH: 3 },
-  { i: 'technicals',        x: 3, y: 8,  w: 3, h: 4, minH: 3 },
-  { i: 'fundamentals',      x: 6, y: 8,  w: 3, h: 4, minH: 3 },
-  { i: 'analyst-ratings',   x: 9, y: 8,  w: 3, h: 4, minH: 3 },
+  // MAIN CHART (full width below the top row)
+  { i: 'chart',             x: 0, y: 3,  w: 12, h: 5, minH: 3 },
+  // BOTTOM ROW 1: Support/Resistance + Technicals + Fundamentals + Analyst
+  { i: 'support-resistance',x: 0, y: 8,  w: 3, h: 4, minH: 2 },
+  { i: 'technicals',        x: 3, y: 8,  w: 3, h: 4, minH: 2 },
+  { i: 'fundamentals',      x: 6, y: 8,  w: 3, h: 4, minH: 2 },
+  { i: 'analyst-ratings',   x: 9, y: 8,  w: 3, h: 4, minH: 2 },
   // BOTTOM ROW 2: Catalyst/Risk + Watchlist + News
-  { i: 'catalyst-risk',     x: 0, y: 12, w: 4, h: 4, minH: 3 },
+  { i: 'catalyst-risk',     x: 0, y: 12, w: 4, h: 4, minH: 2 },
   { i: 'watchlist',         x: 4, y: 12, w: 4, h: 4, minH: 2 },
   { i: 'news',              x: 8, y: 12, w: 4, h: 4, minH: 2 },
   // BOTTOM ROW 3: Quick trade + Ideas
