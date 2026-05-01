@@ -3,10 +3,11 @@ import { NextResponse } from 'next/server'
 // Aggregate risk data from Finnhub (sentiment, insider trading) and Polygon (short interest)
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const symbol = searchParams.get('symbol')?.toUpperCase()
+  // Accept both `symbol` and `ticker` as aliases.
+  const symbol = (searchParams.get('symbol') || searchParams.get('ticker'))?.toUpperCase()
 
   if (!symbol) {
-    return NextResponse.json({ error: 'Symbol required' }, { status: 400 })
+    return NextResponse.json({ error: 'Symbol/ticker required' }, { status: 400 })
   }
 
   const finnhubKey = process.env.FINNHUB_API_KEY

@@ -3,42 +3,41 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 const POLYGON_KEY = process.env.POLYGON_API_KEY
-const INTRINIO_KEY = process.env.INTRINIO_API_KEY
+const FINNHUB_KEY = process.env.FINNHUB_API_KEY
 
-// Fetch company data from Intrinio for richer profile
-async function fetchIntrinioCompany(ticker: string) {
-  if (!INTRINIO_KEY) return null
-  
+// Fetch company profile from Finnhub (richer than Polygon basics: includes
+// industry, country, IPO date, web URL, logo, market cap, share class breakdown).
+async function fetchFinnhubProfile(ticker: string) {
+  if (!FINNHUB_KEY) return null
   try {
     const res = await fetch(
-      `https://api-v2.intrinio.com/companies/${ticker}?api_key=${INTRINIO_KEY}`,
+      `https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${FINNHUB_KEY}`,
       { next: { revalidate: 3600 } }
     )
-    
     if (!res.ok) return null
-    return await res.json()
+    const data = await res.json()
+    return data && Object.keys(data).length > 0 ? data : null
   } catch {
     return null
   }
 }
 
-// Fetch key executives/officers from Intrinio
-async function fetchIntrinioOfficers(ticker: string) {
-  if (!INTRINIO_KEY) return null
-
+// Fetch executive officers from Finnhub. Their endpoint returns the C-suite
+// roster pulled from SEC filings.
+async function fetchFinnhubOfficers(ticker: string) {
+  if (!FINNHUB_KEY) return null
   try {
     const res = await fetch(
-      `https://api-v2.intrinio.com/companies/${ticker}/officers?api_key=${INTRINIO_KEY}`,
-      { next: { revalidate: 432000 } } // refresh once every 5 days (officer rosters change rarely)
+      `https://finnhub.io/api/v1/stock/executive?symbol=${ticker}&token=${FINNHUB_KEY}`,
+      { next: { revalidate: 432000 } }, // 5d — exec rosters change rarely
     )
     if (!res.ok) return null
     const data = await res.json()
-    // Intrinio shape: { officers: [{ first_name, last_name, title, ... }] }
-    const officers = data?.officers || data?.company_officers || []
-    return officers
+    const list = data?.executive || []
+    return list
       .map((o: any) => ({
-        name: [o.first_name, o.middle_name, o.last_name].filter(Boolean).join(' ').trim() || o.name || '',
-        title: o.title || o.position || '',
+        name: o.name || '',
+        title: o.position || o.title || '',
       }))
       .filter((o: any) => o.name)
       .slice(0, 12)
@@ -51,17 +50,21 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const ticker = (searchParams.get('ticker') || 'AAPL').toUpperCase()
 
-  if (!POLYGON_KEY && !INTRINIO_KEY) {
+  if (!POLYGON_KEY && !FINNHUB_KEY) {
     return NextResponse.json({ error: 'No API keys configured' }, { status: 500 })
   }
 
   try {
-    // Fetch from multiple sources in parallel
-    const [snapshotRes, detailsRes, intrinioCompany, intrinioOfficers] = await Promise.all([
-      POLYGON_KEY ? fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apiKey=${POLYGON_KEY}`, { next: { revalidate: 15 } }) : Promise.resolve(null),
-      POLYGON_KEY ? fetch(`https://api.polygon.io/v3/reference/tickers/${ticker}?apiKey=${POLYGON_KEY}`, { next: { revalidate: 3600 } }) : Promise.resolve(null),
-      fetchIntrinioCompany(ticker),
-      fetchIntrinioOfficers(ticker),
+    // Fetch all 4 sources in parallel.
+    const [snapshotRes, detailsRes, finnhubProfile, finnhubOfficers] = await Promise.all([
+      POLYGON_KEY
+        ? fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apiKey=${POLYGON_KEY}`, { next: { revalidate: 15 } })
+        : Promise.resolve(null),
+      POLYGON_KEY
+        ? fetch(`https://api.polygon.io/v3/reference/tickers/${ticker}?apiKey=${POLYGON_KEY}`, { next: { revalidate: 3600 } })
+        : Promise.resolve(null),
+      fetchFinnhubProfile(ticker),
+      fetchFinnhubOfficers(ticker),
     ])
 
     const snapshotData = snapshotRes && snapshotRes.ok ? await snapshotRes.json() : null
@@ -69,9 +72,9 @@ export async function GET(request: Request) {
 
     const t = snapshotData?.ticker
     const d = detailsData?.results
-    const ic = intrinioCompany // Intrinio company data
+    const fh = finnhubProfile
 
-    // Build quote from Polygon snapshot
+    // Build quote from Polygon snapshot.
     const last = t?.lastTrade?.p ?? t?.day?.c ?? null
     const prevClose = t?.prevDay?.c ?? null
     const change = last != null && prevClose != null ? last - prevClose : null
@@ -88,42 +91,42 @@ export async function GET(request: Request) {
       prevClose: prevClose ?? 0,
     } : null
 
-    // Build profile merging Polygon and Intrinio data (Intrinio has richer company info)
+    // Merge Polygon (sector, employees, branding logos, list date) +
+    // Finnhub (industry, country, IPO date, web URL, share-class market cap).
     const branding = d?.branding
-    const profile = (d || ic) ? {
-      name: ic?.name ?? d?.name ?? ticker,
-      exchange: d?.primary_exchange?.replace('XNAS', 'NASDAQ').replace('XNYS', 'NYSE').replace('XASE', 'AMEX') ?? ic?.stock_exchange ?? '',
-      description: ic?.long_description ?? ic?.short_description ?? d?.description ?? '',
-      sector: ic?.sector ?? d?.sic_description ?? '',
-      industry: ic?.industry_category ?? ic?.industry_group ?? d?.sic_description ?? '',
-      ceo: ic?.ceo ?? '',
-      employees: ic?.employees ?? d?.total_employees ?? 0,
-      marketCap: d?.market_cap ?? 0,
-      website: ic?.company_url ?? d?.homepage_url ?? '',
-      logoUrl: branding?.logo_url ? `${branding.logo_url}?apiKey=${POLYGON_KEY}` : null,
+    const profile = (d || fh) ? {
+      name: fh?.name ?? d?.name ?? ticker,
+      exchange: d?.primary_exchange?.replace('XNAS', 'NASDAQ').replace('XNYS', 'NYSE').replace('XASE', 'AMEX')
+        ?? fh?.exchange
+        ?? '',
+      description: d?.description ?? '',
+      sector: d?.sic_description ?? '',
+      industry: fh?.finnhubIndustry ?? d?.sic_description ?? '',
+      ceo: '',
+      employees: d?.total_employees ?? 0,
+      // Finnhub returns marketCapitalization in MILLIONS, Polygon in dollars.
+      marketCap: d?.market_cap ?? (fh?.marketCapitalization ? fh.marketCapitalization * 1_000_000 : 0),
+      website: fh?.weburl ?? d?.homepage_url ?? '',
+      logoUrl: branding?.logo_url ? `${branding.logo_url}?apiKey=${POLYGON_KEY}` : (fh?.logo ?? null),
       iconUrl: branding?.icon_url ? `${branding.icon_url}?apiKey=${POLYGON_KEY}` : null,
       week52High: d?.week_52_high ?? null,
       week52Low: d?.week_52_low ?? null,
-      listDate: d?.list_date ?? null,
+      listDate: d?.list_date ?? fh?.ipo ?? null,
       locale: d?.locale ?? 'us',
       type: d?.type ?? 'CS',
-      // Additional Intrinio fields
-      hqCity: ic?.hq_address_city ?? null,
-      hqState: ic?.hq_state ?? null,
-      hqCountry: ic?.hq_country ?? null,
-      entityStatus: ic?.entity_status ?? null,
-      legalName: ic?.legal_name ?? null,
-      executives: intrinioOfficers ?? [],
+      hqCity: null,
+      hqState: null,
+      hqCountry: fh?.country ?? null,
+      entityStatus: null,
+      legalName: null,
+      executives: finnhubOfficers ?? [],
     } : null
 
-    // Build AI summary from available descriptions (prefer Intrinio's longer description)
-    const descriptionSource = ic?.long_description ?? ic?.short_description ?? d?.description ?? ''
-    const aiSummary = descriptionSource
-      ? descriptionSource.slice(0, 300) + (descriptionSource.length > 300 ? '…' : '')
+    const aiSummary = d?.description
+      ? d.description.slice(0, 300) + (d.description.length > 300 ? '…' : '')
       : null
 
-    // Determine data source
-    const source = ic ? 'intrinio' : d ? 'polygon' : 'unavailable'
+    const source = d ? 'polygon' : fh ? 'finnhub' : 'unavailable'
 
     return NextResponse.json({
       ticker,

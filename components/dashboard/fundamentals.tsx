@@ -38,42 +38,18 @@ export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
     setLoading(true)
     setError(null)
     try {
-      // Fetch from Polygon AND Intrinio in parallel for better data coverage
-      const [polygonRes, intrinioRes] = await Promise.all([
-        fetch(`/api/polygon/fundamentals?ticker=${ticker}`),
-        fetch(`/api/intrinio?ticker=${ticker}&type=fundamentals`),
-      ])
+      // Fundamentals come from /api/polygon/fundamentals which itself
+      // merges Polygon (basic) + Finnhub /stock/metric (rich) on the
+      // server side. Intrinio was removed.
+      const polygonRes = await fetch(`/api/polygon/fundamentals?ticker=${ticker}`)
 
       let f: any = {}
       let src = 'unknown'
 
-      // Try Polygon first
       if (polygonRes.ok) {
         const json = await polygonRes.json()
         f = json.fundamentals || {}
         src = json.source || 'polygon'
-      }
-
-      // Enrich/override with Intrinio data (usually more comprehensive)
-      if (intrinioRes.ok) {
-        const intrinioJson = await intrinioRes.json()
-        const ifund = intrinioJson.fundamentals || {}
-        if (Object.keys(ifund).length > 0) {
-          src = 'intrinio'
-          // Intrinio uses different key names
-          f.pe = ifund.pricetoearnings ?? f.pe
-          f.pb = ifund.pricetobook ?? f.pb
-          f.ps = ifund.pricetosales ?? f.ps
-          f.eps = ifund.dilutedeps ?? ifund.basiceps ?? f.eps
-          f.revenueGrowth = (ifund.revenueyoygrowth ?? ifund.revenueqoqgrowth) ? (ifund.revenueyoygrowth ?? ifund.revenueqoqgrowth) * 100 : f.revenueGrowth
-          f.grossMargin = ifund.grossmargin ? ifund.grossmargin * 100 : f.grossMargin
-          f.operatingMargin = ifund.operatingmargin ? ifund.operatingmargin * 100 : f.operatingMargin
-          f.netMargin = ifund.netmargin ? ifund.netmargin * 100 : f.netMargin
-          f.roe = ifund.roe ? ifund.roe * 100 : f.roe
-          f.debtToEquity = ifund.debttoequity ?? f.debtToEquity
-          f.beta = ifund.beta ?? f.beta
-          f.divYield = ifund.dividendyield ? ifund.dividendyield * 100 : f.divYield
-        }
       }
 
       setData({
@@ -113,8 +89,8 @@ export function Fundamentals({ ticker = 'AAPL' }: { ticker: string }) {
       <div className="flex items-center justify-between px-2 py-1 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-wide">Fundamentals</span>
-          <span className={`text-[7px] font-mono px-1 py-0 rounded ${source === 'polygon' ? 'bg-green-500/20 text-green-400' : source === 'intrinio' ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-500'}`}>
-            {source === 'polygon' ? 'FINNHUB' : source === 'intrinio' ? 'INTRINIO' : 'DEMO'}
+          <span className={`text-[7px] font-mono px-1 py-0 rounded ${source === 'polygon' ? 'bg-green-500/20 text-green-400' : source === 'finnhub' ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-500'}`}>
+            {source === 'polygon' ? 'POLYGON' : source === 'finnhub' ? 'FINNHUB' : 'DEMO'}
           </span>
         </div>
         <button onClick={fetchData} className="p-0.5 hover:bg-muted/50 rounded">

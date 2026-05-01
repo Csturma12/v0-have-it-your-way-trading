@@ -46,6 +46,7 @@ import { QuickTradeBox } from './quick-trade-box'
 import { QuickTradeIdeas } from './quick-trade-ideas'
 import { WidgetErrorBoundary } from './widget-error-boundary'
 import { NewsTickerBanner } from './news-ticker-banner'
+import { DarkPoolBlocks } from './dark-pool-blocks'
 import {
   Cpu,
   Scale,
@@ -379,7 +380,7 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info' | 'support-resistance' | 'catalysts-risk' | 'quick-trade' | 'trade-ideas'
+type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info' | 'support-resistance' | 'catalysts-risk' | 'quick-trade' | 'trade-ideas' | 'dark-pool-blocks'
 
 interface RightWidget {
   id: string
@@ -422,6 +423,7 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
     widgets: [
       { id: 'options-chain',      type: 'options-chain',      title: 'Options Chain' },
       { id: 'gex-levels',         type: 'gex-levels',         title: 'GEX Levels' },
+      { id: 'dark-pool-blocks',   type: 'dark-pool-blocks',   title: 'Dark Pool / Blocks' },
     ],
   },
   {
@@ -700,6 +702,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'options-chain')   return <OptionsChain ticker={selectedTicker} />
     if (widget.type === 'quick-trade')     return <QuickTradeBox selectedTicker={selectedTicker} price={null} />
     if (widget.type === 'trade-ideas')     return <QuickTradeIdeas onSelectIdea={(ticker) => onSelectTicker(ticker)} />
+    if (widget.type === 'dark-pool-blocks') return <DarkPoolBlocks ticker={selectedTicker} />
     return null
   }
 

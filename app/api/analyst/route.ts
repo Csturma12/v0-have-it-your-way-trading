@@ -203,11 +203,14 @@ function generateRecentActivity(recommendations: AnalystRecommendation[]): strin
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const symbol = searchParams.get('symbol')?.toUpperCase()
-  const symbols = searchParams.get('symbols')?.split(',').map(s => s.trim().toUpperCase())
+  // Accept both `symbol` and `ticker` as aliases so the route works
+  // regardless of which name the caller uses.
+  const symbol = (searchParams.get('symbol') || searchParams.get('ticker'))?.toUpperCase()
+  const symbols = (searchParams.get('symbols') || searchParams.get('tickers'))
+    ?.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
   
-  if (!symbol && !symbols) {
-    return NextResponse.json({ error: 'Symbol or symbols parameter required' }, { status: 400 })
+  if (!symbol && !symbols?.length) {
+    return NextResponse.json({ error: 'Symbol/ticker parameter required' }, { status: 400 })
   }
   
   const symbolList = symbols || (symbol ? [symbol] : [])
