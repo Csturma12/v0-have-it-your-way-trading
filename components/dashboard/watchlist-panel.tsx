@@ -25,6 +25,11 @@ interface WatchlistItem {
   extHoursPrice:   number | null
   extHoursChange:  number | null
   extHoursSession: 'pre' | 'post' | null
+  // UW enrichment from /api/watchlist-data
+  ivRank:        number | null     // 0-100, 1y IV rank
+  callPutRatio:  number | null     // call_volume / put_volume
+  netPrem:       number | null     // net_call_premium + net_put_premium ($)
+  marketTime:    string | null     // 'regular' | 'pre' | 'post' from UW tape
   loading: boolean
 }
 
@@ -44,6 +49,7 @@ function blankItem(ticker: string): WatchlistItem {
     week52High: null, week52Low: null,
     darkPoolPct: null, darkPoolAmt: null,
     extHoursPrice: null, extHoursChange: null, extHoursSession: null,
+    ivRank: null, callPutRatio: null, netPrem: null, marketTime: null,
     loading: true,
   }
 }
@@ -204,11 +210,58 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
     return () => window.removeEventListener('watchlist:add', handler)
   }, [fetchTicker])
 
+  // Batched UW enrichment — single call for ALL tickers at once.
+  // /api/watchlist-data returns OHLC + IV rank + call/put ratio + net
+  // premium + market session per ticker, throttled server-side to
+  // dodge UW's rate limit. We merge the result into watchlist state
+  // without disturbing the Polygon-derived fields the UI was already
+  // using (price/change/volume/52w/etc).
+  const fetchUwEnrichment = useCallback(async (tickers: string[]) => {
+    if (tickers.length === 0) return
+    try {
+      const res = await fetch(`/api/watchlist-data?tickers=${tickers.join(',')}`)
+      if (!res.ok) return
+      const json = await res.json()
+      const rows: any[] = json.tickers || []
+      setWatchlist(prev =>
+        prev.map(item => {
+          const r = rows.find(x => x.ticker === item.ticker)
+          if (!r) return item
+          return {
+            ...item,
+            // Prefer UW numbers when populated — they include
+            // pre/post-market activity that Polygon free-tier misses.
+            price:        r.price ?? item.price,
+            prevOpen:     r.open ?? item.prevOpen,
+            prevClose:    r.prevClose ?? item.prevClose,
+            volume:       r.totalVolume
+                            ? fmtVol(r.totalVolume)
+                            : (r.volume ? fmtVol(r.volume) : item.volume),
+            ivRank:        r.ivRank,
+            callPutRatio:  r.callPutRatio,
+            netPrem:       r.netPrem,
+            marketTime:    r.marketTime,
+            // Recompute change% if we have both UW close + prevClose
+            change:        (r.price !== null && r.prevClose)
+                             ? r.price - r.prevClose
+                             : item.change,
+            changePercent: (r.price !== null && r.prevClose)
+                             ? ((r.price - r.prevClose) / r.prevClose) * 100
+                             : item.changePercent,
+          }
+        })
+      )
+    } catch {
+      /* silent — Polygon path still populates the row */
+    }
+  }, [])
+
   // Fetch all tickers and refresh every 15 seconds
   const refreshAll = useCallback((tickers: string[]) => {
     tickers.forEach(t => fetchTicker(t))
+    fetchUwEnrichment(tickers) // single batched call, runs in parallel
     setLastUpdated(new Date())
-  }, [fetchTicker])
+  }, [fetchTicker, fetchUwEnrichment])
 
   useEffect(() => {
     if (!hydrated) return
@@ -405,6 +458,47 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
                     <div className="text-foreground">{item.volume}</div>
                   </div>
                 </div>
+
+                {/* Row 4: UW enrichment — IV rank | C/P ratio | Net Premium tilt
+                    Only renders when at least one UW field is loaded so
+                    rows stay compact for tickers without options chains. */}
+                {(item.ivRank !== null || item.callPutRatio !== null || item.netPrem !== null) && (
+                  <div className="mt-0.5 grid grid-cols-3 gap-1 text-center text-[9px] font-mono">
+                    <div>
+                      <div className="text-muted-foreground/70 uppercase tracking-wide">IV Rank</div>
+                      <div className={
+                        item.ivRank === null ? 'text-muted-foreground' :
+                        item.ivRank >= 70 ? 'text-red-400' :       // high vol
+                        item.ivRank >= 40 ? 'text-yellow-400' :    // mid vol
+                        'text-green-400'                           // low vol
+                      }>
+                        {item.ivRank !== null ? `${item.ivRank.toFixed(0)}` : '—'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground/70 uppercase tracking-wide">C/P</div>
+                      <div className={
+                        item.callPutRatio === null ? 'text-muted-foreground' :
+                        item.callPutRatio >= 1.5 ? 'text-green-400' :
+                        item.callPutRatio <= 0.6 ? 'text-red-400' :
+                        'text-foreground'
+                      }>
+                        {item.callPutRatio !== null ? item.callPutRatio.toFixed(2) : '—'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground/70 uppercase tracking-wide">Net Prem</div>
+                      <div className={
+                        item.netPrem === null ? 'text-muted-foreground' :
+                        item.netPrem > 0 ? 'text-green-400' :
+                        item.netPrem < 0 ? 'text-red-400' :
+                        'text-foreground'
+                      }>
+                        {item.netPrem !== null ? fmtAmt(item.netPrem) : '—'}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Row 4: AI Trade Idea — shown only when selected or idea loaded */}
                 {tradeIdeas[item.ticker] && (
