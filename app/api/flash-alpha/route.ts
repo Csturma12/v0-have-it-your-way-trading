@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const FLASH_ALPHA_BASE = 'https://api.flashalpha.io'
+// Allow overriding via env in case the host changes; default to .com.
+// (The .io host this route used to point at returns a DNS NXDOMAIN.)
+const FLASH_ALPHA_BASE = process.env.FLASH_ALPHA_BASE_URL || 'https://api.flashalpha.com'
 // Support both the typo and correct spelling
 const API_KEY = process.env.FLASH_ALPHA_API_KEY || process.env.FLASh_ALHPA_API_KEY
 
