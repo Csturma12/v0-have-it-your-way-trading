@@ -181,7 +181,7 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
 
             {/* Description */}
             {profile.description && (
-              <div className="text-[10px] text-muted-foreground leading-relaxed line-clamp-4">
+              <div className="text-[10px] text-muted-foreground leading-relaxed">
                 {profile.description}
               </div>
             )}
