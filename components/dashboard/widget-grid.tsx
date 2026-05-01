@@ -87,7 +87,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v29'
+const STORAGE_KEY = 'trading-dashboard-rgl-v30'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -449,24 +449,24 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
 )
 
 const DEFAULT_LAYOUT: any[] = [
-  // TOP ROW: Ticker Info (left) + Company Profile (right) — both compact
-  // and freely resizable. TickerInfo content auto-scrolls if user shrinks it.
-  { i: 'ticker-info',       x: 0, y: 0,  w: 4, h: 3, minH: 2 },
-  { i: 'company-profile',   x: 4, y: 0,  w: 8, h: 3, minH: 2 },
+  // TOP ROW: Ticker Info (left, with Quote/Levels/Metrics/Fund tabs inside)
+  // + Company Profile (right). Both compact and freely resizable.
+  { i: 'ticker-info',       x: 0, y: 0,  w: 4, h: 4, minH: 2 },
+  { i: 'company-profile',   x: 4, y: 0,  w: 8, h: 4, minH: 2 },
   // MAIN CHART (full width below the top row)
-  { i: 'chart',             x: 0, y: 3,  w: 12, h: 5, minH: 3 },
-  // BOTTOM ROW 1: Support/Resistance + Technicals + Fundamentals + Analyst
-  { i: 'support-resistance',x: 0, y: 8,  w: 3, h: 4, minH: 2 },
-  { i: 'technicals',        x: 3, y: 8,  w: 3, h: 4, minH: 2 },
-  { i: 'fundamentals',      x: 6, y: 8,  w: 3, h: 4, minH: 2 },
-  { i: 'analyst-ratings',   x: 9, y: 8,  w: 3, h: 4, minH: 2 },
-  // BOTTOM ROW 2: Catalyst/Risk + Watchlist + News
-  { i: 'catalyst-risk',     x: 0, y: 12, w: 4, h: 4, minH: 2 },
-  { i: 'watchlist',         x: 4, y: 12, w: 4, h: 4, minH: 2 },
-  { i: 'news',              x: 8, y: 12, w: 4, h: 4, minH: 2 },
+  { i: 'chart',             x: 0, y: 4,  w: 12, h: 5, minH: 3 },
+  // BOTTOM ROW: Technicals + Analyst + Catalyst/Risk
+  // (Levels, Metrics, Fundamentals are now tabs inside Ticker Info — they
+  // remain available in the Widgets dropdown as standalone widgets too)
+  { i: 'technicals',        x: 0, y: 9,  w: 4, h: 4, minH: 2 },
+  { i: 'analyst-ratings',   x: 4, y: 9,  w: 4, h: 4, minH: 2 },
+  { i: 'catalyst-risk',     x: 8, y: 9,  w: 4, h: 4, minH: 2 },
+  // BOTTOM ROW 2: Watchlist + News
+  { i: 'watchlist',         x: 0, y: 13, w: 6, h: 4, minH: 2 },
+  { i: 'news',              x: 6, y: 13, w: 6, h: 4, minH: 2 },
   // BOTTOM ROW 3: Quick trade + Ideas
-  { i: 'quick-trade',       x: 0, y: 16, w: 4, h: 3, minH: 2 },
-  { i: 'trade-ideas',       x: 4, y: 16, w: 8, h: 3, minH: 2 },
+  { i: 'quick-trade',       x: 0, y: 17, w: 4, h: 3, minH: 2 },
+  { i: 'trade-ideas',       x: 4, y: 17, w: 8, h: 3, minH: 2 },
 ]
 
 interface SavedState {
