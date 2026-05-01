@@ -5,7 +5,6 @@ import { Plus, Search, TrendingUp, TrendingDown, Star, Trash2, RefreshCw, Link2,
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { QuickTradeBox } from './quick-trade-box'
 import { PatternWatchlist } from './pattern-watchlist'
 import { CompanyProfile } from './company-profile'
 import { useWatchlist } from '@/contexts/watchlist-context'
@@ -105,7 +104,6 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
   const [searchQuery, setSearchQuery] = useState('')
   const [newTicker, setNewTicker] = useState('')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [tradingMode, setTradingMode] = useState<'autonomous' | 'manual'>('manual')
   const refreshInterval = useRef<NodeJS.Timeout | null>(null)
 
   // AI trade ideas: keyed by ticker, stored as { idea, action, loading }
@@ -436,18 +434,11 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
       )}
 
       {/* Quick Trade Ideas removed — now inline under each ticker row */}
-
-      {/* Quick Trade */}
-      {activeTab === 'watchlist' && (
-      <>
-      <QuickTradeBox
-        selectedTicker={selectedTicker ?? null}
-        price={watchlist.find(w => w.ticker === selectedTicker)?.price ?? null}
-        mode={tradingMode}
-        onModeChange={setTradingMode}
-      />
+      {/* Quick Trade widget removed from watchlist — it's now its own
+          dashboard widget that users can add via the Widgets dropdown. */}
 
       {/* Footer */}
+      {activeTab === 'watchlist' && (
       <div className="px-2 py-1 border-t border-border bg-card/50">
         <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground">
           <div className="flex items-center gap-1">
@@ -478,7 +469,6 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
           </div>
         </div>
       </div>
-      </>
       )}
     </div>
   )
