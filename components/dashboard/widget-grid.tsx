@@ -89,7 +89,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v31'
+const STORAGE_KEY = 'trading-dashboard-rgl-v32'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -562,16 +562,16 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     return () => resizeObserver.disconnect()
   }, [])
 
-  // Compute rowHeight so the full grid fits exactly within the wrapper height.
-  // Total rows in the default layout = chart h(13) + news h(5) + margins/padding.
-  // We target 18 rows total with 2px margin and 8px padding (top+bottom).
-  // Base rows for the default layout — chart can grow beyond this dynamically
-  const TOTAL_ROWS = 8
-  const MARGIN = 1   // matches margin={[1,1]}
-  const PADDING = 4  // matches containerPadding={[4,4]}
-  const rowHeight = Math.floor(
-    (wrapperHeight - PADDING * 2 - MARGIN * (TOTAL_ROWS + 1)) / TOTAL_ROWS
-  )
+  // Use a FIXED rowHeight so users can freely resize widgets to any
+  // height they want. The previous version computed rowHeight to cram
+  // a fixed number of rows into the visible viewport, which meant
+  // dragging a widget taller just shrunk every other row and nothing
+  // visibly changed. The wrapper now scrolls vertically when the
+  // grid grows beyond the viewport.
+  // Reference: rowHeight is suppressed below when wrapperHeight is 0
+  // (initial render) to avoid a flash of zero-height widgets.
+  const ROW_HEIGHT = 30
+  const rowHeight = ROW_HEIGHT
 
   // Load saved layouts from localStorage
   useEffect(() => {
@@ -670,10 +670,11 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     setRightWidgets(DEFAULT_RIGHT_WIDGETS)
   }
 
-  // All widgets that can be added (default + addon, minus currently visible)
+  // All widgets that can be added (default + addon, minus currently visible).
+  // No minW/minH constraints so users can freely shrink any added widget.
   const addWidget = (meta: RightWidget) => {
     const def = DEFAULT_LAYOUT.find(l => l.i === meta.id) ?? {
-      i: meta.id, x: 0, y: Infinity, w: 4, h: 4, minH: 3,
+      i: meta.id, x: 0, y: Infinity, w: 4, h: 4,
     }
     setRightWidgets(w => [...w, meta])
     setLayout(l => [...l, def])
@@ -965,7 +966,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           .react-resizable-handle-w:hover, .react-resizable-handle-e:hover { transform: translateY(-50%) scale(1.1); }
           .react-resizable-handle-n:hover, .react-resizable-handle-s:hover { transform: translateX(-50%) scale(1.1); }
         `}</style>
-        <div ref={wrapperRef} className={`flex-1 p-2 ${isEditMode ? 'overflow-visible' : 'overflow-hidden rgl-locked'}`}>
+        <div ref={wrapperRef} className={`flex-1 p-2 overflow-y-auto overflow-x-hidden ${isEditMode ? '' : 'rgl-locked'}`}>
           <GridLayout
             className="layout"
             layout={visibleLayout}
