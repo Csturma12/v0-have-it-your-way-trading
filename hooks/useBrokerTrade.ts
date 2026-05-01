@@ -7,6 +7,13 @@ interface TradeExecutionParams {
   orderType?: 'market' | 'limit' | 'stop'
   limitPrice?: number
   stopPrice?: number
+  // Options support — when assetClass === 'option' the route uses
+  // optionSymbol (full OCC symbol) instead of plain ticker.
+  assetClass?: 'stock' | 'option'
+  optionSymbol?: string         // e.g. "NVDA250620C00200000"
+  expiration?: string           // YYYY-MM-DD (optional; route can rebuild OCC)
+  strike?: number
+  optionType?: 'call' | 'put'
 }
 
 interface TradeResult {
