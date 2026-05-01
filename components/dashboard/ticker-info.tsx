@@ -5,6 +5,7 @@ import { Star, TrendingUp, TrendingDown, RefreshCw, Moon, Sunrise } from 'lucide
 import { Badge } from '@/components/ui/badge'
 import { useWatchlist } from '@/contexts/watchlist-context'
 import { WidgetEmptyState } from './widget-empty-state'
+import { useTickerBundle } from '@/hooks/useTickerBundle'
 
 type TabId = 'quote' | 'levels' | 'metrics' | 'fund'
 
@@ -193,62 +194,43 @@ export function TickerInfo({ ticker }: { ticker: string }) {
     finally { setTabLoading(false) }
   }, [ticker])
 
-  const fetchMetrics = useCallback(async () => {
-    setTabLoading(true)
-    try {
-      const [dpRes, flowRes, tideRes] = await Promise.all([
-        fetch(`/api/dark-pool?type=darkpool&ticker=${ticker}`),
-        fetch(`/api/dark-pool?type=options&ticker=${ticker}`),
-        fetch(`/api/unusual-whales?type=tide`),
-      ])
-      const dpData = dpRes.ok ? await dpRes.json() : { trades: [] }
-      const flowData = flowRes.ok ? await flowRes.json() : { flow: [] }
-      const tideData = tideRes.ok ? await tideRes.json() : { data: {} }
-      const flow = flowData.flow || []
-      const tide = tideData.data || {}
+  // Use shared bundle for Metrics tab — replaces 3 separate fetches
+  // with the cached SWR data that other widgets also consume.
+  const { bundle, isLoading: bundleLoading } = useTickerBundle(ticker)
 
-      // /api/dark-pool returns the global darkpool/recent feed (not
-      // filtered server-side), so first filter to just THIS ticker's
-      // prints. Then derive side from price vs NBBO: at/above ask =
-      // buy aggressor, at/below bid = sell aggressor, between =
-      // unknown (excluded from the buy/sell tally).
-      const allTrades = dpData.trades || []
-      const tickerTrades = allTrades.filter((t: any) =>
-        (t.ticker || '').toUpperCase() === ticker.toUpperCase()
-      )
-      let buyVol = 0
-      let sellVol = 0
-      let totalDp = 0
-      for (const t of tickerTrades) {
-        const size = Number(t.size) || 0
-        const price = Number(t.price) || 0
-        const ask = Number(t.nbbo_ask) || 0
-        const bid = Number(t.nbbo_bid) || 0
-        totalDp += size
-        // Mock data still has explicit `side`, prefer it when present
-        if (t.side === 'buy') buyVol += size
-        else if (t.side === 'sell') sellVol += size
-        else if (ask > 0 && price >= ask) buyVol += size
-        else if (bid > 0 && price <= bid) sellVol += size
-        // else: between bid/ask -> "unknown" aggressor, don't count
-      }
-      const trades = tickerTrades
-      const sentiment: 'bullish' | 'bearish' | 'neutral' =
-        buyVol > sellVol * 1.2 ? 'bullish' : sellVol > buyVol * 1.2 ? 'bearish' : 'neutral'
-      const cpRatio = tide.put_premium > 0 ? tide.call_premium / tide.put_premium : null
-      setMetrics({
-        ivRank: null, // requires options API, not exposed yet
-        ivPercentile: null,
-        darkPoolPercent: totalDp > 0 ? Math.min(100, (totalDp / 1_000_000) * 2) : null,
-        darkPoolSentiment: sentiment,
-        institutionalBuying: buyVol || null,
-        institutionalSelling: sellVol || null,
-        unusualOptions: flow.filter((f: any) => f.unusual).length || null,
-        cpRatio,
-      })
-    } catch { setMetrics(null) }
-    finally { setTabLoading(false) }
-  }, [ticker])
+  // Derive metrics from bundle whenever it updates
+  useEffect(() => {
+    if (!bundle) return
+    const dp: any = bundle.darkPool || {}
+    const ivRankArr = bundle.ivRank || []
+    const latestIvRank = ivRankArr[0]?.iv_rank ?? null
+    const flowAlerts = bundle.flowAlerts || []
+    // optionsVolume from UW can be an array or object; handle both
+    const optVolArr: any = bundle.optionsVolume || []
+    const optVol = Array.isArray(optVolArr) ? optVolArr[0] : (optVolArr?.data?.[0] ?? optVolArr)
+
+    const buyVol = dp.buyVol || 0
+    const sellVol = dp.sellVol || 0
+    const totalDp = dp.totalVol || 0
+    const sentiment: 'bullish' | 'bearish' | 'neutral' =
+      buyVol > sellVol * 1.2 ? 'bullish' : sellVol > buyVol * 1.2 ? 'bearish' : 'neutral'
+
+    // C/P ratio from optionsVolume if available
+    const callVol = optVol?.call_volume || 0
+    const putVol = optVol?.put_volume || 0
+    const cpRatio = putVol > 0 ? callVol / putVol : null
+
+    setMetrics({
+      ivRank: latestIvRank,
+      ivPercentile: null,
+      darkPoolPercent: totalDp > 0 ? Math.min(100, (totalDp / 1_000_000) * 2) : null,
+      darkPoolSentiment: sentiment,
+      institutionalBuying: buyVol || null,
+      institutionalSelling: sellVol || null,
+      unusualOptions: flowAlerts.filter((f: any) => f.is_unusual).length || null,
+      cpRatio,
+    })
+  }, [bundle])
 
   const fetchFund = useCallback(async () => {
     setTabLoading(true)
@@ -288,14 +270,14 @@ export function TickerInfo({ ticker }: { ticker: string }) {
 
   useEffect(() => {
     if (tab === 'levels'  && !levels)  fetchLevels()
-    if (tab === 'metrics' && !metrics) fetchMetrics()
+    // metrics tab now derives from bundle (useTickerBundle), no fetch needed
     if (tab === 'fund'    && !fund)    fetchFund()
-  }, [tab, levels, metrics, fund, fetchLevels, fetchMetrics, fetchFund])
+  }, [tab, levels, fund, fetchLevels, fetchFund])
 
   const refreshAll = () => {
     fetchQuote()
     if (tab === 'levels')  fetchLevels()
-    if (tab === 'metrics') fetchMetrics()
+    // metrics tab uses bundle (auto-refreshes via SWR)
     if (tab === 'fund')    fetchFund()
   }
 
@@ -497,10 +479,10 @@ export function TickerInfo({ ticker }: { ticker: string }) {
             )}
 
             {tab === 'metrics' && (
-              tabLoading && !metrics ? (
+              bundleLoading && !metrics ? (
                 <div className="flex items-center justify-center h-20"><RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" /></div>
               ) : !metrics ? (
-                <WidgetEmptyState type="error" message="Metrics unavailable" onRetry={fetchMetrics} />
+                <WidgetEmptyState type="error" message="Metrics unavailable" />
               ) : (
                 <div className="space-y-2 text-[9px]">
                   <div>
@@ -534,7 +516,15 @@ export function TickerInfo({ ticker }: { ticker: string }) {
                   </div>
                   <div>
                     <div className="text-muted-foreground font-mono uppercase tracking-wider mb-0.5 text-[8px]">Options</div>
-                    <div className="grid grid-cols-2 gap-1">
+                    <div className="grid grid-cols-3 gap-1">
+                      <div className="bg-muted/30 rounded p-1">
+                        <div className="text-muted-foreground text-[8px]">IV Rank</div>
+                        <div className={`font-mono font-semibold ${
+                          metrics.ivRank == null ? '' :
+                          metrics.ivRank >= 70 ? 'text-red-400' :
+                          metrics.ivRank >= 40 ? 'text-yellow-400' : 'text-green-400'
+                        }`}>{metrics.ivRank != null ? metrics.ivRank.toFixed(0) : '—'}</div>
+                      </div>
                       <div className="bg-muted/30 rounded p-1">
                         <div className="text-muted-foreground text-[8px]">C/P Ratio</div>
                         <div className="font-mono font-semibold">{fmtNum(metrics.cpRatio)}</div>

@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { RefreshCw, Calendar, AlertTriangle, TrendingUp, Zap } from 'lucide-react'
+import { RefreshCw, Calendar, AlertTriangle, TrendingUp, Zap, Landmark, DollarSign } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { useTickerBundle } from '@/hooks/useTickerBundle'
 
 interface Catalyst {
-  type: 'earnings' | 'event' | 'dividend' | 'economic'
+  type: 'earnings' | 'event' | 'dividend' | 'economic' | 'congress' | 'flow' | 'insider'
   title: string
   date: string
   impact: 'high' | 'medium' | 'low'
@@ -35,6 +36,9 @@ export function CatalystRisk({ ticker }: { ticker: string }) {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'catalysts' | 'risks'>('catalysts')
   const [source, setSource] = useState<string>('default')
+
+  // Shared bundle for congress + flow alerts + insider trades
+  const { bundle, isLoading: bundleLoading } = useTickerBundle(ticker)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -115,6 +119,57 @@ export function CatalystRisk({ ticker }: { ticker: string }) {
     return () => clearInterval(interval)
   }, [fetchData])
 
+  // Merge UW bundle data into catalysts (congress trades, unusual flow, insider)
+  useEffect(() => {
+    if (!bundle) return
+    const uwCatalysts: Catalyst[] = []
+
+    // Congressional trades are high-impact catalysts
+    const congress = bundle.congress || []
+    congress.slice(0, 3).forEach((trade: any) => {
+      const side = (trade.transaction_type || '').toLowerCase().includes('purchase') ? 'bought' : 'sold'
+      const amt = trade.amount ? ` ($${(trade.amount / 1000).toFixed(0)}K)` : ''
+      uwCatalysts.push({
+        type: 'congress',
+        title: `${trade.representative || 'Rep'} ${side} ${ticker}${amt}`,
+        date: trade.transaction_date || new Date().toISOString(),
+        impact: 'high',
+      })
+    })
+
+    // Large unusual flow alerts
+    const flowAlerts = bundle.flowAlerts || []
+    flowAlerts.slice(0, 2).forEach((f: any) => {
+      const side = f.sentiment || (f.option_type === 'call' ? 'bullish' : 'bearish')
+      const prem = f.total_premium ? `$${(f.total_premium / 1e6).toFixed(1)}M` : ''
+      uwCatalysts.push({
+        type: 'flow',
+        title: `${side.toUpperCase()} flow alert ${prem}`,
+        date: f.date || new Date().toISOString(),
+        impact: f.is_unusual ? 'high' : 'medium',
+      })
+    })
+
+    // Insider transactions
+    const insider = bundle.insider || []
+    insider.slice(0, 2).forEach((t: any) => {
+      const side = (t.transaction_type || '').toLowerCase().includes('buy') ? 'bought' : 'sold'
+      uwCatalysts.push({
+        type: 'insider',
+        title: `Insider ${t.name || ''} ${side} shares`,
+        date: t.filing_date || new Date().toISOString(),
+        impact: 'medium',
+      })
+    })
+
+    // Merge with existing catalysts, avoiding duplicates by type prefix
+    setCatalysts(prev => {
+      const existingNonUw = prev.filter(c => !['congress', 'flow', 'insider'].includes(c.type))
+      return [...uwCatalysts, ...existingNonUw].slice(0, 8)
+    })
+    if (uwCatalysts.length > 0) setSource('uw')
+  }, [bundle, ticker])
+
   const getImpactColor = (impact: string) => {
     if (impact === 'high') return 'bg-orange-500/20 text-orange-400 border-orange-500/40'
     if (impact === 'medium') return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
@@ -131,6 +186,9 @@ export function CatalystRisk({ ticker }: { ticker: string }) {
     if (type === 'earnings') return <Calendar className="w-2.5 h-2.5" />
     if (type === 'event') return <Zap className="w-2.5 h-2.5" />
     if (type === 'dividend') return <TrendingUp className="w-2.5 h-2.5" />
+    if (type === 'congress') return <Landmark className="w-2.5 h-2.5" />
+    if (type === 'flow') return <DollarSign className="w-2.5 h-2.5" />
+    if (type === 'insider') return <TrendingUp className="w-2.5 h-2.5" />
     return <Calendar className="w-2.5 h-2.5" />
   }
 
