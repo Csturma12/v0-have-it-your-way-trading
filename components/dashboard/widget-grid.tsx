@@ -45,6 +45,7 @@ import { CatalystsRisk } from './catalysts-risk'
 import { QuickTradeBox } from './quick-trade-box'
 import { QuickTradeIdeas } from './quick-trade-ideas'
 import { WidgetErrorBoundary } from './widget-error-boundary'
+import { NewsTickerBanner } from './news-ticker-banner'
 import {
   Cpu,
   Scale,
@@ -87,7 +88,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v30'
+const STORAGE_KEY = 'trading-dashboard-rgl-v31'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -448,25 +449,25 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
    'catalysts-risk','news','watchlist','quick-trade','trade-ideas'].includes(w.id)
 )
 
+// Default sizes only — no minW/minH so users can shrink any widget to 1x1
+// if they want. Widget content is wrapped in overflow-y-auto so it stays
+// usable at any size.
 const DEFAULT_LAYOUT: any[] = [
-  // TOP ROW: Ticker Info (left, with Quote/Levels/Metrics/Fund tabs inside)
-  // + Company Profile (right). Both compact and freely resizable.
-  { i: 'ticker-info',       x: 0, y: 0,  w: 4, h: 4, minH: 2 },
-  { i: 'company-profile',   x: 4, y: 0,  w: 8, h: 4, minH: 2 },
-  // MAIN CHART (full width below the top row)
-  { i: 'chart',             x: 0, y: 4,  w: 12, h: 5, minH: 3 },
+  // TOP ROW: Ticker Info (with Quote/Levels/Metrics/Fund tabs) + Company Profile
+  { i: 'ticker-info',       x: 0, y: 0,  w: 4, h: 4 },
+  { i: 'company-profile',   x: 4, y: 0,  w: 8, h: 4 },
+  // MAIN CHART
+  { i: 'chart',             x: 0, y: 4,  w: 12, h: 5 },
   // BOTTOM ROW: Technicals + Analyst + Catalyst/Risk
-  // (Levels, Metrics, Fundamentals are now tabs inside Ticker Info — they
-  // remain available in the Widgets dropdown as standalone widgets too)
-  { i: 'technicals',        x: 0, y: 9,  w: 4, h: 4, minH: 2 },
-  { i: 'analyst-ratings',   x: 4, y: 9,  w: 4, h: 4, minH: 2 },
-  { i: 'catalyst-risk',     x: 8, y: 9,  w: 4, h: 4, minH: 2 },
+  { i: 'technicals',        x: 0, y: 9,  w: 4, h: 4 },
+  { i: 'analyst-ratings',   x: 4, y: 9,  w: 4, h: 4 },
+  { i: 'catalyst-risk',     x: 8, y: 9,  w: 4, h: 4 },
   // BOTTOM ROW 2: Watchlist + News
-  { i: 'watchlist',         x: 0, y: 13, w: 6, h: 4, minH: 2 },
-  { i: 'news',              x: 6, y: 13, w: 6, h: 4, minH: 2 },
+  { i: 'watchlist',         x: 0, y: 13, w: 6, h: 4 },
+  { i: 'news',              x: 6, y: 13, w: 6, h: 4 },
   // BOTTOM ROW 3: Quick trade + Ideas
-  { i: 'quick-trade',       x: 0, y: 17, w: 4, h: 3, minH: 2 },
-  { i: 'trade-ideas',       x: 4, y: 17, w: 8, h: 3, minH: 2 },
+  { i: 'quick-trade',       x: 0, y: 17, w: 4, h: 3 },
+  { i: 'trade-ideas',       x: 4, y: 17, w: 8, h: 3 },
 ]
 
 interface SavedState {
@@ -914,6 +915,9 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
               </div>
             )}
           </div>
+
+          {/* Live news ticker — flexes to fill the rest of the toolbar */}
+          <NewsTickerBanner />
         </div>
 
         {/* Grid */}
