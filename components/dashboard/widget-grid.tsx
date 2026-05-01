@@ -89,7 +89,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v32'
+const STORAGE_KEY = 'trading-dashboard-rgl-v33'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -978,8 +978,14 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             isResizable={isEditMode}
             resizeHandles={['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}
             draggableHandle=".widget-drag-handle"
-            compactType={null}
-            preventCollision={true}
+            // compactType="vertical" + preventCollision=false lets users
+            // resize any widget to any size — neighbors get pushed down
+            // automatically. Previously this was {null} + preventCollision
+            // true, which blocked any resize that would touch a neighbor
+            // (the grid silently aborted the drag), making widgets feel
+            // "stuck" at certain heights.
+            compactType="vertical"
+            preventCollision={false}
             onLayoutChange={(newLayout: any) => {
               setLayout(newLayout)
             }}
