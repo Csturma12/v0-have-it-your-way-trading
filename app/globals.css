@@ -102,6 +102,12 @@
   z-index: 30;
   will-change: width, height;
   opacity: 0.95;
+  /* CRITICAL: kill the 200ms width/height transition while resizing.
+     Without this, the widget visually lags behind the cursor by ~200ms,
+     which feels exactly like "the widget is stuck at certain heights"
+     even though resize is technically working. The drag state already
+     does this — resize was missing it. */
+  transition: none !important;
 }
 .react-grid-item.react-draggable-dragging {
   transition: none;
