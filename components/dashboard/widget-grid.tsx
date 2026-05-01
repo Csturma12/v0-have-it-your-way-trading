@@ -47,6 +47,12 @@ import { QuickTradeIdeas } from './quick-trade-ideas'
 import { WidgetErrorBoundary } from './widget-error-boundary'
 import { NewsTickerBanner } from './news-ticker-banner'
 import { DarkPoolBlocks } from './dark-pool-blocks'
+import { OptionsFlow } from './options-flow'
+import { DarkPoolFlow } from './dark-pool-flow'
+import { KeyLevels } from './key-levels'
+import { IVSurface } from './iv-surface'
+import { SignalsFeed } from './signals-feed'
+import { OiChanges } from './oi-changes'
 import {
   Cpu,
   Scale,
@@ -380,7 +386,15 @@ const THEME_DATA = {
 
 // ─── Right-side grid widgets ─────────────────────────────────────────────────
 
-type RightWidgetType = 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals' | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings' | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info' | 'support-resistance' | 'catalysts-risk' | 'quick-trade' | 'trade-ideas' | 'dark-pool-blocks'
+type RightWidgetType =
+  | 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals'
+  | 'options-chain' | 'company-profile' | 'fundamentals' | 'analyst-ratings'
+  | 'metrics' | 'catalysts' | 'gex-levels' | 'ticker-info'
+  | 'support-resistance' | 'catalysts-risk' | 'quick-trade' | 'trade-ideas'
+  | 'dark-pool-blocks'
+  // Bundle-backed UW widgets (single shared SWR fetch via useTickerBundle)
+  | 'options-flow' | 'dark-pool-flow' | 'key-levels'
+  | 'iv-surface' | 'signals-feed' | 'oi-changes'
 
 interface RightWidget {
   id: string
@@ -422,8 +436,14 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
     section: 'Options & Flow',
     widgets: [
       { id: 'options-chain',      type: 'options-chain',      title: 'Options Chain' },
+      { id: 'options-flow',       type: 'options-flow',       title: 'Options Flow (Live)' },
+      { id: 'oi-changes',         type: 'oi-changes',         title: 'OI Changes' },
       { id: 'gex-levels',         type: 'gex-levels',         title: 'GEX Levels' },
+      { id: 'key-levels',         type: 'key-levels',         title: 'Key Levels & Max Pain' },
+      { id: 'iv-surface',         type: 'iv-surface',         title: 'IV Surface' },
       { id: 'dark-pool-blocks',   type: 'dark-pool-blocks',   title: 'Dark Pool / Blocks' },
+      { id: 'dark-pool-flow',     type: 'dark-pool-flow',     title: 'Dark Pool Flow (Live)' },
+      { id: 'signals-feed',       type: 'signals-feed',       title: 'Signals (Flow + Congress + Insider)' },
     ],
   },
   {
@@ -723,6 +743,12 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'quick-trade')     return <QuickTradeBox selectedTicker={selectedTicker} price={null} />
     if (widget.type === 'trade-ideas')     return <QuickTradeIdeas onSelectIdea={(ticker) => onSelectTicker(ticker)} />
     if (widget.type === 'dark-pool-blocks') return <DarkPoolBlocks ticker={selectedTicker} />
+    if (widget.type === 'options-flow')    return <OptionsFlow ticker={selectedTicker} />
+    if (widget.type === 'dark-pool-flow')  return <DarkPoolFlow ticker={selectedTicker} />
+    if (widget.type === 'key-levels')      return <KeyLevels ticker={selectedTicker} />
+    if (widget.type === 'iv-surface')      return <IVSurface ticker={selectedTicker} />
+    if (widget.type === 'signals-feed')    return <SignalsFeed ticker={selectedTicker} />
+    if (widget.type === 'oi-changes')      return <OiChanges ticker={selectedTicker} />
     return null
   }
 
