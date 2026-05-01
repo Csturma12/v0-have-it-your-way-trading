@@ -44,6 +44,7 @@ import { SupportResistance } from './support-resistance'
 import { CatalystsRisk } from './catalysts-risk'
 import { QuickTradeBox } from './quick-trade-box'
 import { QuickTradeIdeas } from './quick-trade-ideas'
+import { WidgetErrorBoundary } from './widget-error-boundary'
 import {
   Cpu,
   Scale,
@@ -86,7 +87,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v28'
+const STORAGE_KEY = 'trading-dashboard-rgl-v29'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -385,26 +386,61 @@ interface RightWidget {
   title: string
 }
 
-// Master widget registry — single source of truth, no duplicates
-const ALL_AVAILABLE_WIDGETS: RightWidget[] = [
-  { id: 'ticker-info',        type: 'ticker-info',        title: 'Ticker Info' },
-  { id: 'company-profile',    type: 'company-profile',    title: 'Company Profile' },
-  { id: 'chart',              type: 'chart',              title: 'Chart' },
-  { id: 'watchlist',          type: 'watchlist',          title: 'Watchlist' },
-  { id: 'news',               type: 'news',               title: 'Market News' },
-  { id: 'fundamentals',       type: 'fundamentals',       title: 'Fundamentals' },
-  { id: 'analyst-ratings',    type: 'analyst-ratings',    title: 'Analyst Ratings' },
-  { id: 'technicals',         type: 'technicals',         title: 'Technical Indicators' },
-  { id: 'support-resistance', type: 'support-resistance', title: 'Support & Resistance' },
-  { id: 'catalysts',          type: 'catalysts',          title: 'Catalysts' },
-  { id: 'catalysts-risk',     type: 'catalysts-risk',     title: 'Catalysts & Risk' },
-  { id: 'metrics',            type: 'metrics',            title: 'Metrics' },
-  { id: 'gex-levels',         type: 'gex-levels',         title: 'GEX Levels' },
-  { id: 'market-overview',    type: 'market-overview',    title: 'Market Overview' },
-  { id: 'options-chain',      type: 'options-chain',      title: 'Options Chain' },
-  { id: 'quick-trade',        type: 'quick-trade',        title: 'Quick Trade' },
-  { id: 'trade-ideas',        type: 'trade-ideas',        title: 'Trade Ideas' },
+// Master widget registry grouped by section.
+// Section sub-headers shown in the Widgets dropdown so users can scan
+// quickly and find the right widget without scrolling a flat list of 17.
+const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
+  {
+    section: 'Stock Info',
+    widgets: [
+      { id: 'ticker-info',        type: 'ticker-info',        title: 'Ticker Info' },
+      { id: 'company-profile',    type: 'company-profile',    title: 'Company Profile' },
+      { id: 'fundamentals',       type: 'fundamentals',       title: 'Fundamentals' },
+      { id: 'metrics',            type: 'metrics',            title: 'Metrics' },
+    ],
+  },
+  {
+    section: 'Charts & Technicals',
+    widgets: [
+      { id: 'chart',              type: 'chart',              title: 'Chart' },
+      { id: 'technicals',         type: 'technicals',         title: 'Technical Indicators' },
+      { id: 'support-resistance', type: 'support-resistance', title: 'Support & Resistance' },
+    ],
+  },
+  {
+    section: 'Catalysts & Analyst',
+    widgets: [
+      { id: 'analyst-ratings',    type: 'analyst-ratings',    title: 'Analyst Ratings' },
+      { id: 'catalysts',          type: 'catalysts',          title: 'Catalysts' },
+      { id: 'catalysts-risk',     type: 'catalysts-risk',     title: 'Catalysts & Risk' },
+      { id: 'news',               type: 'news',               title: 'Market News' },
+    ],
+  },
+  {
+    section: 'Options & Flow',
+    widgets: [
+      { id: 'options-chain',      type: 'options-chain',      title: 'Options Chain' },
+      { id: 'gex-levels',         type: 'gex-levels',         title: 'GEX Levels' },
+    ],
+  },
+  {
+    section: 'Trading',
+    widgets: [
+      { id: 'quick-trade',        type: 'quick-trade',        title: 'Quick Trade' },
+      { id: 'trade-ideas',        type: 'trade-ideas',        title: 'Trade Ideas' },
+      { id: 'watchlist',          type: 'watchlist',          title: 'Watchlist' },
+    ],
+  },
+  {
+    section: 'Market',
+    widgets: [
+      { id: 'market-overview',    type: 'market-overview',    title: 'Market Overview' },
+    ],
+  },
 ]
+
+// Flattened version derived from sections — used for layout lookups, default set, addWidget
+const ALL_AVAILABLE_WIDGETS: RightWidget[] = WIDGET_SECTIONS.flatMap(s => s.widgets)
 
 // Default set shown on first load
 const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
@@ -413,22 +449,24 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
 )
 
 const DEFAULT_LAYOUT: any[] = [
-  // Top row: Ticker Info (left) + Company Profile (right) — compact
-  { i: 'ticker-info',       x: 0, y: 0, w: 4,  h: 3, minH: 2 },
-  { i: 'company-profile',   x: 4, y: 0, w: 8,  h: 3, minH: 2 },
-  // Main chart (large)
-  { i: 'chart',             x: 0, y: 3, w: 8,  h: 5, minH: 3 },
-  // Right column: Support/Resistance, Technicals stacked
-  { i: 'support-resistance',x: 8, y: 3, w: 4,  h: 3, minH: 2 },
-  { i: 'technicals',        x: 8, y: 6, w: 4,  h: 3, minH: 2 },
-  // Bottom row: Fundamentals, Analyst Ratings, Catalyst/Risk, Watchlist, News
-  { i: 'fundamentals',      x: 0, y: 8, w: 3,  h: 4, minH: 3 },
-  { i: 'analyst-ratings',   x: 3, y: 8, w: 3,  h: 4, minH: 3 },
-  { i: 'catalyst-risk',     x: 6, y: 8, w: 3,  h: 4, minH: 3 },
-  { i: 'watchlist',         x: 9, y: 8,  w: 3, h: 4, minH: 2 },
-  { i: 'news',              x: 9, y: 12, w: 3, h: 2, minH: 2 },
-  { i: 'quick-trade',       x: 0, y: 14, w: 4, h: 3, minH: 2 },
-  { i: 'trade-ideas',       x: 4, y: 14, w: 8, h: 3, minH: 2 },
+  // TOP ROW: Ticker Info (left) + Company Profile (right) — both compact
+  // and freely resizable. TickerInfo content auto-scrolls if user shrinks it.
+  { i: 'ticker-info',       x: 0, y: 0,  w: 4, h: 3, minH: 2 },
+  { i: 'company-profile',   x: 4, y: 0,  w: 8, h: 3, minH: 2 },
+  // MAIN CHART (full width below the top row)
+  { i: 'chart',             x: 0, y: 3,  w: 12, h: 5, minH: 3 },
+  // BOTTOM ROW 1: Support/Resistance + Technicals + Fundamentals + Analyst
+  { i: 'support-resistance',x: 0, y: 8,  w: 3, h: 4, minH: 2 },
+  { i: 'technicals',        x: 3, y: 8,  w: 3, h: 4, minH: 2 },
+  { i: 'fundamentals',      x: 6, y: 8,  w: 3, h: 4, minH: 2 },
+  { i: 'analyst-ratings',   x: 9, y: 8,  w: 3, h: 4, minH: 2 },
+  // BOTTOM ROW 2: Catalyst/Risk + Watchlist + News
+  { i: 'catalyst-risk',     x: 0, y: 12, w: 4, h: 4, minH: 2 },
+  { i: 'watchlist',         x: 4, y: 12, w: 4, h: 4, minH: 2 },
+  { i: 'news',              x: 8, y: 12, w: 4, h: 4, minH: 2 },
+  // BOTTOM ROW 3: Quick trade + Ideas
+  { i: 'quick-trade',       x: 0, y: 16, w: 4, h: 3, minH: 2 },
+  { i: 'trade-ideas',       x: 4, y: 16, w: 8, h: 3, minH: 2 },
 ]
 
 interface SavedState {
@@ -459,28 +497,27 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [wrapperHeight, setWrapperHeight] = useState(800)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  // Sidebar drag-to-reorder state — persisted to localStorage
-  const [sectorOrder, setSectorOrder] = useState<string[]>(() => {
+  // Sidebar drag-to-reorder state — persisted to localStorage (SSR-safe)
+  const [sectorOrder, setSectorOrder] = useState<string[]>(() => Object.keys(SECTOR_DATA))
+  const [themeOrder, setThemeOrder]   = useState<string[]>(() => Object.keys(THEME_DATA))
+
+  // Hydrate from localStorage AFTER mount (avoids SSR/hydration mismatch)
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem('sidebar-sector-order')
-      if (saved) {
-        const parsed = JSON.parse(saved) as string[]
-        // Validate all keys still exist
-        if (parsed.every(k => k in SECTOR_DATA)) return parsed
+      const sec = localStorage.getItem('sidebar-sector-order')
+      if (sec) {
+        const parsed = JSON.parse(sec) as string[]
+        if (Array.isArray(parsed) && parsed.every(k => k in SECTOR_DATA)) setSectorOrder(parsed)
       }
     } catch { /* ignore */ }
-    return Object.keys(SECTOR_DATA)
-  })
-  const [themeOrder, setThemeOrder] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('sidebar-theme-order')
-      if (saved) {
-        const parsed = JSON.parse(saved) as string[]
-        if (parsed.every(k => k in THEME_DATA)) return parsed
+      const thm = localStorage.getItem('sidebar-theme-order')
+      if (thm) {
+        const parsed = JSON.parse(thm) as string[]
+        if (Array.isArray(parsed) && parsed.every(k => k in THEME_DATA)) setThemeOrder(parsed)
       }
     } catch { /* ignore */ }
-    return Object.keys(THEME_DATA)
-  })
+  }, [])
 
   const sectorSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
   const themeSensors  = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -769,36 +806,40 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                       <RotateCcw className="w-3 h-3" /> Reset to Default
                     </button>
 
-                    {/* Widgets — flat toggle list, all widgets in one place */}
-                    <div className="px-3 py-1.5 text-[8px] font-mono font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
-                      Widgets
-                    </div>
-                    <div className="max-h-64 overflow-y-auto border-b border-border">
-                      {ALL_AVAILABLE_WIDGETS.map(w => {
-                        const isActive = !!rightWidgets.find(rw => rw.id === w.id)
-                        return (
-                          <button
-                            key={w.id}
-                            onClick={() => {
-                              if (isActive) {
-                                setRightWidgets(prev => prev.filter(rw => rw.id !== w.id))
-                              } else {
-                                addWidget(w)
-                              }
-                            }}
-                            className={`w-full text-left px-3 py-1.5 text-[9px] font-mono flex items-center justify-between group transition-colors ${
-                              isActive
-                                ? 'text-foreground hover:bg-red-500/10 hover:text-red-400'
-                                : 'text-muted-foreground hover:bg-green-500/10 hover:text-green-400'
-                            }`}
-                          >
-                            <span>{w.title}</span>
-                            <span className={`text-[8px] ${isActive ? 'text-primary/60 group-hover:text-red-400' : 'text-muted-foreground/40 group-hover:text-green-400'}`}>
-                              {isActive ? 'visible' : '+ add'}
-                            </span>
-                          </button>
-                        )
-                      })}
+                    {/* Widgets grouped by section — sub-headers within single dropdown */}
+                    <div className="max-h-80 overflow-y-auto border-b border-border">
+                      {WIDGET_SECTIONS.map(({ section, widgets }) => (
+                        <div key={section}>
+                          <div className="sticky top-0 z-[1] px-3 py-1 text-[8px] font-mono font-bold text-muted-foreground uppercase tracking-wider bg-background/95 backdrop-blur border-b border-border/40">
+                            {section}
+                          </div>
+                          {widgets.map(w => {
+                            const isActive = !!rightWidgets.find(rw => rw.id === w.id)
+                            return (
+                              <button
+                                key={w.id}
+                                onClick={() => {
+                                  if (isActive) {
+                                    setRightWidgets(prev => prev.filter(rw => rw.id !== w.id))
+                                  } else {
+                                    addWidget(w)
+                                  }
+                                }}
+                                className={`w-full text-left px-3 py-1.5 text-[9px] font-mono flex items-center justify-between group transition-colors ${
+                                  isActive
+                                    ? 'text-foreground hover:bg-red-500/10 hover:text-red-400'
+                                    : 'text-muted-foreground hover:bg-green-500/10 hover:text-green-400'
+                                }`}
+                              >
+                                <span className="pl-1">{w.title}</span>
+                                <span className={`text-[8px] ${isActive ? 'text-primary/60 group-hover:text-red-400' : 'text-muted-foreground/40 group-hover:text-green-400'}`}>
+                                  {isActive ? 'visible' : '+ add'}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ))}
                     </div>
 
                     {/* Save Current Layout */}
@@ -954,7 +995,9 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                 </div>
                 {/* Widget content */}
                 <div className="flex-1 min-h-0 overflow-hidden">
-                  {renderRight(widget)}
+                  <WidgetErrorBoundary widgetName={widget.title}>
+                    {renderRight(widget)}
+                  </WidgetErrorBoundary>
                 </div>
               </div>
             ))}
