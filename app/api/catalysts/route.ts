@@ -3,10 +3,11 @@ import { NextResponse } from 'next/server'
 // Fetch upcoming catalysts from Finnhub (earnings, splits, dividends) and Polygon (news)
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const symbol = searchParams.get('symbol')?.toUpperCase()
+  // Accept both `symbol` and `ticker` as aliases.
+  const symbol = (searchParams.get('symbol') || searchParams.get('ticker'))?.toUpperCase()
 
   if (!symbol) {
-    return NextResponse.json({ error: 'Symbol required' }, { status: 400 })
+    return NextResponse.json({ error: 'Symbol/ticker required' }, { status: 400 })
   }
 
   const catalysts: any[] = []

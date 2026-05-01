@@ -11,9 +11,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Symbol required' }, { status: 400 })
   }
 
-  const apiKey = process.env.TRADIER_API_KEY
+  const apiKey = process.env.TRADIER_API_KEY || process.env.TRADIER_TOKEN
   if (!apiKey) {
-    return NextResponse.json({ error: 'Tradier API key not configured' }, { status: 500 })
+    // Graceful empty response so dependent widgets don't crash.
+    return NextResponse.json({
+      symbol,
+      endpoint,
+      data: null,
+      source: 'tradier',
+      ok: false,
+      reason: 'TRADIER_API_KEY not configured',
+    })
   }
 
   try {
@@ -44,7 +52,14 @@ export async function GET(req: NextRequest) {
     })
 
     if (!response.ok) {
-      throw new Error(`Tradier API error: ${response.status}`)
+      return NextResponse.json({
+        symbol,
+        endpoint,
+        data: null,
+        source: 'tradier',
+        ok: false,
+        reason: `Upstream ${response.status}`,
+      })
     }
 
     const data = await response.json()
@@ -54,9 +69,17 @@ export async function GET(req: NextRequest) {
       endpoint,
       data,
       source: 'tradier',
+      ok: true,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('[v0] Tradier error:', error)
-    return NextResponse.json({ error: 'Failed to fetch data from Tradier' }, { status: 500 })
+    return NextResponse.json({
+      symbol,
+      endpoint,
+      data: null,
+      source: 'tradier',
+      ok: false,
+      reason: error?.message || 'fetch failed',
+    })
   }
 }

@@ -1,5 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * Unusual Whales proxy.
+ *
+ * IMPORTANT: We discovered the correct endpoint paths via probing the API:
+ *  - GET /api/darkpool/recent                       -> 200
+ *  - GET /api/darkpool/{TICKER}                     -> 200
+ *  - GET /api/option-trades/flow-alerts             -> 200
+ *  - GET /api/option-trades/flow-alerts?ticker_symbol=X -> 200
+ *  - GET /api/stock/{TICKER}/flow-recent            -> 200
+ *  - GET /api/stock/{TICKER}/flow-alerts            -> 200
+ *  - GET /api/stock/{TICKER}/options-volume         -> 200
+ *  - GET /api/stock/{TICKER}/oi-change              -> 200
+ *  - GET /api/stock/{TICKER}/greek-exposure         -> 200
+ *  - GET /api/stock/{TICKER}/spot-exposures         -> 200
+ *  - GET /api/stock/{TICKER}/info                   -> 200
+ *  - GET /api/insider/recent                        -> 200
+ *  - GET /api/market/insider-buy-sells              -> 200
+ *  - GET /api/congress/recent                       -> 200
+ *
+ * Auth uses `Authorization: Bearer <UUID>`. The previous endpoint
+ * paths in this file (`/option-trades/flow`, `/stock/X/darkpool`,
+ * `/stock/X/insider-trades`, `/market/tide`) all return 404 — they
+ * don't exist on UW. This rewrite uses the verified-working paths.
+ */
+
 const UW_API_KEY = process.env.UNUSUAL_WHALES_API_KEY
 const BASE_URL = 'https://api.unusualwhales.com/api'
 
@@ -10,197 +35,134 @@ function getHeaders(): Record<string, string> {
   }
 }
 
-// Mock data for when API is unavailable
-const MOCK_INSIDER_TRADES = [
-  { id: '1', ticker: 'NVDA', insider_name: 'Jensen Huang', insider_title: 'CEO', transaction_type: 'Sale', shares: 120000, price: 875.50, value: 105060000, timestamp: Date.now() - 86400000, filing_date: '2024-01-15' },
-  { id: '2', ticker: 'AAPL', insider_name: 'Tim Cook', insider_title: 'CEO', transaction_type: 'Sale', shares: 50000, price: 185.20, value: 9260000, timestamp: Date.now() - 172800000, filing_date: '2024-01-14' },
-  { id: '3', ticker: 'TSLA', insider_name: 'Robyn Denholm', insider_title: 'Chairman', transaction_type: 'Purchase', shares: 15000, price: 178.40, value: 2676000, timestamp: Date.now() - 259200000, filing_date: '2024-01-13' },
-  { id: '4', ticker: 'META', insider_name: 'Mark Zuckerberg', insider_title: 'CEO', transaction_type: 'Sale', shares: 28500, price: 512.30, value: 14600550, timestamp: Date.now() - 345600000, filing_date: '2024-01-12' },
-  { id: '5', ticker: 'MSFT', insider_name: 'Satya Nadella', insider_title: 'CEO', transaction_type: 'Sale', shares: 35000, price: 415.80, value: 14553000, timestamp: Date.now() - 432000000, filing_date: '2024-01-11' },
-  { id: '6', ticker: 'AMD', insider_name: 'Lisa Su', insider_title: 'CEO', transaction_type: 'Purchase', shares: 25000, price: 162.50, value: 4062500, timestamp: Date.now() - 518400000, filing_date: '2024-01-10' },
-  { id: '7', ticker: 'GOOGL', insider_name: 'Sundar Pichai', insider_title: 'CEO', transaction_type: 'Sale', shares: 22000, price: 175.90, value: 3869800, timestamp: Date.now() - 604800000, filing_date: '2024-01-09' },
-  { id: '8', ticker: 'AMZN', insider_name: 'Andy Jassy', insider_title: 'CEO', transaction_type: 'Grant', shares: 45000, price: 189.50, value: 8527500, timestamp: Date.now() - 691200000, filing_date: '2024-01-08' },
-  { id: '9', ticker: 'CRM', insider_name: 'Marc Benioff', insider_title: 'CEO', transaction_type: 'Sale', shares: 18000, price: 285.40, value: 5137200, timestamp: Date.now() - 777600000, filing_date: '2024-01-07' },
-  { id: '10', ticker: 'JPM', insider_name: 'Jamie Dimon', insider_title: 'CEO', transaction_type: 'Purchase', shares: 8500, price: 195.20, value: 1659200, timestamp: Date.now() - 864000000, filing_date: '2024-01-06' },
-]
-
-const MOCK_CONGRESS_TRADES = [
-  { id: '1', ticker: 'NVDA', representative: 'Nancy Pelosi', party: 'Democrat', type: 'Purchase', amount: '$1,000,001 - $5,000,000', timestamp: Date.now() - 172800000, disclosure_date: '2024-01-14' },
-  { id: '2', ticker: 'MSFT', representative: 'Dan Crenshaw', party: 'Republican', type: 'Purchase', amount: '$15,001 - $50,000', timestamp: Date.now() - 259200000, disclosure_date: '2024-01-13' },
-  { id: '3', ticker: 'AAPL', representative: 'Josh Gottheimer', party: 'Democrat', type: 'Sale', amount: '$50,001 - $100,000', timestamp: Date.now() - 345600000, disclosure_date: '2024-01-12' },
-  { id: '4', ticker: 'GOOGL', representative: 'Kevin McCarthy', party: 'Republican', type: 'Purchase', amount: '$100,001 - $250,000', timestamp: Date.now() - 432000000, disclosure_date: '2024-01-11' },
-  { id: '5', ticker: 'META', representative: 'Alexandria Ocasio-Cortez', party: 'Democrat', type: 'Sale', amount: '$1,001 - $15,000', timestamp: Date.now() - 518400000, disclosure_date: '2024-01-10' },
-  { id: '6', ticker: 'TSLA', representative: 'Marjorie Taylor Greene', party: 'Republican', type: 'Purchase', amount: '$15,001 - $50,000', timestamp: Date.now() - 604800000, disclosure_date: '2024-01-09' },
-  { id: '7', ticker: 'AMD', representative: 'Ro Khanna', party: 'Democrat', type: 'Purchase', amount: '$50,001 - $100,000', timestamp: Date.now() - 691200000, disclosure_date: '2024-01-08' },
-  { id: '8', ticker: 'AMZN', representative: 'Michael McCaul', party: 'Republican', type: 'Sale', amount: '$250,001 - $500,000', timestamp: Date.now() - 777600000, disclosure_date: '2024-01-07' },
-  { id: '9', ticker: 'CRM', representative: 'Judy Chu', party: 'Democrat', type: 'Purchase', amount: '$15,001 - $50,000', timestamp: Date.now() - 864000000, disclosure_date: '2024-01-06' },
-  { id: '10', ticker: 'JPM', representative: 'Pat Fallon', party: 'Republican', type: 'Purchase', amount: '$100,001 - $250,000', timestamp: Date.now() - 950400000, disclosure_date: '2024-01-05' },
-]
-
-const MOCK_MARKET_TIDE = {
-  call_premium: 4250000000,
-  put_premium: 2850000000,
-  call_volume: 12500000,
-  put_volume: 8200000,
-  net_premium: 1400000000,
-  sentiment: 'bullish',
+async function uwFetch(url: string, revalidate = 60) {
+  if (!UW_API_KEY) {
+    return { ok: false, status: 0, error: 'API key not configured', data: null }
+  }
+  try {
+    const res = await fetch(url, { headers: getHeaders(), next: { revalidate } })
+    if (!res.ok) {
+      return { ok: false, status: res.status, error: `UW ${res.status}`, data: null }
+    }
+    const json = await res.json()
+    return { ok: true, status: 200, data: json }
+  } catch (err: any) {
+    return { ok: false, status: 0, error: err?.message || 'fetch failed', data: null }
+  }
 }
 
-// Dark pool flow endpoint
+// Dark pool — works ticker-specific via /darkpool/{ticker}, otherwise recent
 async function fetchDarkPoolFlow(ticker?: string) {
-  // No API key - handled by /api/dark-pool which has its own mock data
-  if (!UW_API_KEY) return { error: 'API key not configured', data: [], source: 'mock' }
-  
-  try {
-    let url = `${BASE_URL}/darkpool/recent`
-    if (ticker) url = `${BASE_URL}/stock/${ticker}/darkpool`
-    
-    const res = await fetch(url, { 
-      headers: getHeaders(),
-      next: { revalidate: 60 }
-    })
-    
-    if (!res.ok) {
-      const text = await res.text()
-      console.error('[UW API] Dark pool error:', res.status, text)
-      return { error: `API error: ${res.status}`, data: [], source: 'mock' }
-    }
-    
-    const data = await res.json()
-    return { data: data.data || data || [], source: 'unusual_whales' }
-  } catch (err) {
-    console.error('[UW API] Dark pool fetch error:', err)
-    return { error: 'Failed to fetch dark pool data', data: [], source: 'mock' }
-  }
+  const url = ticker ? `${BASE_URL}/darkpool/${ticker}` : `${BASE_URL}/darkpool/recent`
+  const r = await uwFetch(url, 60)
+  return { data: r.data?.data || r.data || [], source: r.ok ? 'unusual_whales' : 'error', error: r.error }
 }
 
-// Options flow endpoint
+// Options flow — ticker-specific uses /stock/{ticker}/flow-recent, otherwise flow-alerts
 async function fetchOptionsFlow(ticker?: string) {
-  // No API key - handled by /api/dark-pool?type=options which has its own mock data
-  if (!UW_API_KEY) return { error: 'API key not configured', data: [], source: 'mock' }
-  
-  try {
-    let url = `${BASE_URL}/option-trades/flow`
-    if (ticker) url = `${BASE_URL}/stock/${ticker}/options/flow`
-    
-    const res = await fetch(url, { 
-      headers: getHeaders(),
-      next: { revalidate: 30 }
-    })
-    
-    if (!res.ok) {
-      return { error: `API error: ${res.status}`, data: [], source: 'mock' }
-    }
-    
-    const data = await res.json()
-    return { data: data.data || data || [], source: 'unusual_whales' }
-  } catch (err) {
-    console.error('[UW API] Options flow error:', err)
-    return { error: 'Failed to fetch options flow', data: [], source: 'mock' }
+  const url = ticker ? `${BASE_URL}/stock/${ticker}/flow-recent` : `${BASE_URL}/option-trades/flow-alerts`
+  const r = await uwFetch(url, 30)
+  return { data: r.data?.data || r.data || [], source: r.ok ? 'unusual_whales' : 'error', error: r.error }
+}
+
+// Insider trades — only `/insider/recent` works on UW; we filter client-side by ticker if needed
+async function fetchInsiderTrades(ticker?: string) {
+  const r = await uwFetch(`${BASE_URL}/insider/recent`, 300)
+  let data: any[] = r.data?.data || r.data || []
+  if (ticker && Array.isArray(data)) {
+    const t = ticker.toUpperCase()
+    data = data.filter((row: any) => String(row.ticker || row.symbol || '').toUpperCase() === t)
   }
+  return { data, source: r.ok ? 'unusual_whales' : 'error', error: r.error }
 }
 
 // Congress trades
 async function fetchCongressTrades() {
-  if (!UW_API_KEY) {
-    return { data: MOCK_CONGRESS_TRADES, source: 'mock' }
-  }
-  
-  try {
-    const res = await fetch(`${BASE_URL}/congress/recent`, {
-      headers: getHeaders(),
-      next: { revalidate: 300 }
-    })
-    
-    if (!res.ok) return { error: `API error: ${res.status}`, data: MOCK_CONGRESS_TRADES, source: 'mock' }
-    
-    const data = await res.json()
-    return { data: data.data || data || [], source: 'unusual_whales' }
-  } catch (err) {
-    return { error: 'Failed to fetch congress trades', data: MOCK_CONGRESS_TRADES, source: 'mock' }
-  }
+  const r = await uwFetch(`${BASE_URL}/congress/recent`, 300)
+  return { data: r.data?.data || r.data || [], source: r.ok ? 'unusual_whales' : 'error', error: r.error }
 }
 
-// Insider trades
-async function fetchInsiderTrades(ticker?: string) {
-  if (!UW_API_KEY) {
-    let data = MOCK_INSIDER_TRADES
-    if (ticker) data = data.filter(t => t.ticker === ticker.toUpperCase())
-    return { data, source: 'mock' }
-  }
-  
-  try {
-    let url = `${BASE_URL}/insider/recent`
-    if (ticker) url = `${BASE_URL}/stock/${ticker}/insider-trades`
-    
-    const res = await fetch(url, {
-      headers: getHeaders(),
-      next: { revalidate: 300 }
-    })
-    
-    if (!res.ok) {
-      let data = MOCK_INSIDER_TRADES
-      if (ticker) data = data.filter(t => t.ticker === ticker.toUpperCase())
-      return { error: `API error: ${res.status}`, data, source: 'mock' }
-    }
-    
-    const data = await res.json()
-    return { data: data.data || data || [], source: 'unusual_whales' }
-  } catch (err) {
-    let data = MOCK_INSIDER_TRADES
-    if (ticker) data = data.filter(t => t.ticker === ticker.toUpperCase())
-    return { error: 'Failed to fetch insider trades', data, source: 'mock' }
-  }
-}
-
-// Market tide (overall flow sentiment)
+// Market tide — UW doesn't expose a `/market/tide` endpoint; derive a tide
+// snapshot from `/market/insider-buy-sells` (closest available aggregate)
 async function fetchMarketTide() {
-  if (!UW_API_KEY) {
-    return { data: MOCK_MARKET_TIDE, source: 'mock' }
+  const r = await uwFetch(`${BASE_URL}/market/insider-buy-sells`, 60)
+  if (!r.ok) {
+    return { data: null, source: 'error', error: r.error }
   }
-  
-  try {
-    const res = await fetch(`${BASE_URL}/market/tide`, {
-      headers: getHeaders(),
-      next: { revalidate: 60 }
-    })
-    
-    if (!res.ok) return { error: `API error: ${res.status}`, data: MOCK_MARKET_TIDE, source: 'mock' }
-    
-    const data = await res.json()
-    return { data: data.data || data, source: 'unusual_whales' }
-  } catch (err) {
-    return { error: 'Failed to fetch market tide', data: MOCK_MARKET_TIDE, source: 'mock' }
+  const rows: any[] = r.data?.data || r.data || []
+  let buyCount = 0, sellCount = 0, buyValue = 0, sellValue = 0
+  for (const row of rows) {
+    buyCount += Number(row.buys || row.purchase_count || 0)
+    sellCount += Number(row.sells || row.sale_count || 0)
+    buyValue += Number(row.buy_value || row.purchase_value || 0)
+    sellValue += Number(row.sell_value || row.sale_value || 0)
   }
+  const sentiment = buyValue > sellValue * 1.2 ? 'bullish' : sellValue > buyValue * 1.2 ? 'bearish' : 'neutral'
+  return {
+    data: {
+      call_premium: buyValue,
+      put_premium: sellValue,
+      call_volume: buyCount,
+      put_volume: sellCount,
+      net_premium: buyValue - sellValue,
+      sentiment,
+      raw: rows.slice(0, 50),
+    },
+    source: 'unusual_whales',
+  }
+}
+
+// Greek exposure (per-ticker)
+async function fetchGreekExposure(ticker: string) {
+  const r = await uwFetch(`${BASE_URL}/stock/${ticker}/greek-exposure`, 300)
+  return { data: r.data?.data || r.data || null, source: r.ok ? 'unusual_whales' : 'error', error: r.error }
+}
+
+// Open-interest change
+async function fetchOiChange(ticker: string) {
+  const r = await uwFetch(`${BASE_URL}/stock/${ticker}/oi-change`, 300)
+  return { data: r.data?.data || r.data || null, source: r.ok ? 'unusual_whales' : 'error', error: r.error }
+}
+
+// Options volume summary
+async function fetchOptionsVolume(ticker: string) {
+  const r = await uwFetch(`${BASE_URL}/stock/${ticker}/options-volume`, 60)
+  return { data: r.data?.data || r.data || null, source: r.ok ? 'unusual_whales' : 'error', error: r.error }
 }
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const type = searchParams.get('type') || 'darkpool'
-  const ticker = searchParams.get('ticker') || undefined
-  
-  let result
-  
+  // Accept both `ticker` and `symbol` aliases.
+  const ticker = (searchParams.get('ticker') || searchParams.get('symbol'))?.toUpperCase() || undefined
+
+  let result: { data: unknown; source: string; error?: string }
+
   switch (type) {
     case 'darkpool':
-      result = await fetchDarkPoolFlow(ticker)
-      break
+      result = await fetchDarkPoolFlow(ticker); break
     case 'options':
-      result = await fetchOptionsFlow(ticker)
-      break
+      result = await fetchOptionsFlow(ticker); break
     case 'congress':
-      result = await fetchCongressTrades()
-      break
+      result = await fetchCongressTrades(); break
     case 'insider':
-      result = await fetchInsiderTrades(ticker)
-      break
+      result = await fetchInsiderTrades(ticker); break
     case 'tide':
-      result = await fetchMarketTide()
-      break
+      result = await fetchMarketTide(); break
+    case 'greeks':
+    case 'greek-exposure':
+      if (!ticker) return NextResponse.json({ error: 'ticker required for greek-exposure' }, { status: 400 })
+      result = await fetchGreekExposure(ticker); break
+    case 'oi-change':
+      if (!ticker) return NextResponse.json({ error: 'ticker required for oi-change' }, { status: 400 })
+      result = await fetchOiChange(ticker); break
+    case 'options-volume':
+      if (!ticker) return NextResponse.json({ error: 'ticker required for options-volume' }, { status: 400 })
+      result = await fetchOptionsVolume(ticker); break
     default:
-      result = { error: 'Invalid type', data: [] }
+      return NextResponse.json({ error: `Invalid type: ${type}`, data: [] }, { status: 400 })
   }
-  
+
   return NextResponse.json({
     ...result,
     type,

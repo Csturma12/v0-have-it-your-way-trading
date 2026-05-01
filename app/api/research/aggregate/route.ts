@@ -252,12 +252,17 @@ function calculateOverallSentiment(
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const tickersParam = searchParams.get('tickers')
-  
+  // Accept all common aliases: tickers (plural), symbols, ticker, symbol.
+  const tickersParam =
+    searchParams.get('tickers') ||
+    searchParams.get('symbols') ||
+    searchParams.get('ticker') ||
+    searchParams.get('symbol')
+
   if (!tickersParam) {
-    return NextResponse.json({ error: 'tickers parameter required' }, { status: 400 })
+    return NextResponse.json({ error: 'tickers/symbols parameter required' }, { status: 400 })
   }
-  
+
   const tickers = tickersParam.split(',').map(t => t.trim().toUpperCase()).filter(Boolean)
   
   if (tickers.length === 0) {
