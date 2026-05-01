@@ -1037,7 +1037,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             {rightWidgets.map(widget => (
               <div
                 key={widget.id}
-                className={`h-full bg-card border border-border rounded-lg flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
+                className={`h-full bg-card border border-border flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
               >
                 {/* Widget header / drag bar */}
                 <div className={`widget-drag-handle flex items-center justify-between px-2 py-1 border-b border-border/50 bg-muted/30 ${isEditMode ? 'cursor-grab' : ''}`}>
