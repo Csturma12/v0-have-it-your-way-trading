@@ -835,7 +835,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
               onClick={() => setShowLayoutMenu(v => !v)}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-mono font-bold tracking-wider uppercase transition-colors border bg-muted/50 text-muted-foreground border-border hover:text-foreground"
             >
-              ⚙ Widgets
+              ⚙ Layouts & Widgets
             </button>
             
             {showLayoutMenu && (
