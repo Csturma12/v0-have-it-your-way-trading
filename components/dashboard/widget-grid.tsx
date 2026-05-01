@@ -833,40 +833,35 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                       <RotateCcw className="w-3 h-3" /> Reset to Default
                     </button>
 
-                    {/* Widgets grouped by section — sub-headers within single dropdown */}
+                    {/* Flat inline list of all widgets — no section sub-headers.
+                        Order is preserved from WIDGET_SECTIONS via ALL_AVAILABLE_WIDGETS
+                        (which is .flatMap'd in the same declaration order). */}
                     <div className="max-h-80 overflow-y-auto border-b border-border">
-                      {WIDGET_SECTIONS.map(({ section, widgets }) => (
-                        <div key={section}>
-                          <div className="sticky top-0 z-[1] px-3 py-1 text-[8px] font-mono font-bold text-muted-foreground uppercase tracking-wider bg-background/95 backdrop-blur border-b border-border/40">
-                            {section}
-                          </div>
-                          {widgets.map(w => {
-                            const isActive = !!rightWidgets.find(rw => rw.id === w.id)
-                            return (
-                              <button
-                                key={w.id}
-                                onClick={() => {
-                                  if (isActive) {
-                                    setRightWidgets(prev => prev.filter(rw => rw.id !== w.id))
-                                  } else {
-                                    addWidget(w)
-                                  }
-                                }}
-                                className={`w-full text-left px-3 py-1.5 text-[9px] font-mono flex items-center justify-between group transition-colors ${
-                                  isActive
-                                    ? 'text-foreground hover:bg-red-500/10 hover:text-red-400'
-                                    : 'text-muted-foreground hover:bg-green-500/10 hover:text-green-400'
-                                }`}
-                              >
-                                <span className="pl-1">{w.title}</span>
-                                <span className={`text-[8px] ${isActive ? 'text-primary/60 group-hover:text-red-400' : 'text-muted-foreground/40 group-hover:text-green-400'}`}>
-                                  {isActive ? 'visible' : '+ add'}
-                                </span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      ))}
+                      {ALL_AVAILABLE_WIDGETS.map(w => {
+                        const isActive = !!rightWidgets.find(rw => rw.id === w.id)
+                        return (
+                          <button
+                            key={w.id}
+                            onClick={() => {
+                              if (isActive) {
+                                setRightWidgets(prev => prev.filter(rw => rw.id !== w.id))
+                              } else {
+                                addWidget(w)
+                              }
+                            }}
+                            className={`w-full text-left px-3 py-1.5 text-[9px] font-mono flex items-center justify-between group transition-colors ${
+                              isActive
+                                ? 'text-foreground hover:bg-red-500/10 hover:text-red-400'
+                                : 'text-muted-foreground hover:bg-green-500/10 hover:text-green-400'
+                            }`}
+                          >
+                            <span>{w.title}</span>
+                            <span className={`text-[8px] ${isActive ? 'text-primary/60 group-hover:text-red-400' : 'text-muted-foreground/40 group-hover:text-green-400'}`}>
+                              {isActive ? 'visible' : '+ add'}
+                            </span>
+                          </button>
+                        )
+                      })}
                     </div>
 
                     {/* Save Current Layout */}
