@@ -230,29 +230,12 @@ export function TickerInfo({ ticker }: { ticker: string }) {
   const fetchFund = useCallback(async () => {
     setTabLoading(true)
     try {
-      const [pRes, iRes] = await Promise.all([
-        fetch(`/api/polygon/fundamentals?ticker=${ticker}`),
-        fetch(`/api/intrinio?ticker=${ticker}&type=fundamentals`),
-      ])
+      // /api/polygon/fundamentals merges Polygon (basic) + Finnhub
+      // /stock/metric (rich metrics like PEG, ROA, margins, beta, div
+      // yield) on the server. Intrinio was removed.
+      const pRes = await fetch(`/api/polygon/fundamentals?ticker=${ticker}`)
       let f: any = {}
       if (pRes.ok) f = (await pRes.json()).fundamentals || {}
-      if (iRes.ok) {
-        const ifund = (await iRes.json()).fundamentals || {}
-        if (Object.keys(ifund).length) {
-          f.pe = ifund.pricetoearnings ?? f.pe
-          f.pb = ifund.pricetobook ?? f.pb
-          f.ps = ifund.pricetosales ?? f.ps
-          f.eps = ifund.dilutedeps ?? ifund.basiceps ?? f.eps
-          f.revenueGrowth = (ifund.revenueyoygrowth ?? ifund.revenueqoqgrowth) ? (ifund.revenueyoygrowth ?? ifund.revenueqoqgrowth) * 100 : f.revenueGrowth
-          f.grossMargin = ifund.grossmargin ? ifund.grossmargin * 100 : f.grossMargin
-          f.operatingMargin = ifund.operatingmargin ? ifund.operatingmargin * 100 : f.operatingMargin
-          f.netMargin = ifund.netmargin ? ifund.netmargin * 100 : f.netMargin
-          f.roe = ifund.roe ? ifund.roe * 100 : f.roe
-          f.debtToEquity = ifund.debttoequity ?? f.debtToEquity
-          f.beta = ifund.beta ?? f.beta
-          f.divYield = ifund.dividendyield ? ifund.dividendyield * 100 : f.divYield
-        }
-      }
       setFund({
         pe: f.pe || null, ps: f.ps || null, pb: f.pb || null, eps: f.eps || null,
         revenueGrowth: f.revenueGrowth || null,

@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-const INTRINIO_KEY = process.env.INTRINIO_API_KEY
-
 interface AggregatedResearch {
   ticker: string
   price: {
@@ -121,45 +119,8 @@ async function fetchOptionsFlowData(ticker: string) {
   }
 }
 
-// Fetch insider trading data (try Intrinio first, then Unusual Whales)
+// Fetch insider trading data from Unusual Whales (sole source).
 async function fetchInsiderData(ticker: string) {
-  // Try Intrinio first for insider transactions
-  if (INTRINIO_KEY) {
-    try {
-      const res = await fetch(
-        `https://api-v2.intrinio.com/companies/${ticker}/insider_transaction_filings?page_size=20&api_key=${INTRINIO_KEY}`,
-        { next: { revalidate: 1800 } }
-      )
-      
-      if (res.ok) {
-        const data = await res.json()
-        const filings = data.insider_transaction_filings || []
-        
-        let buyValue = 0
-        let sellValue = 0
-        
-        filings.forEach((f: { transactions?: Array<{ transaction_type_code?: string; value?: number }> }) => {
-          (f.transactions || []).forEach((t) => {
-            const code = t.transaction_type_code?.toUpperCase()
-            const value = t.value || 0
-            if (code === 'P' || code === 'A') buyValue += value
-            else if (code === 'S' || code === 'D') sellValue += value
-          })
-        })
-        
-        let netDirection: 'buying' | 'selling' | 'mixed' | 'none' = 'none'
-        if (buyValue > 0 && sellValue === 0) netDirection = 'buying'
-        else if (sellValue > 0 && buyValue === 0) netDirection = 'selling'
-        else if (buyValue > 0 || sellValue > 0) netDirection = buyValue > sellValue ? 'buying' : 'selling'
-        
-        return { recentTrades: filings.length, netDirection, totalValue: buyValue + sellValue, source: 'intrinio' }
-      }
-    } catch (err) {
-      console.error(`[Aggregate] Intrinio insider fetch error for ${ticker}:`, err)
-    }
-  }
-
-  // Fallback to Unusual Whales
   try {
     const res = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/unusual-whales?type=insider&ticker=${ticker}`)
     if (!res.ok) return { recentTrades: 0, netDirection: 'none' as const, totalValue: 0, source: 'unavailable' }

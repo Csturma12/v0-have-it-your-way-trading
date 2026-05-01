@@ -8,10 +8,9 @@ All widgets in the dashboard fetch real-time market data from multiple APIs. Eac
 
 ### LIVE (Primary APIs)
 Real-time data directly from market data providers:
-- **POLYGON** - Stock quotes, OHLCV, fundamentals, technicals from Polygon.io
-- **FINNHUB** - News, earnings calendars, analyst ratings from Finnhub
-- **UW** - Dark pool flow, insider trades, market sentiment from Unusual Whales
-- **INTRINIO** - Comprehensive fundamentals (P/E, margins, ROE) from Intrinio
+- **POLYGON** - Stock quotes, OHLCV, company profile, basic fundamentals, technicals from Polygon.io
+- **FINNHUB** - Rich fundamentals (P/E, P/B, P/S, ROE, ROA, margins, beta, div yield, 52w hi/lo, EPS), news, earnings calendars, analyst ratings, executives, company profile from Finnhub
+- **UW** - Dark pool flow, options flow, insider trades, congressional trades, market tide, GEX exposure from Unusual Whales
 - **FLASH-ALPHA** - Options GEX levels, key support/resistance from Flash Alpha
 - **ALPHA-VANTAGE** - Technical indicators as fallback
 
@@ -44,7 +43,7 @@ All widgets auto-refresh on these intervals:
 When deploying publicly:
 1. **Add Terms & Conditions page** covering:
    - Data latency disclaimers (30s+ delays)
-   - Attribution to each data provider (Polygon, Finnhub, Unusual Whales, Intrinio, Flash Alpha)
+   - Attribution to each data provider (Polygon, Finnhub, Unusual Whales, Flash Alpha)
    - No guarantee of accuracy or completeness
    - Not financial advice
 

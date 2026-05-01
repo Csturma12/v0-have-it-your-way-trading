@@ -35,12 +35,13 @@ export function CatalystsRisk({ ticker }: { ticker?: string }) {
     if (!ticker) return
     setLoading(true)
     try {
-      // Fetch from multiple APIs in parallel: Finnhub catalysts, UW insider, Intrinio insider
-      const [catRes, riskRes, uwRes, intrinioRes] = await Promise.all([
+      // Fetch from multiple APIs in parallel: Finnhub catalysts, /risk
+      // (Finnhub-backed sentiment + ownership + short-interest), UW
+      // insider trades. Intrinio insider feed was removed.
+      const [catRes, riskRes, uwRes] = await Promise.all([
         fetch(`/api/catalysts?symbol=${ticker}`),
         fetch(`/api/risk?symbol=${ticker}`),
         fetch(`/api/unusual-whales?type=insider&ticker=${ticker}`),
-        fetch(`/api/intrinio?ticker=${ticker}&type=insider`),
       ])
 
       if (catRes.ok) {
@@ -63,19 +64,6 @@ export function CatalystsRisk({ ticker }: { ticker?: string }) {
         if (riskData) {
           riskData.insiderBuying = buying || riskData.insiderBuying
           riskData.insiderSelling = selling || riskData.insiderSelling
-        }
-      }
-
-      // Enrich with Intrinio insider data
-      if (intrinioRes.ok) {
-        const intrinioData = await intrinioRes.json()
-        const transactions = intrinioData.transactions || []
-        if (transactions.length > 0 && riskData) {
-          // Count recent buys/sells from Intrinio
-          const recentBuys = transactions.filter((t: any) => t.transaction_type?.includes('Purchase') || t.acquisition_disposition_code === 'A').length
-          const recentSells = transactions.filter((t: any) => t.transaction_type?.includes('Sale') || t.acquisition_disposition_code === 'D').length
-          riskData.insiderBuying = Math.max(riskData.insiderBuying || 0, recentBuys)
-          riskData.insiderSelling = Math.max(riskData.insiderSelling || 0, recentSells)
         }
       }
 
