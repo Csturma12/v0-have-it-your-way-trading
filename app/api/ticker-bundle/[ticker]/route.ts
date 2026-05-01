@@ -118,13 +118,25 @@ export async function GET(
     optionsVolume:         () => uw(`stock/${ticker}/options-volume`, apiKey),
     oiChange:              () => uw(`stock/${ticker}/oi-change`, apiKey),
     flowAlerts:            () => uw(`option-trades/flow-alerts?ticker_symbol=${ticker}&limit=20`, apiKey),
-    darkPoolRaw:           () => uw(`darkpool/recent?limit=500`, apiKey),
+    // UW caps darkpool/recent at limit<=200 (limit=500 returns 422)
+    darkPoolRaw:           () => uw(`darkpool/recent?limit=200`, apiKey),
     insider:               () => uw(`insider/recent?ticker_symbol=${ticker}&limit=20`, apiKey),
     congress:              () => uw(`congress/recent-trades?ticker=${ticker}&limit=20`, apiKey),
   }
 
+  // Fan out in two waves of ~7 to stay under UW's per-second rate
+  // limit. With 14 concurrent calls some endpoints (spot-exposures,
+  // term-structure) consistently get 429'd; splitting into two
+  // sequential waves of 7 keeps us under the bucket.
   const keys = Object.keys(slots)
-  const results = await Promise.allSettled(keys.map(k => slots[k]()))
+  const half = Math.ceil(keys.length / 2)
+  const wave1Keys = keys.slice(0, half)
+  const wave2Keys = keys.slice(half)
+  const wave1 = await Promise.allSettled(wave1Keys.map(k => slots[k]()))
+  // Tiny gap between waves so the rate-limit token bucket refills.
+  await new Promise(r => setTimeout(r, 120))
+  const wave2 = await Promise.allSettled(wave2Keys.map(k => slots[k]()))
+  const results = [...wave1, ...wave2]
 
   const out: BundleResult = {
     ticker,
