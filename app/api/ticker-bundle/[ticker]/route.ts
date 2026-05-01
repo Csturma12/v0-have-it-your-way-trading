@@ -95,6 +95,17 @@ export async function GET(
   // Define all the slots and how to populate each. Settled
   // independently via Promise.allSettled so one failure doesn't
   // sink the whole bundle.
+  // Endpoint paths confirmed against the live UW v2 API (Apr 2026).
+  // Notes on the non-obvious ones:
+  //   - state           => /stock/:t/stock-state (NOT "/state")
+  //   - ivTermStructure => /stock/:t/volatility/term-structure
+  //   - flowAlerts      => /option-trades/flow-alerts?ticker=
+  //                        (the ticker-scoped /stock/:t/flow-alerts
+  //                        is gated and returns 404 on most plans)
+  //   - insider         => /insider/recent?ticker=  (no /insider/:t route)
+  //   - congress        => /congress/recent-trades?ticker=
+  //                        (no /congress/:t route, /congress/recent
+  //                        is also 404)
   const slots: Record<string, () => Promise<any>> = {
     info:                  () => uw(`stock/${ticker}/info`, apiKey),
     state:                 () => uw(`stock/${ticker}/stock-state`, apiKey),
@@ -102,14 +113,14 @@ export async function GET(
     greekExposureByStrike: () => uw(`stock/${ticker}/greek-exposure/strike`, apiKey),
     spotExposures:         () => uw(`stock/${ticker}/spot-exposures`, apiKey),
     ivRank:                () => uw(`stock/${ticker}/iv-rank`, apiKey),
-    ivTermStructure:       () => uw(`stock/${ticker}/iv-term-structure`, apiKey),
+    ivTermStructure:       () => uw(`stock/${ticker}/volatility/term-structure`, apiKey),
     maxPain:               () => uw(`stock/${ticker}/max-pain`, apiKey),
     optionsVolume:         () => uw(`stock/${ticker}/options-volume`, apiKey),
     oiChange:              () => uw(`stock/${ticker}/oi-change`, apiKey),
-    flowAlerts:            () => uw(`stock/${ticker}/flow-alerts`, apiKey),
+    flowAlerts:            () => uw(`option-trades/flow-alerts?ticker_symbol=${ticker}&limit=20`, apiKey),
     darkPoolRaw:           () => uw(`darkpool/recent?limit=500`, apiKey),
-    insider:               () => uw(`insider/${ticker}`, apiKey),
-    congress:              () => uw(`congress/${ticker}`, apiKey),
+    insider:               () => uw(`insider/recent?ticker_symbol=${ticker}&limit=20`, apiKey),
+    congress:              () => uw(`congress/recent-trades?ticker=${ticker}&limit=20`, apiKey),
   }
 
   const keys = Object.keys(slots)
