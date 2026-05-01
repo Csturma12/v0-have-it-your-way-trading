@@ -64,17 +64,27 @@ interface BundleResult {
 const UW_BASE = 'https://api.unusualwhales.com/api'
 
 async function uw(path: string, apiKey: string): Promise<any> {
-  const res = await fetch(`${UW_BASE}/${path}`, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-  })
-  if (!res.ok) {
-    throw new Error(`UW ${path} -> ${res.status}`)
+  // Retry up to 2 times on 429 (rate limit). UW's bucket refills
+  // ~1s, so an exponential backoff of 250ms then 600ms is enough
+  // to recover the slowest fan-out slots without inflating p95.
+  const delays = [0, 250, 600]
+  let lastStatus = 0
+  for (const delay of delays) {
+    if (delay > 0) await new Promise(r => setTimeout(r, delay))
+    const res = await fetch(`${UW_BASE}/${path}`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    })
+    if (res.ok) return res.json()
+    lastStatus = res.status
+    // Only retry on rate-limit; everything else (404/422/etc) is
+    // a hard fail and shouldn't waste budget.
+    if (res.status !== 429) break
   }
-  return res.json()
+  throw new Error(`UW ${path} -> ${lastStatus}`)
 }
 
 export async function GET(
