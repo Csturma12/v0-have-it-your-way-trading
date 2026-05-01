@@ -485,7 +485,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   
   const [layout, setLayout] = useState(DEFAULT_LAYOUT)
   const [rightWidgets, setRightWidgets] = useState<RightWidget[]>(DEFAULT_RIGHT_WIDGETS)
-  const [isEditMode, setIsEditMode] = useState(false)
+  // Edit mode is ON by default so all widgets are immediately drag/resize-able
+  // from all 4 corners + 4 edges. User can toggle it off via the Lock button
+  // to prevent accidental moves.
+  const [isEditMode, setIsEditMode] = useState(true)
 
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
