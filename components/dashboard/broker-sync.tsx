@@ -15,7 +15,8 @@ import {
   ExternalLink
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { parseTradingViewWatchlist, syncWatchlistToBot, exportBotWatchlist, getTradingViewInstructions } from '@/lib/trading-bot/tradingview-sync'
+import { parseTradingViewWatchlist, exportBotWatchlist, getTradingViewInstructions } from '@/lib/trading-bot/tradingview-sync'
+import { useWatchlist } from '@/contexts/watchlist-context'
 
 type BrokerType = 'tradingview' | 'webull' | 'alpaca'
 
@@ -31,6 +32,7 @@ interface BrokerSyncProps {
 }
 
 export function BrokerSync({ onSyncComplete }: BrokerSyncProps) {
+  const { setTickers, tickers } = useWatchlist()
   const [activeTab, setActiveTab] = useState<BrokerType>('tradingview')
   const [connections, setConnections] = useState<BrokerConnection[]>([
     { broker: 'tradingview', connected: false, lastSync: null, symbolCount: 0 },
@@ -81,41 +83,45 @@ export function BrokerSync({ onSyncComplete }: BrokerSyncProps) {
     setIsLoading(true)
     try {
       const symbols = parseTradingViewWatchlist(tvInput)
-      const result = await syncWatchlistToBot(symbols)
+      
+      if (symbols.length === 0) {
+        setStatus({ type: 'error', message: 'No valid symbols found in input' })
+        setIsLoading(false)
+        return
+      }
+
+      // Add to the active watchlist using context
+      setTickers(symbols, 'tradingview')
       
       setStatus({
-        type: result.success ? 'success' : 'error',
-        message: result.message,
+        type: 'success',
+        message: `Imported ${symbols.length} symbols: ${symbols.slice(0, 5).join(', ')}${symbols.length > 5 ? '...' : ''}`,
       })
 
-      if (result.success) {
-        setTvInput('')
-        setConnections(prev => prev.map(c => 
-          c.broker === 'tradingview'
-            ? { ...c, connected: true, lastSync: new Date().toISOString(), symbolCount: symbols.length }
-            : c
-        ))
-        onSyncComplete?.(symbols)
-      }
-    } catch {
-      setStatus({ type: 'error', message: 'Failed to sync watchlist' })
+      setTvInput('')
+      setConnections(prev => prev.map(c => 
+        c.broker === 'tradingview'
+          ? { ...c, connected: true, lastSync: new Date().toISOString(), symbolCount: symbols.length }
+          : c
+      ))
+      onSyncComplete?.(symbols)
+    } catch (error) {
+      console.error('[v0] Import error:', error)
+      setStatus({ type: 'error', message: 'Failed to import watchlist' })
     } finally {
       setIsLoading(false)
     }
   }
 
   // TradingView export handler
-  const handleTradingViewExport = async () => {
-    setIsLoading(true)
-    try {
-      const watchlist = await exportBotWatchlist()
-      setTvInput(watchlist)
-      setStatus({ type: 'success', message: 'Bot watchlist exported' })
-    } catch {
-      setStatus({ type: 'error', message: 'Failed to export watchlist' })
-    } finally {
-      setIsLoading(false)
+  const handleTradingViewExport = () => {
+    if (tickers.length === 0) {
+      setStatus({ type: 'error', message: 'No symbols in watchlist to export' })
+      return
     }
+    // Export current watchlist as comma-separated
+    setTvInput(tickers.join(', '))
+    setStatus({ type: 'success', message: `Exported ${tickers.length} symbols from watchlist` })
   }
 
   // Webull connect handler

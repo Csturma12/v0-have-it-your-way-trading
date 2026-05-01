@@ -13,20 +13,27 @@ export interface TradingViewWatchlist {
 
 /**
  * Parse watchlist from TradingView export format
- * Supports CSV format: SYMBOL,NAME,EXCHANGE
- * Or comma/newline separated symbols
+ * Supports formats:
+ * - CSV format: SYMBOL,NAME,EXCHANGE
+ * - TradingView format: EXCHANGE:SYMBOL (e.g., NASDAQ:NVDA)
+ * - Comma/newline separated symbols
  */
 export function parseTradingViewWatchlist(input: string): string[] {
-  const lines = input.split('\n').map(line => line.trim()).filter(Boolean)
+  // First, split by commas and newlines
+  const parts = input
+    .split(/[,\n]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+  
   const symbols: string[] = []
 
-  for (const line of lines) {
-    // Handle CSV format: SYMBOL,NAME,EXCHANGE or just SYMBOL
-    const parts = line.split(',')
-    const symbol = parts[0].trim().toUpperCase()
+  for (const part of parts) {
+    const symbol = part.toUpperCase()
     
-    // Validate it's a valid ticker (alphanumeric and some special chars)
-    if (/^[A-Z0-9\-\.]{1,5}$/.test(symbol)) {
+    // Accept TradingView format: EXCHANGE:SYMBOL (e.g., NASDAQ:NVDA, NYSE:AAPL)
+    // Or plain symbols (e.g., NVDA, AAPL)
+    // Allow: alphanumeric, colons, hyphens, dots, underscores, and exclamation marks (for futures)
+    if (/^[A-Z0-9:_\-\.!]+$/.test(symbol) && symbol.length > 0) {
       symbols.push(symbol)
     }
   }
