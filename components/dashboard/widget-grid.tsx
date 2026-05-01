@@ -89,7 +89,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v34'
+const STORAGE_KEY = 'trading-dashboard-rgl-v35'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -451,25 +451,26 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
    'catalysts-risk','news','watchlist','quick-trade','trade-ideas'].includes(w.id)
 )
 
-// Default sizes. minH:1 lets users shrink any widget down to a single
-// row (~30px) — essentially just the title bar — which is what we
-// want as the practical floor. minW:1 same for horizontal.
+// Default sizes calibrated for ROW_HEIGHT=10. Each `h` unit = 10px,
+// so h:12 = 120px, h:30 = 300px, etc. minH:1 / minW:1 lets users
+// shrink any widget down to a single row (~10px) — essentially just
+// the title bar — which is the practical floor.
 const DEFAULT_LAYOUT: any[] = [
   // TOP ROW: Ticker Info (with Quote/Levels/Metrics/Fund tabs) + Company Profile
-  { i: 'ticker-info',       x: 0, y: 0,  w: 4, h: 4, minH: 1, minW: 1 },
-  { i: 'company-profile',   x: 4, y: 0,  w: 8, h: 4, minH: 1, minW: 1 },
+  { i: 'ticker-info',       x: 0, y: 0,    w: 4,  h: 12, minH: 1, minW: 1 },
+  { i: 'company-profile',   x: 4, y: 0,    w: 8,  h: 12, minH: 1, minW: 1 },
   // MAIN CHART
-  { i: 'chart',             x: 0, y: 4,  w: 12, h: 5, minH: 1, minW: 1 },
+  { i: 'chart',             x: 0, y: 12,   w: 12, h: 30, minH: 1, minW: 1 },
   // BOTTOM ROW: Technicals + Analyst + Catalyst/Risk
-  { i: 'technicals',        x: 0, y: 9,  w: 4, h: 4, minH: 1, minW: 1 },
-  { i: 'analyst-ratings',   x: 4, y: 9,  w: 4, h: 4, minH: 1, minW: 1 },
-  { i: 'catalyst-risk',     x: 8, y: 9,  w: 4, h: 4, minH: 1, minW: 1 },
+  { i: 'technicals',        x: 0, y: 42,   w: 4,  h: 15, minH: 1, minW: 1 },
+  { i: 'analyst-ratings',   x: 4, y: 42,   w: 4,  h: 15, minH: 1, minW: 1 },
+  { i: 'catalyst-risk',     x: 8, y: 42,   w: 4,  h: 15, minH: 1, minW: 1 },
   // BOTTOM ROW 2: Watchlist + News
-  { i: 'watchlist',         x: 0, y: 13, w: 6, h: 4, minH: 1, minW: 1 },
-  { i: 'news',              x: 6, y: 13, w: 6, h: 4, minH: 1, minW: 1 },
+  { i: 'watchlist',         x: 0, y: 57,   w: 6,  h: 15, minH: 1, minW: 1 },
+  { i: 'news',              x: 6, y: 57,   w: 6,  h: 15, minH: 1, minW: 1 },
   // BOTTOM ROW 3: Quick trade + Ideas
-  { i: 'quick-trade',       x: 0, y: 17, w: 4, h: 3, minH: 1, minW: 1 },
-  { i: 'trade-ideas',       x: 4, y: 17, w: 8, h: 3, minH: 1, minW: 1 },
+  { i: 'quick-trade',       x: 0, y: 72,   w: 4,  h: 12, minH: 1, minW: 1 },
+  { i: 'trade-ideas',       x: 4, y: 72,   w: 8,  h: 12, minH: 1, minW: 1 },
 ]
 
 interface SavedState {
@@ -562,15 +563,13 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     return () => resizeObserver.disconnect()
   }, [])
 
-  // Use a FIXED rowHeight so users can freely resize widgets to any
-  // height they want. The previous version computed rowHeight to cram
-  // a fixed number of rows into the visible viewport, which meant
-  // dragging a widget taller just shrunk every other row and nothing
-  // visibly changed. The wrapper now scrolls vertically when the
-  // grid grows beyond the viewport.
-  // Reference: rowHeight is suppressed below when wrapperHeight is 0
-  // (initial render) to avoid a flash of zero-height widgets.
-  const ROW_HEIGHT = 30
+  // Fine-grained rowHeight (10px). react-grid-layout snaps height to
+  // integer multiples of rowHeight, so a smaller value = smoother
+  // "free" resize. With ROW_HEIGHT=10 users can resize in 10px
+  // increments, which feels continuous — no more "stuck at certain
+  // heights." The wrapper scrolls vertically when the grid grows
+  // beyond the viewport.
+  const ROW_HEIGHT = 10
   const rowHeight = ROW_HEIGHT
 
   // Load saved layouts from localStorage
@@ -595,9 +594,20 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
         if (parsed.rightWidgets) {
           setRightWidgets(parsed.rightWidgets)
         }
-        // Restore layout positions only if the user explicitly saved them
+        // Restore layout positions only if the user explicitly saved them.
+        // ALWAYS force minH:1 / minW:1 on every loaded entry so any
+        // stale constraints from older versions can't lock widgets at
+        // a minimum size — this is what was making resize feel "stuck."
         if (parsed.layout && parsed.userSaved) {
-          setLayout(parsed.layout)
+          const normalized = parsed.layout.map((item: any) => ({
+            ...item,
+            minH: 1,
+            minW: 1,
+            // Strip any stale max constraints too.
+            maxH: undefined,
+            maxW: undefined,
+          }))
+          setLayout(normalized)
         }
       }
     } catch { /* ignore */ }
@@ -633,9 +643,17 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     } catch { /* ignore */ }
   }
 
-  // Load a saved layout by name
+  // Load a saved layout by name. Re-apply minH:1 / minW:1 so any
+  // older saved presets can't reintroduce min-size lockouts.
   const loadSavedLayout = (saved: { name: string; layout: any[]; widgets: RightWidget[] }) => {
-    setLayout(saved.layout)
+    const normalized = saved.layout.map((item: any) => ({
+      ...item,
+      minH: 1,
+      minW: 1,
+      maxH: undefined,
+      maxW: undefined,
+    }))
+    setLayout(normalized)
     setRightWidgets(saved.widgets)
     setShowLayoutMenu(false)
   }
@@ -675,7 +693,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // the way down to title-bar height (~30px) without ever disappearing.
   const addWidget = (meta: RightWidget) => {
     const def = DEFAULT_LAYOUT.find(l => l.i === meta.id) ?? {
-      i: meta.id, x: 0, y: Infinity, w: 4, h: 4, minH: 1, minW: 1,
+      i: meta.id, x: 0, y: Infinity, w: 4, h: 15, minH: 1, minW: 1,
     }
     setRightWidgets(w => [...w, meta])
     setLayout(l => [...l, def])
