@@ -22,6 +22,10 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json())
  * them right-to-left CSS-only so it has no JS overhead. Pauses on hover.
  */
 export function NewsTickerBanner() {
+  // Pull general market news (no ticker filter) so the banner always
+  // shows the top market headlines regardless of which stock is
+  // selected. /api/news already merges Finnhub + Polygon, dedupes,
+  // and sorts by timestamp.
   const { data } = useSWR<{ news: NewsItem[] }>("/api/news", fetcher, {
     refreshInterval: 60_000,
     revalidateOnFocus: false,
@@ -30,7 +34,8 @@ export function NewsTickerBanner() {
   const [items, setItems] = useState<NewsItem[]>([])
 
   useEffect(() => {
-    if (data?.news?.length) setItems(data.news.slice(0, 25))
+    // Top 10 market headlines, scrolling on loop.
+    if (data?.news?.length) setItems(data.news.slice(0, 10))
   }, [data])
 
   if (!items.length) {
@@ -86,8 +91,10 @@ export function NewsTickerBanner() {
         </div>
       </div>
       <style jsx>{`
+        /* Loop duration scaled for ~10 headlines so each is readable
+           but the cycle still completes in roughly 90 seconds. */
         .news-ticker-track {
-          animation: news-ticker-scroll 240s linear infinite;
+          animation: news-ticker-scroll 90s linear infinite;
         }
         @keyframes news-ticker-scroll {
           0% { transform: translateX(0); }

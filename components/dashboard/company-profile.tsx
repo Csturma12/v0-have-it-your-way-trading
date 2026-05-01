@@ -103,7 +103,7 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
           </button>
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex-1 px-2 py-1 text-[9px] font-mono uppercase tracking-wide transition-colors ${
+            className={`flex-1 px-2 py-1 text-[10px] font-mono uppercase tracking-wide transition-colors ${
               activeTab === 'profile' ? 'text-primary border-b-2 border-primary bg-muted/30' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -111,7 +111,7 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
           </button>
           <button
             onClick={() => setActiveTab('executives')}
-            className={`flex-1 px-2 py-1 text-[9px] font-mono uppercase tracking-wide transition-colors ${
+            className={`flex-1 px-2 py-1 text-[10px] font-mono uppercase tracking-wide transition-colors ${
               activeTab === 'executives' ? 'text-primary border-b-2 border-primary bg-muted/30' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -133,10 +133,10 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
         ) : activeTab === 'profile' ? (
           <div className="space-y-2">
             {/* Company Name */}
-            <div className="text-sm font-semibold text-foreground">{profile.name}</div>
+            <div className="text-base font-semibold text-foreground">{profile.name}</div>
 
             {/* Key Info Grid */}
-            <div className="grid grid-cols-2 gap-1 text-[8px]">
+            <div className="grid grid-cols-2 gap-1 text-[9px]">
               {profile.sector && (
                 <div className="bg-muted/30 rounded p-1">
                   <div className="text-muted-foreground flex items-center gap-0.5">
@@ -181,7 +181,7 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
 
             {/* Description */}
             {profile.description && (
-              <div className="text-[9px] text-muted-foreground leading-relaxed line-clamp-4">
+              <div className="text-[10px] text-muted-foreground leading-relaxed line-clamp-4">
                 {profile.description}
               </div>
             )}
@@ -192,7 +192,7 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
                 href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-[8px] text-primary hover:underline"
+                className="flex items-center gap-1 text-[9px] text-primary hover:underline"
               >
                 <Globe className="w-2.5 h-2.5" />
                 {profile.website.replace(/^https?:\/\//, '')}
@@ -205,7 +205,7 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
             {profile.executives && profile.executives.length > 0 ? (
               profile.executives.map((exec, i) => (
                 <div key={i} className="bg-muted/30 rounded p-1.5 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground">
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground">
                     {exec.name
                       .split(' ')
                       .map((n) => n[0])
@@ -213,13 +213,13 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
                       .slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[9px] font-semibold text-foreground truncate">{exec.name}</div>
-                    <div className="text-[8px] text-muted-foreground truncate">{exec.title}</div>
+                    <div className="text-[10px] font-semibold text-foreground truncate">{exec.name}</div>
+                    <div className="text-[9px] text-muted-foreground truncate">{exec.title}</div>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-[9px] text-muted-foreground text-center py-4">No executive data available</div>
+              <div className="text-[10px] text-muted-foreground text-center py-4">No executive data available</div>
             )}
           </div>
         )}
