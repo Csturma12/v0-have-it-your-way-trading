@@ -204,12 +204,35 @@ export function TickerInfo({ ticker }: { ticker: string }) {
       const dpData = dpRes.ok ? await dpRes.json() : { trades: [] }
       const flowData = flowRes.ok ? await flowRes.json() : { flow: [] }
       const tideData = tideRes.ok ? await tideRes.json() : { data: {} }
-      const trades = dpData.trades || []
       const flow = flowData.flow || []
       const tide = tideData.data || {}
-      const buyVol  = trades.filter((t: any) => t.side === 'buy').reduce((s: number, t: any) => s + (t.size || 0), 0)
-      const sellVol = trades.filter((t: any) => t.side === 'sell').reduce((s: number, t: any) => s + (t.size || 0), 0)
-      const totalDp = trades.reduce((s: number, t: any) => s + (t.size || 0), 0)
+
+      // /api/dark-pool returns the global darkpool/recent feed (not
+      // filtered server-side), so first filter to just THIS ticker's
+      // prints. Then derive side from price vs NBBO: at/above ask =
+      // buy aggressor, at/below bid = sell aggressor, between =
+      // unknown (excluded from the buy/sell tally).
+      const allTrades = dpData.trades || []
+      const tickerTrades = allTrades.filter((t: any) =>
+        (t.ticker || '').toUpperCase() === ticker.toUpperCase()
+      )
+      let buyVol = 0
+      let sellVol = 0
+      let totalDp = 0
+      for (const t of tickerTrades) {
+        const size = Number(t.size) || 0
+        const price = Number(t.price) || 0
+        const ask = Number(t.nbbo_ask) || 0
+        const bid = Number(t.nbbo_bid) || 0
+        totalDp += size
+        // Mock data still has explicit `side`, prefer it when present
+        if (t.side === 'buy') buyVol += size
+        else if (t.side === 'sell') sellVol += size
+        else if (ask > 0 && price >= ask) buyVol += size
+        else if (bid > 0 && price <= bid) sellVol += size
+        // else: between bid/ask -> "unknown" aggressor, don't count
+      }
+      const trades = tickerTrades
       const sentiment: 'bullish' | 'bearish' | 'neutral' =
         buyVol > sellVol * 1.2 ? 'bullish' : sellVol > buyVol * 1.2 ? 'bearish' : 'neutral'
       const cpRatio = tide.put_premium > 0 ? tide.call_premium / tide.put_premium : null

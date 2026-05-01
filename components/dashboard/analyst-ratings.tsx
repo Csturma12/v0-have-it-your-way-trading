@@ -24,21 +24,32 @@ export function AnalystRatings({ ticker = 'AAPL' }: { ticker: string }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/research/aggregate?ticker=${ticker}`)
+      // /api/analyst returns Finnhub's recommendation_trends + price targets
+      // in the shape { data: { ratings: { strongBuy, buy, hold, sell, strongSell, period, targetMean, targetHigh, targetLow }, priceTarget, consensus } }
+      const res = await fetch(`/api/analyst?ticker=${ticker}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      if (data.analyst_ratings || data.recommendations) {
-        const ar = data.analyst_ratings || data.recommendations || {}
+      const json = await res.json()
+      const r = json?.data?.ratings
+      const totalVotes = r ? (r.strongBuy || 0) + (r.buy || 0) + (r.hold || 0) + (r.sell || 0) + (r.strongSell || 0) : 0
+
+      if (r && totalVotes > 0) {
+        // Prefer mean from priceTarget object; fall back to ratings.targetMean
+        const target =
+          json?.data?.priceTarget?.mean ||
+          json?.data?.priceTarget?.high ||
+          r.targetMean ||
+          r.targetHigh ||
+          null
         setRatings({
-          strongBuy: ar.strongBuy || ar.strong_buy || 0,
-          buy: ar.buy || 0,
-          hold: ar.hold || 0,
-          sell: ar.sell || 0,
-          strongSell: ar.strongSell || ar.strong_sell || 0,
-          targetPrice: ar.targetPrice || ar.target_price || null,
-          date: ar.date || new Date().toISOString().split('T')[0],
+          strongBuy: r.strongBuy || 0,
+          buy: r.buy || 0,
+          hold: r.hold || 0,
+          sell: r.sell || 0,
+          strongSell: r.strongSell || 0,
+          targetPrice: target && target > 0 ? target : null,
+          date: r.period || new Date().toISOString().split('T')[0],
         })
-        setSource(data.source || 'api')
+        setSource(json?.sources?.finnhub ? 'finnhub' : 'api')
       } else {
         setRatings(null)
         setError('No ratings available for ' + ticker)
