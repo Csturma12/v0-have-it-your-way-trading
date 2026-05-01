@@ -1053,8 +1053,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                     </button>
                   )}
                 </div>
-                {/* Widget content */}
-                <div className="flex-1 min-h-0 overflow-hidden">
+                {/* Widget content — scrollable if widget is small */}
+                <div className="flex-1 min-h-0 overflow-auto">
                   <WidgetErrorBoundary widgetName={widget.title}>
                     {renderRight(widget)}
                   </WidgetErrorBoundary>
