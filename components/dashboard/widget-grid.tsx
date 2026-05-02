@@ -1160,7 +1160,13 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             unfindable center strips. globals.css gives n/s a full-width
             bar (left:12px; right:12px) and e/w a full-height bar
             (top:12px; bottom:12px). Removed the inline override. */}
-        <div ref={wrapperRef} className={`flex-1 overflow-y-auto overflow-x-hidden widget-scroll ${isEditMode ? '' : 'rgl-locked'}`}>
+        {/* pt-2 leaves 8px of headroom above row 0 so the N/NW/NE resize
+            handles (positioned at top:-4px outside each widget's bounds)
+            aren't clipped by the wrapper's overflow-y-auto. Without this,
+            top-row widgets are not resizable from their top edge — every
+            other row works fine because their handles sit inside the
+            scrollable content area. */}
+        <div ref={wrapperRef} className={`flex-1 overflow-y-auto overflow-x-hidden widget-scroll pt-2 ${isEditMode ? '' : 'rgl-locked'}`}>
           <GridLayout
             className="layout"
             layout={visibleLayout}
