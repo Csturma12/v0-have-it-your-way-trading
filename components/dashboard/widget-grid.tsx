@@ -472,32 +472,25 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
    'chart','watchlist','trade-ideas','news','quick-trade','technicals'].includes(w.id)
 )
 
-// Default layout calibrated to the user's reference screenshots.
-// Grid: cols=24, ROW_HEIGHT=10px, so h:18 = 180px, h:35 = 350px, etc.
-//
-// Screenshot layout:
-//   TOP ROW (~180px): ticker-info | company-profile | technicals+analyst stacked | catalysts-risk
-//   CHART ROW (~350px): chart (wide) + watchlist (narrow) side-by-side
-//   BOTTOM (~150px each): trade-ideas + news stacked left, quick-trade tall right
-//
+// Compact trading terminal layout - everything visible without scrolling.
+// Grid: cols=24, ROW_HEIGHT=10px. Total height ~550px.
+// Think Bloomberg/TradingView - dense, information-rich, no wasted space.
 const DEFAULT_LAYOUT: any[] = [
-  // TOP ROW (h:18 = 180px)
-  { i: 'ticker-info',       x: 0,  y: 0,   w: 5,  h: 18, minH: 1, minW: 1 },
-  { i: 'company-profile',   x: 5,  y: 0,   w: 6,  h: 18, minH: 1, minW: 1 },
-  // technicals + analyst-ratings stacked (each h:9 = 90px)
-  { i: 'technicals',        x: 11, y: 0,   w: 6,  h: 9,  minH: 1, minW: 1 },
-  { i: 'analyst-ratings',   x: 11, y: 9,   w: 6,  h: 9,  minH: 1, minW: 1 },
-  { i: 'catalysts-risk',    x: 17, y: 0,   w: 7,  h: 18, minH: 1, minW: 1 },
+  // TOP ROW (h:8 = 80px) - compact info bar
+  { i: 'ticker-info',       x: 0,  y: 0,   w: 5,  h: 8, minH: 1, minW: 1 },
+  { i: 'company-profile',   x: 5,  y: 0,   w: 6,  h: 8, minH: 1, minW: 1 },
+  { i: 'technicals',        x: 11, y: 0,   w: 6,  h: 4, minH: 1, minW: 1 },
+  { i: 'analyst-ratings',   x: 11, y: 4,   w: 6,  h: 4, minH: 1, minW: 1 },
+  { i: 'catalysts-risk',    x: 17, y: 0,   w: 7,  h: 8, minH: 1, minW: 1 },
 
-  // CHART ROW (h:35 = 350px)
-  { i: 'chart',             x: 0,  y: 18,  w: 18, h: 35, minH: 1, minW: 1 },
-  { i: 'watchlist',         x: 18, y: 18,  w: 6,  h: 35, minH: 1, minW: 1 },
+  // CHART ROW (h:22 = 220px) - main focus but not oversized
+  { i: 'chart',             x: 0,  y: 8,   w: 18, h: 22, minH: 1, minW: 1 },
+  { i: 'watchlist',         x: 18, y: 8,   w: 6,  h: 22, minH: 1, minW: 1 },
 
-  // BOTTOM ROWS — trade-ideas + news stacked left (h:15 each = 150px),
-  // quick-trade tall on the right (h:30, spans both rows).
-  { i: 'trade-ideas',       x: 0,  y: 53,  w: 18, h: 15, minH: 1, minW: 1 },
-  { i: 'news',              x: 0,  y: 68,  w: 18, h: 15, minH: 1, minW: 1 },
-  { i: 'quick-trade',       x: 18, y: 53,  w: 6,  h: 30, minH: 1, minW: 1 },
+  // BOTTOM (h:8 each = 80px) - compact action area
+  { i: 'trade-ideas',       x: 0,  y: 30,  w: 18, h: 8, minH: 1, minW: 1 },
+  { i: 'news',              x: 0,  y: 38,  w: 18, h: 8, minH: 1, minW: 1 },
+  { i: 'quick-trade',       x: 18, y: 30,  w: 6,  h: 16, minH: 1, minW: 1 },
 ]
 
 interface SavedState {
@@ -601,7 +594,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
 
   // Simple localStorage persistence so manual resizes survive HMR / refresh.
   // Bump VERSION when DEFAULT_LAYOUT changes to force fresh layout for all users.
-  const LAYOUT_VERSION = 2
+  const LAYOUT_VERSION = 3
   const STORAGE_KEY = `v0-widget-grid-layout-v${LAYOUT_VERSION}`
 
   // Restore on mount
