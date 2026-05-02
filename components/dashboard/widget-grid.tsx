@@ -95,7 +95,8 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v39'
+// STORAGE_KEY removed — localStorage persistence replaced with in-memory state.
+// TODO: Supabase-backed named layout templates
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -592,79 +593,30 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const ROW_HEIGHT = 10
   const rowHeight = ROW_HEIGHT
 
-  // Load saved layouts from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('saved-layouts')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed)) {
-          setSavedLayouts(parsed)
-        }
-      }
-    } catch { /* ignore */ }
-  }, [])
+  // TODO: Replace with Supabase-backed named templates (Scalping View, Swing View, etc.)
+  // For now: no persistence. Always load DEFAULT_LAYOUT and DEFAULT_RIGHT_WIDGETS on mount.
 
-  // Reset positions to DEFAULT_LAYOUT so the grid never drifts between sessions.
-  // Only restore user's custom layout if they explicitly saved it (userSaved: true).
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved) as SavedState
-        // ONLY restore widgets and layout if user explicitly saved them
-        if (parsed.userSaved) {
-          if (parsed.rightWidgets) {
-            setRightWidgets(parsed.rightWidgets)
-          }
-          if (parsed.layout) {
-            const normalized = parsed.layout.map((item: any) => ({
-              ...item,
-              minH: 1,
-              minW: 1,
-              maxH: undefined,
-              maxW: undefined,
-            }))
-            setLayout(normalized)
-          }
-        }
-        // If not userSaved, we keep DEFAULT_LAYOUT and DEFAULT_RIGHT_WIDGETS
-      }
-    } catch { /* ignore */ }
-  }, [])
-
-  // Manual save — only triggered by the "Save Layout" button in edit mode
-  const saveLayout = () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ layout, rightWidgets, userSaved: true } satisfies SavedState))
-      setLayoutSaved(true)
-      setTimeout(() => setLayoutSaved(false), 2000)
-    } catch { /* ignore */ }
-  }
-
-  // Save layout with a custom name
+  // Save layout with a custom name (in-memory only until Supabase templates are built)
   const saveLayoutWithName = () => {
     if (!newLayoutName.trim()) return
-    
     const newSavedLayout = {
       name: newLayoutName.trim(),
       layout: [...layout],
       widgets: [...rightWidgets],
     }
-    
-    const updated = [...savedLayouts.filter(l => l.name !== newLayoutName.trim()), newSavedLayout]
-    setSavedLayouts(updated)
+    setSavedLayouts(prev => [...prev.filter(l => l.name !== newLayoutName.trim()), newSavedLayout])
     setNewLayoutName('')
-    
-    try {
-      localStorage.setItem('saved-layouts', JSON.stringify(updated))
-      setLayoutSaved(true)
-      setTimeout(() => setLayoutSaved(false), 2000)
-    } catch { /* ignore */ }
+    setLayoutSaved(true)
+    setTimeout(() => setLayoutSaved(false), 2000)
   }
 
-  // Load a saved layout by name. Re-apply minH:1 / minW:1 so any
-  // older saved presets can't reintroduce min-size lockouts.
+  // Save layout shortcut
+  const saveLayout = () => {
+    setLayoutSaved(true)
+    setTimeout(() => setLayoutSaved(false), 2000)
+  }
+
+  // Load a saved layout by name
   const loadSavedLayout = (saved: { name: string; layout: any[]; widgets: RightWidget[] }) => {
     const normalized = saved.layout.map((item: any) => ({
       ...item,
@@ -680,22 +632,19 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
 
   // Delete a saved layout
   const deleteSavedLayout = (name: string) => {
-    const updated = savedLayouts.filter(l => l.name !== name)
-    setSavedLayouts(updated)
-    try {
-      localStorage.setItem('saved-layouts', JSON.stringify(updated))
-    } catch { /* ignore */ }
+    setSavedLayouts(prev => prev.filter(l => l.name !== name))
   }
 
+  // Reset to default layout
+  const resetLayout = () => {
+    setLayout(DEFAULT_LAYOUT)
+    setRightWidgets(DEFAULT_RIGHT_WIDGETS)
+    setShowLayoutMenu(false)
+  }
 
-
-  // Persist widget visibility changes automatically (not position/size)
+  // No-op: widget visibility changes are in-memory only
   useEffect(() => {
-    try {
-      const existing = localStorage.getItem(STORAGE_KEY)
-      const parsed = existing ? JSON.parse(existing) : {}
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...parsed, rightWidgets }))
-    } catch { /* ignore */ }
+    // TODO: persist rightWidgets to Supabase when template saving is implemented
   }, [rightWidgets])
 
   const removeWidget = (id: string) => {
