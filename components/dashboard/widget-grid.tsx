@@ -594,8 +594,39 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const ROW_HEIGHT = 10
   const rowHeight = ROW_HEIGHT
 
-  // TODO: Replace with Supabase-backed named templates (Scalping View, Swing View, etc.)
-  // For now: no persistence. Always load DEFAULT_LAYOUT and DEFAULT_RIGHT_WIDGETS on mount.
+  // Simple localStorage persistence so manual resizes survive HMR / refresh.
+  // Keep this dumb on purpose: load on mount, save on change. No version
+  // bumping. To reset, user clicks "Reset" in the layout menu (resetLayout).
+  const STORAGE_KEY = 'v0-widget-grid-layout'
+
+  // Restore on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) return
+      const parsed = JSON.parse(saved)
+      if (parsed?.layout && Array.isArray(parsed.layout)) {
+        // Strip stale min/max constraints from older sessions
+        setLayout(parsed.layout.map((item: any) => ({
+          ...item,
+          minH: 1,
+          minW: 1,
+          maxH: undefined,
+          maxW: undefined,
+        })))
+      }
+      if (parsed?.rightWidgets && Array.isArray(parsed.rightWidgets)) {
+        setRightWidgets(parsed.rightWidgets)
+      }
+    } catch { /* ignore corrupt storage */ }
+  }, [])
+
+  // Save on every layout / widget change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ layout, rightWidgets }))
+    } catch { /* quota / private mode */ }
+  }, [layout, rightWidgets])
 
   // Save layout with a custom name (in-memory only until Supabase templates are built)
   const saveLayoutWithName = () => {
@@ -636,8 +667,9 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     setSavedLayouts(prev => prev.filter(l => l.name !== name))
   }
 
-  // Reset to default layout
+  // Reset to default layout AND clear persisted storage
   const resetLayout = () => {
+    try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
     setLayout(DEFAULT_LAYOUT)
     setRightWidgets(DEFAULT_RIGHT_WIDGETS)
     setShowLayoutMenu(false)
