@@ -1,7 +1,22 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import GridLayoutImport from 'react-grid-layout'
+// IMPORTANT: react-grid-layout v2.2.3 (this project's installed version) is a
+// complete rewrite with a new API. The flat props this file uses
+// — compactType, preventCollision, draggableHandle, draggableCancel,
+//   resizeHandles, isResizable, isDraggable, margin, containerPadding —
+// are the *v1* API. In v2 these were grouped into nested config objects
+// (gridConfig, dragConfig, resizeConfig, etc.) and the bare top-level
+// names are silently ignored on the default v2 entry point. That's why
+// every previous fix appeared to land but nothing changed at runtime —
+// the library was throwing away our props.
+//
+// Importing from 'react-grid-layout/legacy' gives us the v1-compatible
+// wrapper that accepts all flat props as before. This preserves every
+// piece of behavior the working stock-market-analysis-app reference
+// relies on (which is also v1-shaped) without rewriting hundreds of
+// layout config lines into v2's nested shape.
+import GridLayoutImport from 'react-grid-layout/legacy'
 const GridLayout = GridLayoutImport as any
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
