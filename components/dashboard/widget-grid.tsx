@@ -652,11 +652,6 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     setLayout(l => l.filter(x => x.i !== id))
   }
 
-  const resetLayout = () => {
-    setLayout(DEFAULT_LAYOUT)
-    setRightWidgets(DEFAULT_RIGHT_WIDGETS)
-  }
-
   // All widgets that can be added (default + addon, minus currently visible).
   // minH/minW set to 1 so users can freely shrink any added widget all
   // the way down to title-bar height (~30px) without ever disappearing.
