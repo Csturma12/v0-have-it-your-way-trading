@@ -877,7 +877,14 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   }
 
   const visibleLayout = useMemo(
-    () => layout.filter(l => rightWidgets.some(w => w.id === l.i)),
+    () => layout
+      .filter(l => rightWidgets.some(w => w.id === l.i))
+      .map(l => l.h <= COLLAPSED_H
+        // Lock resize on collapsed widgets so users can't drag-resize an
+        // empty body. They can still expand via the chevron, then resize.
+        ? { ...l, isResizable: false }
+        : l
+      ),
     [layout, rightWidgets]
   )
 
