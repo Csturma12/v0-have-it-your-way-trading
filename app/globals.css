@@ -128,17 +128,31 @@
   user-select: none;
 }
 
-/* Resize handles — all 8 sides (n, s, e, w + 4 corners)
+/* Resize handles — all 8 sides (n, s, e, w + 4 corners).
    Made highly visible with green indicators.
-   Only appear when widget is hovered AND in edit mode. */
+   Only appear when widget is hovered AND in edit mode.
+
+   CRITICAL: width/height set to `auto` here to override the
+   `width: 20px; height: 20px` baked into react-resizable/css/styles.css.
+   Without this override, the n/s/e/w edge rules below (which set
+   left+right or top+bottom but not width/height) get ignored — the
+   browser keeps the 20px square from the base rule, so each edge
+   handle becomes a tiny 20px stub instead of spanning the full edge.
+   That was the actual cause of "only the SE corner is resizable"
+   that survived every other CSS fix. The corner rules already set
+   their own width/height (16px) so they were unaffected.
+
+   Each n/s/e/w rule below explicitly sets the OTHER axis
+   (e.g. height for n/s, width for e/w) so it doesn't fall back to
+   `auto` and collapse to 0. */
 .react-resizable-handle {
   position: absolute;
   background-image: none;
+  width: auto;
+  height: auto;
   z-index: 10;
   opacity: 0;
   transition: opacity 150ms ease, background 150ms ease;
-  /* Wider hit target so the handle is easy to grab even where it
-     overlaps a neighboring widget. */
   pointer-events: auto;
 }
 
