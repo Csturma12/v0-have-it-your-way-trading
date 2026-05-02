@@ -50,9 +50,19 @@ export function MarketOverview({ onSelectTicker }: MarketOverviewProps) {
         <div className="flex items-center gap-2">
           <PieChart className="w-4 h-4 text-theme-green" />
           <span className="font-semibold text-sm">Market Overview</span>
-          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${source === 'alpha_vantage' ? 'border-green-500/50 text-green-400' : 'border-amber-500/50 text-amber-400'}`}>
-            {source === 'alpha_vantage' ? 'LIVE' : 'DEMO'}
-          </Badge>
+          {source === 'alpha_vantage' ? (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-500/50 text-green-400">
+              LIVE
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-400"
+              title="Showing sample data. The Alpha Vantage SECTOR endpoint did not return live data this request. Check server logs for the exact reason."
+            >
+              SAMPLE
+            </Badge>
+          )}
         </div>
         <button onClick={handleRefresh} className="p-1 hover:bg-white/10 rounded transition-colors">
           <RefreshCw className={`w-3.5 h-3.5 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />

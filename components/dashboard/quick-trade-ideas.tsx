@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingUp, TrendingDown, Zap, Flame, Target, ArrowRight, Search, Plus, X, Loader } from 'lucide-react'
+import { TrendingUp, TrendingDown, Zap, Flame, Target, ArrowRight, Search, Plus, X, Loader, Sparkles } from 'lucide-react'
 import { useLiveQuotes } from '@/hooks/useLiveQuotes'
 
 interface TradeIdea {
@@ -31,6 +31,11 @@ export function QuickTradeIdeas({ onSelectIdea }: QuickTradeIdeasProps) {
   const [searchResults, setSearchResults] = useState<{ symbol: string; name: string }[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
+  // AI analysis state
+  const [aiTicker, setAiTicker] = useState<string | null>(null)
+  const [aiAnalysis, setAiAnalysis] = useState<string>('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
   
   const IDEA_TICKERS = [...DEFAULT_IDEAS, ...customTickers]
   const tickers = IDEA_TICKERS.map(i => i.ticker)
@@ -70,6 +75,31 @@ export function QuickTradeIdeas({ onSelectIdea }: QuickTradeIdeasProps) {
   // Remove custom ticker
   const removeTicker = (symbol: string) => {
     setCustomTickers(customTickers.filter(t => t.ticker !== symbol))
+  }
+
+  // Fetch AI trade analysis (Claude via AI Gateway)
+  const fetchAiAnalysis = async (ticker: string, currentPrice?: number, change?: number) => {
+    setAiTicker(ticker)
+    setAiLoading(true)
+    setAiError(null)
+    setAiAnalysis('')
+    try {
+      const res = await fetch('/api/ai/trade-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, currentPrice, change }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error || `HTTP ${res.status}`)
+      }
+      const data = await res.json()
+      setAiAnalysis(data.analysis || '')
+    } catch (err: any) {
+      setAiError(err?.message || 'AI analysis failed')
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   const ideas: TradeIdea[] = IDEA_TICKERS.map(idea => {
@@ -190,6 +220,17 @@ export function QuickTradeIdeas({ onSelectIdea }: QuickTradeIdeasProps) {
                   <X className="w-2 h-2" />
                 </button>
               )}
+              {/* AI analysis button (top-left of pill) */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  fetchAiAnalysis(idea.ticker, idea.price, idea.change)
+                }}
+                className="absolute -top-1 -left-1 z-10 p-0.5 rounded-full bg-violet-500 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-violet-400"
+                title="AI trade analysis (Claude)"
+              >
+                <Sparkles className="w-2 h-2" />
+              </button>
               <button
                 onClick={() => onSelectIdea?.(idea.ticker, idea.action)}
                 className={`p-1.5 rounded border transition-all hover:scale-105 cursor-pointer ${
@@ -231,6 +272,43 @@ export function QuickTradeIdeas({ onSelectIdea }: QuickTradeIdeasProps) {
           )
         })}
       </div>
+
+      {/* AI Analysis Panel */}
+      {aiTicker && (
+        <div className="mt-2 p-2 rounded border border-violet-500/30 bg-violet-500/5">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-violet-400" />
+              <span className="text-[9px] font-mono font-bold text-violet-400 uppercase">
+                AI Analysis · {aiTicker}
+              </span>
+            </div>
+            <button
+              onClick={() => { setAiTicker(null); setAiAnalysis(''); setAiError(null) }}
+              className="p-0.5 rounded hover:bg-muted/50 transition-colors"
+              title="Close"
+            >
+              <X className="w-3 h-3 text-muted-foreground" />
+            </button>
+          </div>
+          {aiLoading && (
+            <div className="flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground py-2">
+              <Loader className="w-3 h-3 animate-spin text-violet-400" />
+              Analyzing with Claude...
+            </div>
+          )}
+          {aiError && (
+            <div className="text-[9px] font-mono text-red-400 py-1">
+              {aiError}
+            </div>
+          )}
+          {aiAnalysis && !aiLoading && (
+            <pre className="text-[9px] font-mono text-foreground/90 whitespace-pre-wrap leading-relaxed">
+              {aiAnalysis}
+            </pre>
+          )}
+        </div>
+      )}
 
       {/* Legend */}
       <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-border/30">
