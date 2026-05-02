@@ -128,17 +128,31 @@
   user-select: none;
 }
 
-/* Resize handles — all 8 sides (n, s, e, w + 4 corners)
+/* Resize handles — all 8 sides (n, s, e, w + 4 corners).
    Made highly visible with green indicators.
-   Only appear when widget is hovered AND in edit mode. */
+   Only appear when widget is hovered AND in edit mode.
+
+   CRITICAL: width/height set to `auto` here to override the
+   `width: 20px; height: 20px` baked into react-resizable/css/styles.css.
+   Without this override, the n/s/e/w edge rules below (which set
+   left+right or top+bottom but not width/height) get ignored — the
+   browser keeps the 20px square from the base rule, so each edge
+   handle becomes a tiny 20px stub instead of spanning the full edge.
+   That was the actual cause of "only the SE corner is resizable"
+   that survived every other CSS fix. The corner rules already set
+   their own width/height (16px) so they were unaffected.
+
+   Each n/s/e/w rule below explicitly sets the OTHER axis
+   (e.g. height for n/s, width for e/w) so it doesn't fall back to
+   `auto` and collapse to 0. */
 .react-resizable-handle {
   position: absolute;
   background-image: none;
+  width: auto;
+  height: auto;
   z-index: 10;
   opacity: 0;
   transition: opacity 150ms ease, background 150ms ease;
-  /* Wider hit target so the handle is easy to grab even where it
-     overlaps a neighboring widget. */
   pointer-events: auto;
 }
 
@@ -155,18 +169,22 @@
   background: rgba(34, 197, 94, 0.1);
 }
 
-/* Edge handles (top, bottom, left, right) — thin bars covering full span.
-   IMPORTANT: handles sit INSIDE the widget bounds, not outside.
-   Outside-bounds handles (-4px) get clipped by parent overflow:auto for
-   row-0 widgets and eaten by neighbor widgets when margin=[0,0]. Inside
-   handles work reliably regardless of position in the grid. The 6px
-   height/width is small enough not to interfere with widget content
-   (the title bar is ~24px tall, content starts below it). */
+/* Edge handles (top, bottom, left, right) — bars spanning the full edge.
+   Handles sit INSIDE the widget bounds (top:0 / bottom:0 / etc.) so they're
+   never clipped by ancestor overflow:auto. Hit areas bumped to 12px (was
+   6px) so the user can comfortably grab any edge without millimeter aim.
+   The 12px N strip overlaps the top of the widget title bar — that's
+   intentional and fine because:
+     1) z-index: 10 paints the handle above the static-positioned title bar
+     2) draggableCancel=".react-resizable-handle" on the GridLayout tells
+        react-grid-layout's drag handler to ignore clicks that land on a
+        handle. Without that, the title bar's draggable region would steal
+        every click in its visual area, including the handle. */
 .react-resizable-handle-n,
 .react-resizable-handle-s {
   left: 20px;
   right: 20px;
-  height: 6px;
+  height: 12px;
   cursor: ns-resize;
 }
 .react-resizable-handle-n { top: 0; }
@@ -176,7 +194,7 @@
 .react-resizable-handle-w {
   top: 20px;
   bottom: 20px;
-  width: 6px;
+  width: 12px;
   cursor: ew-resize;
 }
 .react-resizable-handle-e { right: 0; }
