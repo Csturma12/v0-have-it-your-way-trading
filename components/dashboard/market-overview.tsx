@@ -58,9 +58,9 @@ export function MarketOverview({ onSelectTicker }: MarketOverviewProps) {
             <Badge
               variant="outline"
               className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-400"
-              title="Alpha Vantage rate limit reached (25 calls/day on free tier). Showing cached sample data."
+              title="Showing sample data. The Alpha Vantage SECTOR endpoint did not return live data this request. Check server logs for the exact reason."
             >
-              CACHED
+              SAMPLE
             </Badge>
           )}
         </div>

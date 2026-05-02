@@ -89,17 +89,33 @@ export async function GET(req: NextRequest) {
 
   let source = 'mock'
 
+  if (!API_KEY) {
+    console.warn('[Alpha Vantage] ALPHA_VANTAGE_API_KEY env var is not set — returning sample data.')
+  }
+
   if (API_KEY && type === 'sectors') {
     try {
       const res = await fetch(`${BASE_URL}?function=SECTOR&apikey=${API_KEY}`, {
         next: { revalidate: 300 },
       })
 
-      if (res.ok) {
+      if (!res.ok) {
+        console.error(`[Alpha Vantage] SECTOR HTTP ${res.status} ${res.statusText} — returning sample data.`)
+      } else {
         const data = await res.json()
-        
-        if (data['Rank A: Real-Time Performance']) {
-          const parseSector = (obj: Record<string, string>) => 
+
+        // Alpha Vantage uses these keys for known issues:
+        //  - "Note":        rate-limited (5/min, 500/day on free tier)
+        //  - "Information": premium endpoint / deprecated / paid tier required
+        //  - "Error Message": invalid key / bad params
+        if (data?.Note) {
+          console.warn('[Alpha Vantage] SECTOR rate-limited:', data.Note)
+        } else if (data?.Information) {
+          console.warn('[Alpha Vantage] SECTOR endpoint message (likely deprecated or premium-only):', data.Information)
+        } else if (data?.['Error Message']) {
+          console.error('[Alpha Vantage] SECTOR error:', data['Error Message'])
+        } else if (data?.['Rank A: Real-Time Performance']) {
+          const parseSector = (obj: Record<string, string>) =>
             Object.entries(obj).map(([sector, perf]) => ({
               sector,
               performance: parseFloat(perf.replace('%', '')),
@@ -115,10 +131,13 @@ export async function GET(req: NextRequest) {
             source: 'alpha_vantage',
             timestamp: Date.now(),
           })
+        } else {
+          // Unknown shape — log the top-level keys so we can see what came back
+          console.warn('[Alpha Vantage] SECTOR returned unexpected shape. Top-level keys:', Object.keys(data || {}))
         }
       }
     } catch (err) {
-      console.error('[Alpha Vantage] Sectors error:', err)
+      console.error('[Alpha Vantage] Sectors fetch threw:', err)
     }
   }
 
