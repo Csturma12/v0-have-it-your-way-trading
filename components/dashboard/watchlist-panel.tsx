@@ -420,21 +420,26 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
                   </button>
                 </div>
 
-                {/* Row 2: extended hours badge */}
-                {item.extHoursSession && item.extHoursPrice && item.extHoursPrice > 0 && (
+                {/* Row 2: extended hours badge - show when marketTime is pre/post OR when extHoursSession is set */}
+                {((item.marketTime === 'pre' || item.marketTime === 'post') || 
+                  (item.extHoursSession && item.extHoursPrice && item.extHoursPrice > 0)) && (
                   <div className="flex items-center gap-1 mb-0.5 ml-4">
                     <span className={`text-[9px] font-mono px-1 rounded ${
-                      item.extHoursSession === 'pre'
+                      (item.marketTime === 'pre' || item.extHoursSession === 'pre')
                         ? 'bg-blue-500/20 text-blue-400'
                         : 'bg-orange-500/20 text-orange-400'
                     }`}>
-                      {item.extHoursSession === 'pre' ? 'PRE' : 'POST'}
+                      {(item.marketTime === 'pre' || item.extHoursSession === 'pre') ? 'PRE' : 'POST'}
                     </span>
-                    <span className="text-[10px] font-mono text-foreground">${item.extHoursPrice.toFixed(2)}</span>
-                    {item.extHoursChange !== null && (
-                      <span className={`text-[9px] font-mono ${item.extHoursChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {item.extHoursChange >= 0 ? '+' : ''}{item.extHoursChange.toFixed(2)}
-                      </span>
+                    {item.extHoursPrice && item.extHoursPrice > 0 && (
+                      <>
+                        <span className="text-[10px] font-mono text-foreground">${item.extHoursPrice.toFixed(2)}</span>
+                        {item.extHoursChange !== null && (
+                          <span className={`text-[9px] font-mono ${item.extHoursChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {item.extHoursChange >= 0 ? '+' : ''}{item.extHoursChange.toFixed(2)}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
