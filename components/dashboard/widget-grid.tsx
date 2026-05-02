@@ -590,18 +590,27 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     return () => resizeObserver.disconnect()
   }, [])
 
-  // Fine-grained rowHeight (10px). react-grid-layout snaps height to
-  // integer multiples of rowHeight, so a smaller value = smoother
-  // "free" resize. With ROW_HEIGHT=10 users can resize in 10px
-  // increments, which feels continuous — no more "stuck at certain
-  // heights." The wrapper scrolls vertically when the grid grows
-  // beyond the viewport.
-  const ROW_HEIGHT = 10
-  const rowHeight = ROW_HEIGHT
+  // Dynamic rowHeight — the dashboard always fills the available viewport
+  // height like a real trading terminal (Bloomberg/TradingView). The total
+  // number of rows occupied by the current layout is divided into the
+  // available wrapper height. When a user resizes one widget bigger, the
+  // grid grows and other widgets stay the same — neighbors get pushed
+  // (vertical compaction) so the user can always see everything.
+  //
+  // Floor of 6px keeps it usable on tiny viewports; ceiling of 24px keeps
+  // widgets from getting unreasonably tall on huge monitors.
+  const totalRowsInLayout = layout.length
+    ? Math.max(...layout.map((l: any) => (l.y || 0) + (l.h || 0)))
+    : 80
+  const dynamicRowHeight =
+    wrapperHeight > 0
+      ? Math.max(6, Math.min(24, Math.floor(wrapperHeight / totalRowsInLayout)))
+      : 10
+  const rowHeight = dynamicRowHeight
 
   // Simple localStorage persistence so manual resizes survive HMR / refresh.
   // Bump VERSION when DEFAULT_LAYOUT changes to force fresh layout for all users.
-  const LAYOUT_VERSION = 4
+  const LAYOUT_VERSION = 5
   const STORAGE_KEY = `v0-widget-grid-layout-v${LAYOUT_VERSION}`
 
   // Restore on mount
