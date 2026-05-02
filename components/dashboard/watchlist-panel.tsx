@@ -444,19 +444,11 @@ export function WatchlistPanel({ onSelectTicker, selectedTicker }: WatchlistPane
                   </div>
                 )}
 
-                {/* Row 3: Open/Close | 52W H/L | Vol */}
-                <div className="grid grid-cols-3 gap-1 text-center text-[9px] font-mono">
+                {/* Row 3: Open/Close | Vol — 52W H/L removed (shown in Ticker Info widget) */}
+                <div className="grid grid-cols-2 gap-1 text-center text-[9px] font-mono">
                   <div>
                     <div className="text-muted-foreground/70 uppercase tracking-wide">Open/Close</div>
                     <div className="text-foreground">{fmtDollar(item.prevOpen)} / {fmtDollar(item.prevClose)}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground/70 uppercase tracking-wide">52W H/L</div>
-                    <div>
-                      <span className="text-green-400">{fmtDollar(item.week52High)}</span>
-                      {' / '}
-                      <span className="text-red-400">{fmtDollar(item.week52Low)}</span>
-                    </div>
                   </div>
                   <div>
                     <div className="text-muted-foreground/70 uppercase tracking-wide">Vol</div>
