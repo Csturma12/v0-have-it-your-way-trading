@@ -542,30 +542,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // dashboard, not an accidentally-resized one.
   const [isEditMode, setIsEditMode] = useState(false)
 
-  // Collapse-to-header state. Stores each widget's pre-collapse height (in
-  // grid rows) so we can restore exactly what the user had when they expand.
-  const [collapsedHeights, setCollapsedHeights] = useState<Record<string, number>>({})
-  // Collapsed widget height in grid rows. With rowHeight=10px the header
-  // bar renders cleanly at 3 rows (~30px) without clipping.
-  const COLLAPSED_HEIGHT = 3
-
-  // Toggle a widget between collapsed (header-only) and its previous height.
-  // Available always (not just edit mode) so users can quickly hide/show
-  // widget bodies without unlocking the layout.
-  const toggleCollapse = (widgetId: string) => {
-    setLayout((prev: any[]) => {
-      const item = prev.find(l => l.i === widgetId)
-      if (!item) return prev
-      const isCurrentlyCollapsed = item.h <= COLLAPSED_HEIGHT
-      if (isCurrentlyCollapsed) {
-        const restoreH = collapsedHeights[widgetId] ?? 18
-        return prev.map(l => l.i === widgetId ? { ...l, h: restoreH } : l)
-      } else {
-        setCollapsedHeights(c => ({ ...c, [widgetId]: item.h }))
-        return prev.map(l => l.i === widgetId ? { ...l, h: COLLAPSED_HEIGHT } : l)
-      }
-    })
-  }
+  // (Collapse-to-header state lives further down, alongside the persistence
+  // keys — see COLLAPSED_KEY / COLLAPSED_H / collapsedHeights / toggleCollapse.)
 
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
@@ -678,6 +656,20 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
       Object.keys(localStorage)
         .filter(k => k.startsWith('v0-widget-grid-default-name-v') && k !== DEFAULT_LAYOUT_NAME_KEY)
         .forEach(k => localStorage.removeItem(k))
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('v0-widget-grid-collapsed-v') && k !== COLLAPSED_KEY)
+        .forEach(k => localStorage.removeItem(k))
+
+      // Restore per-widget collapsed state (map of id -> previous height)
+      try {
+        const collapsedRaw = localStorage.getItem(COLLAPSED_KEY)
+        if (collapsedRaw) {
+          const parsedCollapsed = JSON.parse(collapsedRaw)
+          if (parsedCollapsed && typeof parsedCollapsed === 'object') {
+            setCollapsedHeights(parsedCollapsed)
+          }
+        }
+      } catch { /* ignore */ }
 
       // 1) Restore saved layouts library
       const savedLib = localStorage.getItem(SAVED_LAYOUTS_KEY)
@@ -761,6 +753,18 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
       }
     } catch { /* quota / private mode */ }
   }, [defaultLayoutName, hasHydrated])
+
+  // Persist the per-widget collapsed map so collapses survive refresh
+  useEffect(() => {
+    if (!hasHydrated) return
+    try {
+      if (Object.keys(collapsedHeights).length > 0) {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify(collapsedHeights))
+      } else {
+        localStorage.removeItem(COLLAPSED_KEY)
+      }
+    } catch { /* quota / private mode */ }
+  }, [collapsedHeights, hasHydrated])
 
   // Mark a saved layout as the user's default (loads on every refresh).
   // Pass null to clear.
@@ -1210,7 +1214,9 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           >
             {rightWidgets.map(widget => {
               const layoutItem = layout.find((l: any) => l.i === widget.id)
-              const isCollapsed = !!layoutItem && layoutItem.h <= COLLAPSED_HEIGHT
+              // Local boolean — also covers the case where layout `h` equals
+              // COLLAPSED_H but no entry exists in the map (e.g. fresh load).
+              const isCollapsed = !!layoutItem && layoutItem.h <= COLLAPSED_H
               return (
                 <div
                   key={widget.id}
