@@ -484,6 +484,16 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
 // Flattened version derived from sections — used for layout lookups, default set, addWidget
 const ALL_AVAILABLE_WIDGETS: RightWidget[] = WIDGET_SECTIONS.flatMap(s => s.widgets)
 
+// react-grid-layout: which sides of each widget show resize handles.
+// CRITICAL: this must be set on EVERY individual layout item (not just as a
+// prop on <GridLayout/>) for react-grid-layout to render all 8 handles.
+// When a layout item lacks a `resizeHandles` field, RGL falls back to its
+// internal default of ['se'] only — which is exactly the bug the user was
+// seeing (only the SE corner resized, every other side felt locked). The
+// working stock-market-analysis-app reference does exactly this — sets the
+// field on every item — and that's the thing we were missing.
+const ALL_HANDLES = ['s', 'n', 'e', 'w', 'se', 'sw', 'ne', 'nw'] as const
+
 // Default set shown on first load - matches DEFAULT_LAYOUT below
 const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
   ['ticker-info','company-profile','technicals','catalysts-risk','analyst-ratings',
@@ -876,15 +886,21 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     setLayout(l => [...l, def])
   }
 
+  // Build the layout array we pass to <GridLayout/>. Two responsibilities:
+  //   1) STAMP resizeHandles on every item. This is the fix for "widgets
+  //      only resize from the SE corner" — without per-item handles, RGL
+  //      falls back to ['se']. See ALL_HANDLES comment above.
+  //   2) Disable resize on collapsed widgets (they're already shrunk to a
+  //      title bar). Users expand via the chevron, then resize.
   const visibleLayout = useMemo(
     () => layout
       .filter(l => rightWidgets.some(w => w.id === l.i))
-      .map(l => l.h <= COLLAPSED_H
-        // Lock resize on collapsed widgets so users can't drag-resize an
-        // empty body. They can still expand via the chevron, then resize.
-        ? { ...l, isResizable: false }
-        : l
-      ),
+      .map(l => {
+        const base = { ...l, resizeHandles: [...ALL_HANDLES] }
+        return l.h <= COLLAPSED_H
+          ? { ...base, isResizable: false }
+          : base
+      }),
     [layout, rightWidgets]
   )
 
@@ -1177,7 +1193,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             containerPadding={[0, 0]}
             isDraggable={isEditMode}
             isResizable={isEditMode}
-            resizeHandles={['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}
+            // Global fallback. The actual per-item resizeHandles set in
+            // visibleLayout is what drives rendering — this prop is here
+            // as a safety net only.
+            resizeHandles={[...ALL_HANDLES]}
             draggableHandle=".widget-drag-handle"
             // Free-form, no-overlap positioning (the user's stated rules):
             //   compactType={null}      — widgets stay exactly where placed
