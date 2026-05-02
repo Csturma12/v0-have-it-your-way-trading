@@ -640,7 +640,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const COLLAPSED_KEY = `v0-widget-grid-collapsed-v${LAYOUT_VERSION}`
   const COLLAPSED_H = 3 // 3 rows × 10px rowHeight = ~30px, fits the header
   const [collapsedHeights, setCollapsedHeights] = useState<Record<string, number>>({})
-  const isCollapsed = (id: string) => id in collapsedHeights
+  // Note: per-widget `isCollapsed` is computed inside the render loop from
+  // `layoutItem.h <= COLLAPSED_H` — that's the source of truth so collapse
+  // survives layout import/load. The `collapsedHeights` map only tracks the
+  // height to restore to when expanding.
 
   // Restore on mount + clean up old layout versions
   useEffect(() => {
