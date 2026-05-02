@@ -1152,21 +1152,12 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           <NewsTickerBanner />
         </div>
 
-        {/* Grid
-            Resize handle styling is owned by app/globals.css. An earlier
-            inline <style jsx global> block was duplicating those rules but
-            with broken sizes (W/E shrunk to 24px tall, N/S shrunk to 24px
-            wide), which collapsed the side/top/bottom handles into tiny
-            unfindable center strips. globals.css gives n/s a full-width
-            bar (left:12px; right:12px) and e/w a full-height bar
-            (top:12px; bottom:12px). Removed the inline override. */}
-        {/* pt-2 leaves 8px of headroom above row 0 so the N/NW/NE resize
-            handles (positioned at top:-4px outside each widget's bounds)
-            aren't clipped by the wrapper's overflow-y-auto. Without this,
-            top-row widgets are not resizable from their top edge — every
-            other row works fine because their handles sit inside the
-            scrollable content area. */}
-        <div ref={wrapperRef} className={`flex-1 overflow-y-auto overflow-x-hidden widget-scroll pt-2 ${isEditMode ? '' : 'rgl-locked'}`}>
+        {/* Grid — resize handle CSS lives in app/globals.css.
+            Handles are positioned INSIDE each widget's bounds (not outside),
+            so they can never be clipped by overflow:auto on this wrapper or
+            eaten by neighboring widgets. Every widget is resizable from all
+            8 sides regardless of its position in the grid. */}
+        <div ref={wrapperRef} className={`flex-1 overflow-y-auto overflow-x-hidden widget-scroll ${isEditMode ? '' : 'rgl-locked'}`}>
           <GridLayout
             className="layout"
             layout={visibleLayout}
@@ -1181,21 +1172,20 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             isResizable={isEditMode}
             resizeHandles={['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}
             draggableHandle=".widget-drag-handle"
-            // Free-form positioning (Bloomberg/TradingView style):
-            //   compactType={null}      — no auto-packing toward top
-            //   preventCollision={false} — resize/drag isn't blocked by neighbors
+            // Free-form, no-overlap positioning (the user's stated rules):
+            //   compactType={null}      — widgets stay exactly where placed
+            //                             (no auto-pack toward top of column).
+            //                             Place anything anywhere on the grid.
+            //   preventCollision={true} — drags / resizes that would overlap
+            //                             a neighbor are blocked. Only rule.
             //
-            // Why null instead of "vertical": with vertical compaction the
-            // top edge handles (N / NW / NE) appear broken because every
-            // resize is followed by a compaction step that snaps the widget
-            // back to the top of its column. User reports widgets are not
-            // resizable from all 8 points — that's the cause. Free-form
-            // lets all 8 handles work in all directions; widgets stay
-            // exactly where placed instead of auto-stacking. Overlaps are
-            // possible during resize but recoverable by dragging the
-            // affected widget out of the way.
+            // Resize handles live INSIDE each widget's bounds (see
+            // app/globals.css), which means: (a) ancestor overflow can't
+            // clip the top row's handles, and (b) flush neighbors with
+            // margin=[0,0] can't cover them via DOM stacking order. All 8
+            // sides resize on every widget, every row, every time.
             compactType={null}
-            preventCollision={false}
+            preventCollision={true}
             onLayoutChange={(newLayout: any) => {
               setLayout(newLayout)
             }}
