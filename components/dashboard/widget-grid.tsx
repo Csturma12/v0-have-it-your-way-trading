@@ -476,22 +476,29 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
 // so h:12 = 120px, h:30 = 300px, etc. minH:1 / minW:1 lets users
 // shrink any widget down to a single row (~10px) — essentially just
 // the title bar — which is the practical floor.
+// cols=24 so we get fine-grained column widths matching the screenshot:
+// Sidebar (left) + main grid takes the remaining width.
+// Row structure mirrors the screenshot exactly:
+//   TOP:    ticker-info(6) | company-profile(9) | catalysts-risk(9)
+//           analyst-ratings spans the full width below top row
+//   MIDDLE: chart(18) | watchlist(6)
+//   BOTTOM: trade-ideas(8) | news(8) | quick-trade(8)
+//           technicals(12)
 const DEFAULT_LAYOUT: any[] = [
-  // TOP ROW: Ticker Info + Company Profile + Analyst Ratings + Catalyst/Risk
-  { i: 'ticker-info',       x: 0,  y: 0,   w: 4,  h: 12, minH: 1, minW: 1 },
-  { i: 'company-profile',   x: 4,  y: 0,   w: 5,  h: 12, minH: 1, minW: 1 },
-  { i: 'analyst-ratings',   x: 9,  y: 0,   w: 5,  h: 12, minH: 1, minW: 1 },
-  // RIGHT PANEL: Catalyst/Risk spans top rows
-  { i: 'catalysts-risk',    x: 14, y: 0,   w: 6,  h: 12, minH: 1, minW: 1 },
-  // MAIN CHART (left) + Watchlist (right)
-  { i: 'chart',             x: 0,  y: 12,  w: 14, h: 30, minH: 1, minW: 1 },
-  { i: 'watchlist',         x: 14, y: 12,  w: 6,  h: 30, minH: 1, minW: 1 },
-  // BOTTOM ROW: Trade Ideas + News + Quick Trade
-  { i: 'trade-ideas',       x: 0,  y: 42,  w: 7,  h: 12, minH: 1, minW: 1 },
-  { i: 'news',              x: 7,  y: 42,  w: 7,  h: 15, minH: 1, minW: 1 },
-  { i: 'quick-trade',       x: 14, y: 42,  w: 6,  h: 15, minH: 1, minW: 1 },
-  // BOTTOM ROW 2: Technicals
-  { i: 'technicals',        x: 0,  y: 54,  w: 7,  h: 12, minH: 1, minW: 1 },
+  // TOP ROW
+  { i: 'ticker-info',       x: 0,  y: 0,   w: 6,  h: 18, minH: 1, minW: 1 },
+  { i: 'company-profile',   x: 6,  y: 0,   w: 9,  h: 18, minH: 1, minW: 1 },
+  { i: 'analyst-ratings',   x: 15, y: 0,   w: 9,  h: 18, minH: 1, minW: 1 },
+  // CATALYST/RISK - right panel same height as top row
+  { i: 'catalysts-risk',    x: 0,  y: 18,  w: 24, h: 18, minH: 1, minW: 1 },
+  // MAIN CHART + WATCHLIST side by side
+  { i: 'chart',             x: 0,  y: 36,  w: 18, h: 40, minH: 1, minW: 1 },
+  { i: 'watchlist',         x: 18, y: 36,  w: 6,  h: 40, minH: 1, minW: 1 },
+  // BOTTOM ROW
+  { i: 'trade-ideas',       x: 0,  y: 76,  w: 8,  h: 18, minH: 1, minW: 1 },
+  { i: 'news',              x: 8,  y: 76,  w: 8,  h: 18, minH: 1, minW: 1 },
+  { i: 'quick-trade',       x: 16, y: 76,  w: 8,  h: 18, minH: 1, minW: 1 },
+  { i: 'technicals',        x: 0,  y: 94,  w: 12, h: 18, minH: 1, minW: 1 },
 ]
 
 interface SavedState {
@@ -954,7 +961,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           <GridLayout
             className="layout"
             layout={visibleLayout}
-            cols={20}
+            cols={24}
             rowHeight={rowHeight}
             // Zero margin/padding so widgets sit flush against each
             // other (no gap stripes between cards). Borders provide
