@@ -132,10 +132,7 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
           <WidgetEmptyState type="no-ticker" />
         ) : activeTab === 'profile' ? (
           <div className="space-y-2">
-            {/* Company Name */}
-            <div className="text-base font-semibold text-foreground">{profile.name}</div>
-
-            {/* Key Info Grid */}
+            {/* Key Info Grid - Company name removed (shown in Ticker Info widget) */}
             <div className="grid grid-cols-2 gap-1 text-[9px]">
               {profile.sector && (
                 <div className="bg-muted/30 rounded p-1">
