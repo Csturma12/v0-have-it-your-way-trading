@@ -5,7 +5,7 @@ import GridLayoutImport from 'react-grid-layout'
 const GridLayout = GridLayoutImport as any
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
-import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check, Trash2 } from 'lucide-react'
+import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check, Trash2, Star } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -519,7 +519,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // Edit mode is ON by default so all widgets are immediately drag/resize-able
   // from all 4 corners + 4 edges. User can toggle it off via the Lock button
   // to prevent accidental moves.
-  const [isEditMode, setIsEditMode] = useState(true)
+  // Default to LOCKED. User clicks "Edit Layout" in the layout menu to
+  // unlock dragging/resizing. Most users want a fixed Bloomberg-style
+  // dashboard, not an accidentally-resized one.
+  const [isEditMode, setIsEditMode] = useState(false)
 
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
@@ -528,7 +531,6 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [savedLayouts, setSavedLayouts] = useState<Array<{ name: string; layout: any[]; widgets: RightWidget[] }>>([])
   const [newLayoutName, setNewLayoutName] = useState('')
   const [wrapperWidth, setWrapperWidth] = useState(1200)
-  const [wrapperHeight, setWrapperHeight] = useState(800)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   // Sidebar drag-to-reorder state — persisted to localStorage (SSR-safe)
@@ -576,12 +578,14 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     })
   }, [])
 
-  // Track wrapper width AND height for responsive grid
+  // Track only wrapper width for responsive grid. Height is NOT tracked
+  // because rowHeight is now fixed (see below) — measuring wrapper height
+  // caused a feedback loop where taller widgets made the wrapper taller,
+  // which made rowHeight bigger, which made widgets even taller.
   useEffect(() => {
     const updateSize = () => {
       if (wrapperRef.current) {
         setWrapperWidth(wrapperRef.current.offsetWidth)
-        setWrapperHeight(wrapperRef.current.offsetHeight)
       }
     }
     updateSize()
@@ -590,48 +594,127 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     return () => resizeObserver.disconnect()
   }, [])
 
-  // Fine-grained rowHeight (10px). react-grid-layout snaps height to
-  // integer multiples of rowHeight, so a smaller value = smoother
-  // "free" resize. With ROW_HEIGHT=10 users can resize in 10px
-  // increments, which feels continuous — no more "stuck at certain
-  // heights." The wrapper scrolls vertically when the grid grows
-  // beyond the viewport.
-  const ROW_HEIGHT = 10
-  const rowHeight = ROW_HEIGHT
+  // Fixed 10px rowHeight. With our default layout (~80 rows tall) the whole
+  // dashboard is ~800px — fits a standard laptop viewport without scroll.
+  // Users can unlock "Edit Layout" mode to resize widgets if they want.
+  const rowHeight = 10
 
   // Simple localStorage persistence so manual resizes survive HMR / refresh.
   // Bump VERSION when DEFAULT_LAYOUT changes to force fresh layout for all users.
-  const LAYOUT_VERSION = 4
+  const LAYOUT_VERSION = 7
   const STORAGE_KEY = `v0-widget-grid-layout-v${LAYOUT_VERSION}`
+  const SAVED_LAYOUTS_KEY = `v0-widget-grid-saved-layouts-v${LAYOUT_VERSION}`
+  // Name of the saved layout the user marked as their personal default.
+  // Loaded BEFORE DEFAULT_LAYOUT on mount so a refresh restores their pick.
+  const DEFAULT_LAYOUT_NAME_KEY = `v0-widget-grid-default-name-v${LAYOUT_VERSION}`
+  const [defaultLayoutName, setDefaultLayoutName] = useState<string | null>(null)
+  // Track whether we've finished the first-mount restore. We don't want to
+  // overwrite localStorage with the empty initial state before we've loaded.
+  const [hasHydrated, setHasHydrated] = useState(false)
 
-  // Restore on mount
+  // Restore on mount + clean up old layout versions
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (!saved) return
-      const parsed = JSON.parse(saved)
-      if (parsed?.layout && Array.isArray(parsed.layout)) {
-        // Strip stale min/max constraints from older sessions
-        setLayout(parsed.layout.map((item: any) => ({
+      // Delete every cached layout from older versions so the user's
+      // browser doesn't accumulate stale data forever.
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('v0-widget-grid-layout-v') && k !== STORAGE_KEY)
+        .forEach(k => localStorage.removeItem(k))
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('v0-widget-grid-saved-layouts-v') && k !== SAVED_LAYOUTS_KEY)
+        .forEach(k => localStorage.removeItem(k))
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('v0-widget-grid-default-name-v') && k !== DEFAULT_LAYOUT_NAME_KEY)
+        .forEach(k => localStorage.removeItem(k))
+
+      // 1) Restore saved layouts library
+      const savedLib = localStorage.getItem(SAVED_LAYOUTS_KEY)
+      let restoredLib: Array<{ name: string; layout: any[]; widgets: RightWidget[] }> = []
+      if (savedLib) {
+        try {
+          const parsedLib = JSON.parse(savedLib)
+          if (Array.isArray(parsedLib)) {
+            restoredLib = parsedLib
+            setSavedLayouts(parsedLib)
+          }
+        } catch { /* ignore corrupt entry */ }
+      }
+
+      // 2) Restore the user's chosen default name
+      const chosenDefault = localStorage.getItem(DEFAULT_LAYOUT_NAME_KEY)
+      if (chosenDefault) setDefaultLayoutName(chosenDefault)
+
+      // 3) Restore the live layout — prefer the user's chosen default if it
+      //    still exists in the saved library; otherwise fall back to the
+      //    last-active layout from STORAGE_KEY.
+      const matchingDefault = chosenDefault
+        ? restoredLib.find(l => l.name === chosenDefault)
+        : null
+
+      if (matchingDefault) {
+        setLayout(matchingDefault.layout.map((item: any) => ({
           ...item,
           minH: 1,
           minW: 1,
           maxH: undefined,
           maxW: undefined,
         })))
-      }
-      if (parsed?.rightWidgets && Array.isArray(parsed.rightWidgets)) {
-        setRightWidgets(parsed.rightWidgets)
+        setRightWidgets(matchingDefault.widgets)
+      } else {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (parsed?.layout && Array.isArray(parsed.layout)) {
+            setLayout(parsed.layout.map((item: any) => ({
+              ...item,
+              minH: 1,
+              minW: 1,
+              maxH: undefined,
+              maxW: undefined,
+            })))
+          }
+          if (parsed?.rightWidgets && Array.isArray(parsed.rightWidgets)) {
+            setRightWidgets(parsed.rightWidgets)
+          }
+        }
       }
     } catch { /* ignore corrupt storage */ }
+    setHasHydrated(true)
   }, [])
 
-  // Save on every layout / widget change
+  // Save the LIVE layout on every change (only after hydration)
   useEffect(() => {
+    if (!hasHydrated) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ layout, rightWidgets }))
     } catch { /* quota / private mode */ }
-  }, [layout, rightWidgets])
+  }, [layout, rightWidgets, hasHydrated])
+
+  // Persist the saved-layouts library on every change (only after hydration)
+  useEffect(() => {
+    if (!hasHydrated) return
+    try {
+      localStorage.setItem(SAVED_LAYOUTS_KEY, JSON.stringify(savedLayouts))
+    } catch { /* quota / private mode */ }
+  }, [savedLayouts, hasHydrated])
+
+  // Persist the chosen default name (only after hydration)
+  useEffect(() => {
+    if (!hasHydrated) return
+    try {
+      if (defaultLayoutName) {
+        localStorage.setItem(DEFAULT_LAYOUT_NAME_KEY, defaultLayoutName)
+      } else {
+        localStorage.removeItem(DEFAULT_LAYOUT_NAME_KEY)
+      }
+    } catch { /* quota / private mode */ }
+  }, [defaultLayoutName, hasHydrated])
+
+  // Mark a saved layout as the user's default (loads on every refresh).
+  // Pass null to clear.
+  const setAsDefault = (name: string | null) => {
+    setDefaultLayoutName(name)
+  }
 
   // Save layout with a custom name (in-memory only until Supabase templates are built)
   const saveLayoutWithName = () => {
@@ -667,16 +750,19 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     setShowLayoutMenu(false)
   }
 
-  // Delete a saved layout
+  // Delete a saved layout (and clear it as default if it was)
   const deleteSavedLayout = (name: string) => {
     setSavedLayouts(prev => prev.filter(l => l.name !== name))
+    if (defaultLayoutName === name) setDefaultLayoutName(null)
   }
 
-  // Reset to default layout AND clear persisted storage
+  // Reset to system default layout, clear persisted storage AND drop any
+  // saved-as-default pin (so System Default actually wins on next refresh).
   const resetLayout = () => {
     try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
     setLayout(DEFAULT_LAYOUT)
     setRightWidgets(DEFAULT_RIGHT_WIDGETS)
+    setDefaultLayoutName(null)
     setShowLayoutMenu(false)
   }
 
@@ -898,22 +984,34 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                         <div className="px-3 py-1.5 text-[8px] font-mono font-bold text-muted-foreground uppercase">
                           Saved Layouts
                         </div>
-                        {savedLayouts.map(saved => (
-                          <div key={saved.name} className="flex items-center gap-1 px-3 py-1.5 border-b border-border hover:bg-muted/20">
-                            <button
-                              onClick={() => { loadSavedLayout(saved); setShowLayoutMenu(false) }}
-                              className="flex-1 text-left text-[10px] font-mono hover:text-primary"
-                            >
-                              {saved.name}
-                            </button>
-                            <button
-                              onClick={() => deleteSavedLayout(saved.name)}
-                              className="text-muted-foreground hover:text-red-400"
-                            >
-                              <Trash2 className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                        ))}
+                        {savedLayouts.map(saved => {
+                          const isDefault = saved.name === defaultLayoutName
+                          return (
+                            <div key={saved.name} className="flex items-center gap-1 px-3 py-1.5 border-b border-border hover:bg-muted/20">
+                              <button
+                                onClick={() => setAsDefault(isDefault ? null : saved.name)}
+                                className={isDefault ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400'}
+                                title={isDefault ? 'Default layout — loads on every refresh. Click to unset.' : 'Set as default — load this layout on every refresh.'}
+                              >
+                                <Star className={`w-2.5 h-2.5 ${isDefault ? 'fill-amber-400' : ''}`} />
+                              </button>
+                              <button
+                                onClick={() => { loadSavedLayout(saved); setShowLayoutMenu(false) }}
+                                className="flex-1 text-left text-[10px] font-mono hover:text-primary"
+                              >
+                                {saved.name}
+                                {isDefault && <span className="ml-1.5 text-[8px] text-amber-400">DEFAULT</span>}
+                              </button>
+                              <button
+                                onClick={() => deleteSavedLayout(saved.name)}
+                                className="text-muted-foreground hover:text-red-400"
+                                title="Delete saved layout"
+                              >
+                                <Trash2 className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                          )
+                        })}
                       </>
                     )}
 
