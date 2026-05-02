@@ -826,6 +826,36 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const removeWidget = (id: string) => {
     setRightWidgets(w => w.filter(x => x.id !== id))
     setLayout(l => l.filter(x => x.i !== id))
+    // Drop any collapse state for the removed widget
+    setCollapsedHeights(prev => {
+      if (!(id in prev)) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+
+  // Toggle a widget between collapsed (header-only) and its prior height.
+  // Collapse: stash the current `h` in collapsedHeights, set layout `h` to
+  // COLLAPSED_H. Expand: restore the saved `h` and clear the entry.
+  // Layout compaction (vertical) handles re-flowing neighbors automatically.
+  const toggleCollapse = (id: string) => {
+    setLayout(prevLayout => {
+      const item = prevLayout.find(l => l.i === id)
+      if (!item) return prevLayout
+      if (id in collapsedHeights) {
+        const restoredH = collapsedHeights[id]
+        setCollapsedHeights(prev => {
+          const next = { ...prev }
+          delete next[id]
+          return next
+        })
+        return prevLayout.map(l => (l.i === id ? { ...l, h: restoredH } : l))
+      } else {
+        setCollapsedHeights(prev => ({ ...prev, [id]: item.h }))
+        return prevLayout.map(l => (l.i === id ? { ...l, h: COLLAPSED_H } : l))
+      }
+    })
   }
 
   // All widgets that can be added (default + addon, minus currently visible).
