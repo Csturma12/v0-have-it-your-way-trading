@@ -519,7 +519,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // Edit mode is ON by default so all widgets are immediately drag/resize-able
   // from all 4 corners + 4 edges. User can toggle it off via the Lock button
   // to prevent accidental moves.
-  const [isEditMode, setIsEditMode] = useState(true)
+  // Default to LOCKED. User clicks "Edit Layout" in the layout menu to
+  // unlock dragging/resizing. Most users want a fixed Bloomberg-style
+  // dashboard, not an accidentally-resized one.
+  const [isEditMode, setIsEditMode] = useState(false)
 
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
@@ -528,7 +531,6 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [savedLayouts, setSavedLayouts] = useState<Array<{ name: string; layout: any[]; widgets: RightWidget[] }>>([])
   const [newLayoutName, setNewLayoutName] = useState('')
   const [wrapperWidth, setWrapperWidth] = useState(1200)
-  const [wrapperHeight, setWrapperHeight] = useState(800)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   // Sidebar drag-to-reorder state — persisted to localStorage (SSR-safe)
@@ -576,56 +578,30 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     })
   }, [])
 
-  // Track wrapper WIDTH from the wrapper, but VIEWPORT height from window.
-  // CRITICAL: do NOT measure the wrapper's own height — it grows with the
-  // grid content, which creates a feedback loop with dynamic rowHeight
-  // (taller widgets -> taller wrapper -> bigger rowHeight -> taller widgets).
-  // We want the available viewport space, which is fixed regardless of how
-  // tall the grid currently is.
+  // Track only wrapper width for responsive grid. Height is NOT tracked
+  // because rowHeight is now fixed (see below) — measuring wrapper height
+  // caused a feedback loop where taller widgets made the wrapper taller,
+  // which made rowHeight bigger, which made widgets even taller.
   useEffect(() => {
     const updateSize = () => {
       if (wrapperRef.current) {
         setWrapperWidth(wrapperRef.current.offsetWidth)
-        // Available height = viewport - distance from top of viewport to top of grid
-        const top = wrapperRef.current.getBoundingClientRect().top
-        const available = Math.max(400, window.innerHeight - top - 16) // 16px bottom padding
-        setWrapperHeight(available)
       }
     }
     updateSize()
-    // Observe BOTH wrapper resize (for width changes from sidebar toggle) AND
-    // window resize (for actual viewport changes). Do NOT observe wrapper
-    // height changes — those are caused by content growth, not real resizes.
     const resizeObserver = new ResizeObserver(updateSize)
     if (wrapperRef.current) resizeObserver.observe(wrapperRef.current)
-    window.addEventListener('resize', updateSize)
-    return () => {
-      resizeObserver.disconnect()
-      window.removeEventListener('resize', updateSize)
-    }
+    return () => resizeObserver.disconnect()
   }, [])
 
-  // Dynamic rowHeight — the dashboard always fills the available viewport
-  // height like a real trading terminal (Bloomberg/TradingView). The total
-  // number of rows occupied by the current layout is divided into the
-  // available wrapper height. When a user resizes one widget bigger, the
-  // grid grows and other widgets stay the same — neighbors get pushed
-  // (vertical compaction) so the user can always see everything.
-  //
-  // Floor of 6px keeps it usable on tiny viewports; ceiling of 24px keeps
-  // widgets from getting unreasonably tall on huge monitors.
-  const totalRowsInLayout = layout.length
-    ? Math.max(...layout.map((l: any) => (l.y || 0) + (l.h || 0)))
-    : 80
-  const dynamicRowHeight =
-    wrapperHeight > 0
-      ? Math.max(6, Math.min(24, Math.floor(wrapperHeight / totalRowsInLayout)))
-      : 10
-  const rowHeight = dynamicRowHeight
+  // Fixed 10px rowHeight. With our default layout (~80 rows tall) the whole
+  // dashboard is ~800px — fits a standard laptop viewport without scroll.
+  // Users can unlock "Edit Layout" mode to resize widgets if they want.
+  const rowHeight = 10
 
   // Simple localStorage persistence so manual resizes survive HMR / refresh.
   // Bump VERSION when DEFAULT_LAYOUT changes to force fresh layout for all users.
-  const LAYOUT_VERSION = 6
+  const LAYOUT_VERSION = 7
   const STORAGE_KEY = `v0-widget-grid-layout-v${LAYOUT_VERSION}`
 
   // Restore on mount + clean up old layout versions
