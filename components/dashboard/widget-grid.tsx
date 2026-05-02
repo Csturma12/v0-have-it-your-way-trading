@@ -509,23 +509,26 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
 //   NEWS ROW (140px):   news full width, market-overview spans down to align
 const DEFAULT_LAYOUT: any[] = [
   // TOP ROW (h:18 = 180px) - all 5 widgets equal height
-  { i: 'ticker-info',       x: 0,   y: 0,   w: 5,  h: 18, minH: 1, minW: 1 },
-  { i: 'company-profile',   x: 5,   y: 0,   w: 5,  h: 18, minH: 1, minW: 1 },
-  { i: 'technicals',        x: 10,  y: 0,   w: 5,  h: 18, minH: 1, minW: 1 },
-  { i: 'catalysts-risk',    x: 15,  y: 0,   w: 5,  h: 18, minH: 1, minW: 1 },
-  { i: 'analyst-ratings',   x: 20,  y: 0,   w: 4,  h: 18, minH: 1, minW: 1 },
+  // No minH/minW/maxH/maxW on any item — widgets resize freely with no
+  // constraints. RGL's only enforcement is that w and h must be positive
+  // integers (so you can't shrink below 1 grid cell), which is fine.
+  { i: 'ticker-info',       x: 0,   y: 0,   w: 5,  h: 18 },
+  { i: 'company-profile',   x: 5,   y: 0,   w: 5,  h: 18 },
+  { i: 'technicals',        x: 10,  y: 0,   w: 5,  h: 18 },
+  { i: 'catalysts-risk',    x: 15,  y: 0,   w: 5,  h: 18 },
+  { i: 'analyst-ratings',   x: 20,  y: 0,   w: 4,  h: 18 },
 
   // CHART ROW (h:30 = 300px) - chart with watchlist on right
-  { i: 'chart',             x: 0,   y: 18,  w: 20, h: 30, minH: 1, minW: 1 },
-  { i: 'watchlist',         x: 20,  y: 18,  w: 4,  h: 30, minH: 1, minW: 1 },
+  { i: 'chart',             x: 0,   y: 18,  w: 20, h: 30 },
+  { i: 'watchlist',         x: 20,  y: 18,  w: 4,  h: 30 },
 
   // ACTION ROW (h:18 = 180px) - trade-ideas + quick-trade, market-overview on right
-  { i: 'trade-ideas',       x: 0,   y: 48,  w: 10, h: 18, minH: 1, minW: 1 },
-  { i: 'quick-trade',       x: 10,  y: 48,  w: 10, h: 18, minH: 1, minW: 1 },
-  { i: 'market-overview',   x: 20,  y: 48,  w: 4,  h: 32, minH: 1, minW: 1 },
+  { i: 'trade-ideas',       x: 0,   y: 48,  w: 10, h: 18 },
+  { i: 'quick-trade',       x: 10,  y: 48,  w: 10, h: 18 },
+  { i: 'market-overview',   x: 20,  y: 48,  w: 4,  h: 32 },
 
   // NEWS ROW (h:14 = 140px) - news full width, aligns with bottom of market-overview
-  { i: 'news',              x: 0,   y: 66,  w: 20, h: 14, minH: 1, minW: 1 },
+  { i: 'news',              x: 0,   y: 66,  w: 20, h: 14 },
 ]
 
 interface SavedState {
@@ -708,27 +711,24 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
         ? restoredLib.find(l => l.name === chosenDefault)
         : null
 
+      // Strip any legacy minH/minW/maxH/maxW from persisted layouts so
+      // older saved layouts don't keep enforcing constraints we no longer
+      // want. Layouts are stored verbatim; we just delete those fields on
+      // load. (No min/max anywhere — user requirement.)
+      const stripConstraints = (item: any) => {
+        const { minH, minW, maxH, maxW, ...rest } = item
+        return rest
+      }
+
       if (matchingDefault) {
-        setLayout(matchingDefault.layout.map((item: any) => ({
-          ...item,
-          minH: 1,
-          minW: 1,
-          maxH: undefined,
-          maxW: undefined,
-        })))
+        setLayout(matchingDefault.layout.map(stripConstraints))
         setRightWidgets(matchingDefault.widgets)
       } else {
         const saved = localStorage.getItem(STORAGE_KEY)
         if (saved) {
           const parsed = JSON.parse(saved)
           if (parsed?.layout && Array.isArray(parsed.layout)) {
-            setLayout(parsed.layout.map((item: any) => ({
-              ...item,
-              minH: 1,
-              minW: 1,
-              maxH: undefined,
-              maxW: undefined,
-            })))
+            setLayout(parsed.layout.map(stripConstraints))
           }
           if (parsed?.rightWidgets && Array.isArray(parsed.rightWidgets)) {
             setRightWidgets(parsed.rightWidgets)
@@ -805,15 +805,13 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     setTimeout(() => setLayoutSaved(false), 2000)
   }
 
-  // Load a saved layout by name
+  // Load a saved layout by name. Strip legacy min/max constraints from
+  // older saved layouts so they don't re-introduce limits we don't want.
   const loadSavedLayout = (saved: { name: string; layout: any[]; widgets: RightWidget[] }) => {
-    const normalized = saved.layout.map((item: any) => ({
-      ...item,
-      minH: 1,
-      minW: 1,
-      maxH: undefined,
-      maxW: undefined,
-    }))
+    const normalized = saved.layout.map((item: any) => {
+      const { minH, minW, maxH, maxW, ...rest } = item
+      return rest
+    })
     setLayout(normalized)
     setRightWidgets(saved.widgets)
     setShowLayoutMenu(false)
@@ -875,32 +873,31 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     })
   }
 
-  // All widgets that can be added (default + addon, minus currently visible).
-  // minH/minW set to 1 so users can freely shrink any added widget all
-  // the way down to title-bar height (~30px) without ever disappearing.
+  // Add a widget. No min/max constraints anywhere — user can freely
+  // resize once it's on the grid.
   const addWidget = (meta: RightWidget) => {
     const def = DEFAULT_LAYOUT.find(l => l.i === meta.id) ?? {
-      i: meta.id, x: 0, y: Infinity, w: 4, h: 15, minH: 1, minW: 1,
+      i: meta.id, x: 0, y: Infinity, w: 4, h: 15,
     }
     setRightWidgets(w => [...w, meta])
     setLayout(l => [...l, def])
   }
 
-  // Build the layout array we pass to <GridLayout/>. Two responsibilities:
-  //   1) STAMP resizeHandles on every item. This is the fix for "widgets
-  //      only resize from the SE corner" — without per-item handles, RGL
-  //      falls back to ['se']. See ALL_HANDLES comment above.
-  //   2) Disable resize on collapsed widgets (they're already shrunk to a
-  //      title bar). Users expand via the chevron, then resize.
+  // Build the layout array we pass to <GridLayout/>. Single responsibility:
+  // stamp resizeHandles on every item so RGL renders all 8 handles. Without
+  // a per-item resizeHandles field, RGL silently falls back to ['se'] only.
+  //
+  // NOTE: we used to also stamp `isResizable: false` whenever h <= COLLAPSED_H
+  // ("collapsed" widgets). That created a UX trap — when a user dragged the
+  // N (top) edge down to shrink a widget, the moment h crossed the threshold
+  // the widget instantly became non-resizable on the next render, "locking"
+  // it until the user expanded via the chevron. That's the source of the
+  // "widgets get locked when they touch the top bar" symptom. Removed.
+  // Every widget stays freely resizable from all 8 sides at all heights.
   const visibleLayout = useMemo(
     () => layout
       .filter(l => rightWidgets.some(w => w.id === l.i))
-      .map(l => {
-        const base = { ...l, resizeHandles: [...ALL_HANDLES] }
-        return l.h <= COLLAPSED_H
-          ? { ...base, isResizable: false }
-          : base
-      }),
+      .map(l => ({ ...l, resizeHandles: [...ALL_HANDLES] })),
     [layout, rightWidgets]
   )
 
