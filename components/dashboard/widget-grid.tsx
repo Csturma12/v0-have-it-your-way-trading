@@ -1163,10 +1163,17 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             layout={visibleLayout}
             cols={24}
             rowHeight={rowHeight}
-            // Zero margin/padding so widgets sit flush against each
-            // other (no gap stripes between cards). Borders provide
-            // the visual separation.
-            margin={[0, 0]}
+            // 2px margin between widgets (matches the working
+            // stock-market-analysis-app reference). The tiny gap is
+            // critical: it gives every resize handle clean airspace
+            // around the widget edge instead of placing handles inside
+            // a neighbor's body. With margin=[0,0] (flush) the
+            // neighbor's body wins every click on the shared boundary
+            // — handles render but are completely unreachable. 2px is
+            // small enough that widgets still feel flush visually but
+            // big enough that all 8 resize handles work on every
+            // widget, every row, every time.
+            margin={[2, 2]}
             containerPadding={[0, 0]}
             isDraggable={isEditMode}
             isResizable={isEditMode}
@@ -1178,12 +1185,9 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             //                             Place anything anywhere on the grid.
             //   preventCollision={true} — drags / resizes that would overlap
             //                             a neighbor are blocked. Only rule.
-            //
-            // Resize handles live INSIDE each widget's bounds (see
-            // app/globals.css), which means: (a) ancestor overflow can't
-            // clip the top row's handles, and (b) flush neighbors with
-            // margin=[0,0] can't cover them via DOM stacking order. All 8
-            // sides resize on every widget, every row, every time.
+            // Combined with margin=[2,2] above, every widget is freely
+            // movable and resizable from all 4 corners + all 4 edges,
+            // and overlap is the single enforced constraint.
             compactType={null}
             preventCollision={true}
             onLayoutChange={(newLayout: any) => {
