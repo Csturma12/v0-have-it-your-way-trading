@@ -1195,6 +1195,17 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             // as a safety net only.
             resizeHandles={[...ALL_HANDLES]}
             draggableHandle=".widget-drag-handle"
+            // CRITICAL: tells react-draggable to suppress drag-start when
+            // the mousedown target is a resize handle. Without this, the
+            // widget's title bar (.widget-drag-handle) — which sits at
+            // top:0 and is wider than the resize handles — wins the
+            // mousedown even when the user clicks on a corner/edge handle
+            // that visually overlaps the title bar. That's the symptom of
+            // "everything locks up when I click near the top bar" — every
+            // click on the N / NW / NE handles was actually starting a
+            // drag instead of a resize. draggableCancel uses closest() so
+            // it correctly identifies clicks on the handle elements.
+            draggableCancel=".react-resizable-handle"
             // Free-form, no-overlap positioning (the user's stated rules):
             //   compactType={null}      — widgets stay exactly where placed
             //                             (no auto-pack toward top of column).
