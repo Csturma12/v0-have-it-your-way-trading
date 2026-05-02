@@ -472,27 +472,33 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
    'chart','watchlist','trade-ideas','news','quick-trade','technicals'].includes(w.id)
 )
 
-// Default sizes calibrated for ROW_HEIGHT=10. Each `h` unit = 10px,
-// so h:12 = 120px, h:30 = 300px, etc. minH:1 / minW:1 lets users
-// shrink any widget down to a single row (~10px) — essentially just
-// the title bar — which is the practical floor.
-// cols=24, rowHeight=10px
-// Layout matches screenshot: 4 widgets top row, chart+watchlist middle, bottom row
+// Default layout calibrated to the user's reference screenshots.
+// Grid is cols=24, ROW_HEIGHT=10px, so each `h` unit = 10px.
+//
+// Practical sizing for a real trading dashboard:
+//   TOP ROW (~140px): ticker-info | company-profile | technicals+analyst stacked | catalysts-risk
+//   CHART ROW (~280px): chart (wide) + watchlist (narrow) side-by-side
+//   BOTTOM (~140px each, two rows): trade-ideas + news stacked on left, quick-trade tall on right
+//
+// minH:1 / minW:1 lets users shrink any widget to a single row (~10px / one column).
 const DEFAULT_LAYOUT: any[] = [
-  // TOP ROW - 4 widgets side by side, each 6 cols wide, 12 rows tall (~120px)
-  { i: 'ticker-info',       x: 0,  y: 0,   w: 6,  h: 12, minH: 1, minW: 1 },
-  { i: 'company-profile',   x: 6,  y: 0,   w: 6,  h: 12, minH: 1, minW: 1 },
-  { i: 'analyst-ratings',   x: 12, y: 0,   w: 6,  h: 12, minH: 1, minW: 1 },
-  { i: 'catalysts-risk',    x: 18, y: 0,   w: 6,  h: 12, minH: 1, minW: 1 },
-  // MIDDLE - Chart (18 cols) + Watchlist (6 cols) at h:24 (~240px)
-  { i: 'chart',             x: 0,  y: 12,  w: 18, h: 24, minH: 1, minW: 1 },
-  { i: 'watchlist',         x: 18, y: 12,  w: 6,  h: 24, minH: 1, minW: 1 },
-  // BOTTOM ROW - trade-ideas, news, quick-trade
-  { i: 'trade-ideas',       x: 0,  y: 36,  w: 8,  h: 12, minH: 1, minW: 1 },
-  { i: 'news',              x: 8,  y: 36,  w: 8,  h: 12, minH: 1, minW: 1 },
-  { i: 'quick-trade',       x: 16, y: 36,  w: 8,  h: 12, minH: 1, minW: 1 },
-  // TECHNICALS - bottom row 2
-  { i: 'technicals',        x: 0,  y: 48,  w: 24, h: 12, minH: 1, minW: 1 },
+  // TOP ROW (h:14 = 140px)
+  { i: 'ticker-info',       x: 0,  y: 0,   w: 5, h: 14, minH: 1, minW: 1 },
+  { i: 'company-profile',   x: 5,  y: 0,   w: 6, h: 14, minH: 1, minW: 1 },
+  // technicals + analyst-ratings stacked in the same column (each h:7 = 70px)
+  { i: 'technicals',        x: 11, y: 0,   w: 6, h: 7,  minH: 1, minW: 1 },
+  { i: 'analyst-ratings',   x: 11, y: 7,   w: 6, h: 7,  minH: 1, minW: 1 },
+  { i: 'catalysts-risk',    x: 17, y: 0,   w: 7, h: 14, minH: 1, minW: 1 },
+
+  // CHART ROW (h:28 = 280px)
+  { i: 'chart',             x: 0,  y: 14,  w: 18, h: 28, minH: 1, minW: 1 },
+  { i: 'watchlist',         x: 18, y: 14,  w: 6,  h: 28, minH: 1, minW: 1 },
+
+  // BOTTOM ROWS — trade-ideas + news stacked on left (h:14 each),
+  // quick-trade tall on the right (h:28, spans both rows).
+  { i: 'trade-ideas',       x: 0,  y: 42,  w: 18, h: 14, minH: 1, minW: 1 },
+  { i: 'news',              x: 0,  y: 56,  w: 18, h: 14, minH: 1, minW: 1 },
+  { i: 'quick-trade',       x: 18, y: 42,  w: 6,  h: 28, minH: 1, minW: 1 },
 ]
 
 interface SavedState {
