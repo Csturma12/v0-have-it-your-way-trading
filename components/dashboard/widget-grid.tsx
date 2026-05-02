@@ -53,6 +53,10 @@ import { KeyLevels } from './key-levels'
 import { IVSurface } from './iv-surface'
 import { SignalsFeed } from './signals-feed'
 import { OiChanges } from './oi-changes'
+// Combo widgets — unify related panels into a single grid cell to save space
+import { DarkPoolCombo } from './dark-pool-combo'
+import { OptionsCombo } from './options-combo'
+import { LevelsCombo } from './levels-combo'
 import {
   Cpu,
   Scale,
@@ -385,7 +389,7 @@ const THEME_DATA = {
   },
 }
 
-// ─── Right-side grid widgets ─────────────────────────────────────────────────
+// ─── Right-side grid widgets ─────────────────────────���───────────────────────
 
 type RightWidgetType =
   | 'chart' | 'watchlist' | 'news' | 'market-overview' | 'technicals'
@@ -396,6 +400,8 @@ type RightWidgetType =
   // Bundle-backed UW widgets (single shared SWR fetch via useTickerBundle)
   | 'options-flow' | 'dark-pool-flow' | 'key-levels'
   | 'iv-surface' | 'signals-feed' | 'oi-changes'
+  // Combo widgets — combine related panels into one grid cell
+  | 'dark-pool-combo' | 'options-combo' | 'levels-combo'
 
 interface RightWidget {
   id: string
@@ -431,6 +437,17 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
       { id: 'catalysts',          type: 'catalysts',          title: 'Catalysts' },
       { id: 'catalysts-risk',     type: 'catalysts-risk',     title: 'Catalysts & Risk' },
       { id: 'news',               type: 'news',               title: 'Market News' },
+    ],
+  },
+  {
+    section: 'Combos',
+    widgets: [
+      // Combine related panels into a single grid cell to save space.
+      // Each combo dispatches to the same underlying widgets, so saved
+      // layouts referencing the standalone IDs continue to work.
+      { id: 'options-combo',      type: 'options-combo',      title: 'Options Chain + Flow' },
+      { id: 'dark-pool-combo',    type: 'dark-pool-combo',    title: 'Dark Pool Blocks + Flow' },
+      { id: 'levels-combo',       type: 'levels-combo',       title: 'Levels (Key / S&R / GEX)' },
     ],
   },
   {
@@ -817,6 +834,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'iv-surface')      return <IVSurface ticker={selectedTicker} />
     if (widget.type === 'signals-feed')    return <SignalsFeed ticker={selectedTicker} />
     if (widget.type === 'oi-changes')      return <OiChanges ticker={selectedTicker} />
+    // Combo widgets — wrap related panels in one cell
+    if (widget.type === 'dark-pool-combo') return <DarkPoolCombo ticker={selectedTicker} />
+    if (widget.type === 'options-combo')   return <OptionsCombo ticker={selectedTicker} />
+    if (widget.type === 'levels-combo')    return <LevelsCombo ticker={selectedTicker} />
     return null
   }
 

@@ -4,10 +4,26 @@ import { useEffect, useState, useCallback } from 'react'
 import { Star, TrendingUp, TrendingDown, RefreshCw, Moon, Sunrise } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useWatchlist } from '@/contexts/watchlist-context'
-import { WidgetEmptyState } from './widget-empty-state'
-import { useTickerBundle } from '@/hooks/useTickerBundle'
 
-type TabId = 'quote' | 'levels' | 'metrics' | 'fund'
+/**
+ * Ticker Info — slim header widget.
+ *
+ * Previously this widget was a 4-tabbed mini-app (Quote / Levels / Metrics /
+ * Fund). Those tabs were redundant — the dashboard already has dedicated
+ * standalone widgets for Metrics, Fundamentals, Technical Indicators, and
+ * the new Levels combo (Key / S&R / GEX). So this widget now shows ONLY:
+ *
+ *   - Symbol, name, LIVE badge, star (watchlist), refresh
+ *   - Big price + change
+ *   - Pre/post-market line (when applicable)
+ *   - Day's Range bar
+ *   - 52-Week Range bar
+ *   - Compact 3-cell row: Mkt Cap / Vol / Avg Vol
+ *
+ * That's it. Drops a lot of vertical space and removes 3 server fetches
+ * (technicals, fundamentals, ticker-bundle metrics) that other widgets
+ * already make on their own.
+ */
 
 interface QuoteData {
   price: number
@@ -19,13 +35,7 @@ interface QuoteData {
   prevClose: number
   volume: number
   avgVolume: number
-  vwap: number | null
   marketCap: number
-  sharesOut: number | null
-  pe: number | null
-  eps: number | null
-  dividendYield: number | null
-  beta: number | null
   high52w: number
   low52w: number
   extendedPrice: number | null
@@ -33,50 +43,6 @@ interface QuoteData {
   extendedChangePercent: number | null
   extendedSession: 'pre' | 'post' | 'closed' | null
   name: string | null
-  exchange: string | null
-}
-
-interface LevelsData {
-  monthlyHigh: number
-  weeklyHigh: number
-  monthlyLow: number
-  weeklyLow: number
-  sma20: number
-  sma50: number
-  sma200: number
-  ema9: number
-  ema21: number
-  pivotPoint: number
-  r1: number
-  r2: number
-  s1: number
-  s2: number
-}
-
-interface MetricsData {
-  ivRank: number | null
-  ivPercentile: number | null
-  darkPoolPercent: number | null
-  darkPoolSentiment: 'bullish' | 'bearish' | 'neutral'
-  institutionalBuying: number | null
-  institutionalSelling: number | null
-  unusualOptions: number | null
-  cpRatio: number | null
-}
-
-interface FundData {
-  pe: number | null
-  ps: number | null
-  pb: number | null
-  eps: number | null
-  revenueGrowth: number | null
-  grossMargin: number | null
-  operatingMargin: number | null
-  netMargin: number | null
-  roe: number | null
-  debtToEquity: number | null
-  beta: number | null
-  divYield: number | null
 }
 
 function fmtVol(v: number): string {
@@ -106,25 +72,15 @@ function fmtPct(n: number | null | undefined): string {
 }
 
 export function TickerInfo({ ticker }: { ticker: string }) {
-  const [tab, setTab] = useState<TabId>('quote')
-
-  // Quote (always loaded, drives the header)
   const [quote, setQuote] = useState<QuoteData | null>(null)
   const [quoteLoading, setQuoteLoading] = useState(true)
   const [quoteError, setQuoteError] = useState<string | null>(null)
   const [source, setSource] = useState<string>('unknown')
 
-  // Lazy-loaded tab data
-  const [levels, setLevels] = useState<LevelsData | null>(null)
-  const [metrics, setMetrics] = useState<MetricsData | null>(null)
-  const [fund, setFund] = useState<FundData | null>(null)
-  const [tabLoading, setTabLoading] = useState(false)
-
   const { tickers, addTicker, removeTicker } = useWatchlist()
   const isInWatchlist = tickers.includes(ticker)
   const toggleWatchlist = () => isInWatchlist ? removeTicker(ticker) : addTicker(ticker)
 
-  // Fetch primary quote + fundamentals (folded into quote tab)
   const fetchQuote = useCallback(async () => {
     setQuoteLoading(true)
     setQuoteError(null)
@@ -142,14 +98,12 @@ export function TickerInfo({ ticker }: { ticker: string }) {
       setQuote({
         price: q.price, change: q.change, changePercent: q.changePercent,
         open: q.open, high: q.high, low: q.low, prevClose: q.prevClose,
-        volume: q.volume, avgVolume: q.avgVolume, vwap: q.vwap,
-        marketCap: f?.marketCap ?? q.marketCap, sharesOut: q.sharesOut,
-        pe: f?.pe ?? q.pe, eps: f?.eps ?? q.eps,
-        dividendYield: f?.dividendYield ?? null, beta: f?.beta ?? null,
+        volume: q.volume, avgVolume: q.avgVolume,
+        marketCap: f?.marketCap ?? q.marketCap,
         high52w: q.high52w, low52w: q.low52w,
         extendedPrice: q.extendedPrice, extendedChange: q.extendedChange,
         extendedChangePercent: q.extendedChangePercent, extendedSession: q.extendedSession,
-        name: q.name, exchange: q.exchange,
+        name: q.name,
       })
       setSource(quoteData.source || 'polygon')
     } catch (err) {
@@ -160,126 +114,12 @@ export function TickerInfo({ ticker }: { ticker: string }) {
     }
   }, [ticker])
 
-  const fetchLevels = useCallback(async () => {
-    setTabLoading(true)
-    try {
-      const [techRes, quoteRes] = await Promise.all([
-        fetch(`/api/technicals?ticker=${ticker}`),
-        fetch(`/api/polygon/quote?ticker=${ticker}`),
-      ])
-      const techData = techRes.ok ? await techRes.json() : null
-      const quoteData = quoteRes.ok ? await quoteRes.json() : null
-      const price = quoteData?.quote?.price || 100
-      const high  = quoteData?.quote?.high || price * 1.02
-      const low   = quoteData?.quote?.low  || price * 0.98
-      const close = quoteData?.quote?.prevClose || price
-      const pivot = (high + low + close) / 3
-      setLevels({
-        monthlyHigh: quoteData?.quote?.monthHigh || quoteData?.quote?.high52w || high,
-        weeklyHigh:  quoteData?.quote?.weekHigh  || high,
-        monthlyLow:  quoteData?.quote?.monthLow  || quoteData?.quote?.low52w  || low,
-        weeklyLow:   quoteData?.quote?.weekLow   || low,
-        sma20:  techData?.data?.SMA?.value    || price * 0.98,
-        sma50:  techData?.data?.SMA50?.value  || price * 0.95,
-        sma200: techData?.data?.SMA200?.value || price * 0.90,
-        ema9:   techData?.data?.EMA9?.value   || price,
-        ema21:  techData?.data?.EMA21?.value  || price,
-        pivotPoint: pivot,
-        r1: 2 * pivot - low,
-        r2: pivot + (high - low),
-        s1: 2 * pivot - high,
-        s2: pivot - (high - low),
-      })
-    } catch { setLevels(null) }
-    finally { setTabLoading(false) }
-  }, [ticker])
-
-  // Use shared bundle for Metrics tab — replaces 3 separate fetches
-  // with the cached SWR data that other widgets also consume.
-  const { bundle, isLoading: bundleLoading } = useTickerBundle(ticker)
-
-  // Derive metrics from bundle whenever it updates
-  useEffect(() => {
-    if (!bundle) return
-    const dp: any = bundle.darkPool || {}
-    const ivRankArr = bundle.ivRank || []
-    const latestIvRank = ivRankArr[0]?.iv_rank ?? null
-    const flowAlerts = bundle.flowAlerts || []
-    // optionsVolume from UW can be an array or object; handle both
-    const optVolArr: any = bundle.optionsVolume || []
-    const optVol = Array.isArray(optVolArr) ? optVolArr[0] : (optVolArr?.data?.[0] ?? optVolArr)
-
-    const buyVol = dp.buyVol || 0
-    const sellVol = dp.sellVol || 0
-    const totalDp = dp.totalVol || 0
-    const sentiment: 'bullish' | 'bearish' | 'neutral' =
-      buyVol > sellVol * 1.2 ? 'bullish' : sellVol > buyVol * 1.2 ? 'bearish' : 'neutral'
-
-    // C/P ratio from optionsVolume if available
-    const callVol = optVol?.call_volume || 0
-    const putVol = optVol?.put_volume || 0
-    const cpRatio = putVol > 0 ? callVol / putVol : null
-
-    setMetrics({
-      ivRank: latestIvRank,
-      ivPercentile: null,
-      darkPoolPercent: totalDp > 0 ? Math.min(100, (totalDp / 1_000_000) * 2) : null,
-      darkPoolSentiment: sentiment,
-      institutionalBuying: buyVol || null,
-      institutionalSelling: sellVol || null,
-      unusualOptions: flowAlerts.filter((f: any) => f.is_unusual).length || null,
-      cpRatio,
-    })
-  }, [bundle])
-
-  const fetchFund = useCallback(async () => {
-    setTabLoading(true)
-    try {
-      // /api/polygon/fundamentals merges Polygon (basic) + Finnhub
-      // /stock/metric (rich metrics like PEG, ROA, margins, beta, div
-      // yield) on the server. Intrinio was removed.
-      const pRes = await fetch(`/api/polygon/fundamentals?ticker=${ticker}`)
-      let f: any = {}
-      if (pRes.ok) f = (await pRes.json()).fundamentals || {}
-      setFund({
-        pe: f.pe || null, ps: f.ps || null, pb: f.pb || null, eps: f.eps || null,
-        revenueGrowth: f.revenueGrowth || null,
-        grossMargin: f.grossMargin || null,
-        operatingMargin: f.operatingMargin || null,
-        netMargin: f.netMargin || null,
-        roe: f.roe || null,
-        debtToEquity: f.debtToEquity || null,
-        beta: f.beta || null,
-        divYield: f.divYield || null,
-      })
-    } catch { setFund(null) }
-    finally { setTabLoading(false) }
-  }, [ticker])
-
-  // Initial quote fetch + 30s refresh
+  // Initial fetch + 30s refresh
   useEffect(() => {
     fetchQuote()
     const id = setInterval(fetchQuote, 30000)
     return () => clearInterval(id)
   }, [fetchQuote])
-
-  // Lazy-load tab data when user switches tab (and clear stale data on ticker change)
-  useEffect(() => {
-    setLevels(null); setMetrics(null); setFund(null)
-  }, [ticker])
-
-  useEffect(() => {
-    if (tab === 'levels'  && !levels)  fetchLevels()
-    // metrics tab now derives from bundle (useTickerBundle), no fetch needed
-    if (tab === 'fund'    && !fund)    fetchFund()
-  }, [tab, levels, fund, fetchLevels, fetchFund])
-
-  const refreshAll = () => {
-    fetchQuote()
-    if (tab === 'levels')  fetchLevels()
-    // metrics tab uses bundle (auto-refreshes via SWR)
-    if (tab === 'fund')    fetchFund()
-  }
 
   const up = quote ? quote.change >= 0 : true
   const extUp = quote && quote.extendedChange != null ? quote.extendedChange >= 0 : true
@@ -287,13 +127,6 @@ export function TickerInfo({ ticker }: { ticker: string }) {
     ? ((quote.price - quote.low) / (quote.high - quote.low)) * 100 : 50
   const yearRangePct = quote && quote.high52w > quote.low52w
     ? ((quote.price - quote.low52w) / (quote.high52w - quote.low52w)) * 100 : 50
-
-  const TABS: Array<{ id: TabId; label: string }> = [
-    { id: 'quote',   label: 'Quote' },
-    { id: 'levels',  label: 'Levels' },
-    { id: 'metrics', label: 'Metrics' },
-    { id: 'fund',    label: 'Fund' },
-  ]
 
   return (
     <div className="h-full overflow-hidden flex flex-col relative">
@@ -312,12 +145,12 @@ export function TickerInfo({ ticker }: { ticker: string }) {
         >
           <Star className={`w-3 h-3 ${isInWatchlist ? 'fill-yellow-400' : ''}`} />
         </button>
-        <button onClick={refreshAll} className="p-0.5 hover:bg-muted/50 rounded">
-          <RefreshCw className={`w-3 h-3 text-muted-foreground ${quoteLoading || tabLoading ? 'animate-spin' : ''}`} />
+        <button onClick={fetchQuote} className="p-0.5 hover:bg-muted/50 rounded" title="Refresh">
+          <RefreshCw className={`w-3 h-3 text-muted-foreground ${quoteLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Always-visible compact header (symbol + price + change) */}
+      {/* Header — symbol + price + change */}
       <div className="px-2 pt-2 pb-1 pr-20 flex-shrink-0 border-b border-border/40">
         {quoteLoading && !quote ? (
           <div className="h-7 flex items-center"><RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" /></div>
@@ -356,211 +189,48 @@ export function TickerInfo({ ticker }: { ticker: string }) {
         ) : null}
       </div>
 
-      {/* Tab bar */}
-      <div className="flex border-b border-border/40 flex-shrink-0 text-[9px] font-mono">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 py-1 uppercase tracking-wider transition-colors ${
-              tab === t.id
-                ? 'text-foreground bg-muted/40 border-b border-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/20'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      <div className="flex-1 overflow-y-auto px-2 py-1.5">
-        {!quote && !quoteError ? null : (
+      {/* Compact body — only Day/52w range bars + Mkt Cap / Vol / Avg Vol */}
+      <div className="flex-1 overflow-y-auto px-2 py-1.5 space-y-1.5">
+        {quote && (
           <>
-            {tab === 'quote' && quote && (
-              <div className="space-y-1.5">
-                <div className="grid grid-cols-4 gap-1 text-[8px]">
-                  <div className="bg-muted/30 rounded p-1">
-                    <div className="text-muted-foreground">Open</div>
-                    <div className="font-mono font-semibold">${fmtNum(quote.open)}</div>
-                  </div>
-                  <div className="bg-muted/30 rounded p-1">
-                    <div className="text-muted-foreground">High</div>
-                    <div className="font-mono font-semibold text-green-400">${fmtNum(quote.high)}</div>
-                  </div>
-                  <div className="bg-muted/30 rounded p-1">
-                    <div className="text-muted-foreground">Low</div>
-                    <div className="font-mono font-semibold text-red-400">${fmtNum(quote.low)}</div>
-                  </div>
-                  <div className="bg-muted/30 rounded p-1">
-                    <div className="text-muted-foreground">Prev</div>
-                    <div className="font-mono font-semibold">${fmtNum(quote.prevClose)}</div>
-                  </div>
+            {quote.high > quote.low && (
+              <div className="text-[8px]">
+                <div className="flex items-center justify-between text-muted-foreground mb-0.5">
+                  <span>Day&apos;s Range</span>
+                  <span className="font-mono">${fmtNum(quote.low)} – ${fmtNum(quote.high)}</span>
                 </div>
-                {quote.high > quote.low && (
-                  <div className="text-[8px]">
-                    <div className="flex items-center justify-between text-muted-foreground mb-0.5">
-                      <span>Day&apos;s Range</span>
-                      <span className="font-mono">${fmtNum(quote.low)} – ${fmtNum(quote.high)}</span>
-                    </div>
-                    <div className="h-1 bg-muted/40 rounded-full relative overflow-hidden">
-                      <div className="absolute h-full bg-gradient-to-r from-red-500/40 via-yellow-500/40 to-green-500/40 w-full" />
-                      <div className="absolute h-full w-0.5 bg-foreground" style={{ left: `${Math.max(0, Math.min(100, dayRangePct))}%` }} />
-                    </div>
-                  </div>
-                )}
-                {quote.high52w > quote.low52w && (
-                  <div className="text-[8px]">
-                    <div className="flex items-center justify-between text-muted-foreground mb-0.5">
-                      <span>52-Week</span>
-                      <span className="font-mono">${fmtNum(quote.low52w)} – ${fmtNum(quote.high52w)}</span>
-                    </div>
-                    <div className="h-1 bg-muted/40 rounded-full relative overflow-hidden">
-                      <div className="absolute h-full bg-gradient-to-r from-red-500/40 via-yellow-500/40 to-green-500/40 w-full" />
-                      <div className="absolute h-full w-0.5 bg-foreground" style={{ left: `${Math.max(0, Math.min(100, yearRangePct))}%` }} />
-                    </div>
-                  </div>
-                )}
-                <div className="grid grid-cols-3 gap-1 text-[8px]">
-                  <div className="bg-muted/30 rounded p-1">
-                    <div className="text-muted-foreground">Mkt Cap</div>
-                    <div className="font-mono font-semibold">{fmtCap(quote.marketCap)}</div>
-                  </div>
-                  <div className="bg-muted/30 rounded p-1">
-                    <div className="text-muted-foreground">Vol</div>
-                    <div className="font-mono font-semibold">{fmtVol(quote.volume)}</div>
-                  </div>
-                  <div className="bg-muted/30 rounded p-1">
-                    <div className="text-muted-foreground">Avg Vol</div>
-                    <div className="font-mono font-semibold">{fmtVol(quote.avgVolume)}</div>
-                  </div>
+                <div className="h-1 bg-muted/40 rounded-full relative overflow-hidden">
+                  <div className="absolute h-full bg-gradient-to-r from-red-500/40 via-yellow-500/40 to-green-500/40 w-full" />
+                  <div className="absolute h-full w-0.5 bg-foreground" style={{ left: `${Math.max(0, Math.min(100, dayRangePct))}%` }} />
                 </div>
               </div>
             )}
-
-            {tab === 'levels' && (
-              tabLoading && !levels ? (
-                <div className="flex items-center justify-center h-20"><RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" /></div>
-              ) : !levels ? (
-                <WidgetEmptyState type="error" message="Levels unavailable" onRetry={fetchLevels} />
-              ) : (
-                <div className="space-y-2 text-[9px]">
-                  <div>
-                    <div className="text-muted-foreground font-mono uppercase tracking-wider mb-0.5 text-[8px]">Pivot Points</div>
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between"><span>R2</span><span className="font-mono text-red-400">${levels.r2.toFixed(2)}</span></div>
-                      <div className="flex justify-between"><span>R1</span><span className="font-mono text-red-400">${levels.r1.toFixed(2)}</span></div>
-                      <div className="flex justify-between bg-muted/30 rounded px-1"><span className="font-semibold">Pivot</span><span className="font-mono text-primary font-semibold">${levels.pivotPoint.toFixed(2)}</span></div>
-                      <div className="flex justify-between"><span>S1</span><span className="font-mono text-green-400">${levels.s1.toFixed(2)}</span></div>
-                      <div className="flex justify-between"><span>S2</span><span className="font-mono text-green-400">${levels.s2.toFixed(2)}</span></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground font-mono uppercase tracking-wider mb-0.5 text-[8px]">Moving Avgs</div>
-                    <div className="grid grid-cols-3 gap-1">
-                      <div className="bg-muted/30 rounded p-1"><div className="text-muted-foreground text-[8px]">SMA 20</div><div className="font-mono font-semibold">${levels.sma20.toFixed(2)}</div></div>
-                      <div className="bg-muted/30 rounded p-1"><div className="text-muted-foreground text-[8px]">SMA 50</div><div className="font-mono font-semibold">${levels.sma50.toFixed(2)}</div></div>
-                      <div className="bg-muted/30 rounded p-1"><div className="text-muted-foreground text-[8px]">SMA 200</div><div className="font-mono font-semibold">${levels.sma200.toFixed(2)}</div></div>
-                      <div className="bg-muted/30 rounded p-1"><div className="text-muted-foreground text-[8px]">EMA 9</div><div className="font-mono font-semibold">${levels.ema9.toFixed(2)}</div></div>
-                      <div className="bg-muted/30 rounded p-1"><div className="text-muted-foreground text-[8px]">EMA 21</div><div className="font-mono font-semibold">${levels.ema21.toFixed(2)}</div></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground font-mono uppercase tracking-wider mb-0.5 text-[8px]">H/L Range</div>
-                    <div className="grid grid-cols-2 gap-1">
-                      <div className="bg-muted/30 rounded p-1"><div className="text-muted-foreground text-[8px]">Wk High</div><div className="font-mono text-red-400 font-semibold">${levels.weeklyHigh.toFixed(2)}</div></div>
-                      <div className="bg-muted/30 rounded p-1"><div className="text-muted-foreground text-[8px]">Mo High</div><div className="font-mono text-red-400 font-semibold">${levels.monthlyHigh.toFixed(2)}</div></div>
-                      <div className="bg-muted/30 rounded p-1"><div className="text-muted-foreground text-[8px]">Wk Low</div><div className="font-mono text-green-400 font-semibold">${levels.weeklyLow.toFixed(2)}</div></div>
-                      <div className="bg-muted/30 rounded p-1"><div className="text-muted-foreground text-[8px]">Mo Low</div><div className="font-mono text-green-400 font-semibold">${levels.monthlyLow.toFixed(2)}</div></div>
-                    </div>
-                  </div>
+            {quote.high52w > quote.low52w && (
+              <div className="text-[8px]">
+                <div className="flex items-center justify-between text-muted-foreground mb-0.5">
+                  <span>52-Week</span>
+                  <span className="font-mono">${fmtNum(quote.low52w)} – ${fmtNum(quote.high52w)}</span>
                 </div>
-              )
-            )}
-
-            {tab === 'metrics' && (
-              bundleLoading && !metrics ? (
-                <div className="flex items-center justify-center h-20"><RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" /></div>
-              ) : !metrics ? (
-                <WidgetEmptyState type="error" message="Metrics unavailable" />
-              ) : (
-                <div className="space-y-2 text-[9px]">
-                  <div>
-                    <div className="text-muted-foreground font-mono uppercase tracking-wider mb-0.5 text-[8px]">Dark Pool</div>
-                    <div className="grid grid-cols-2 gap-1">
-                      <div className="bg-muted/30 rounded p-1">
-                        <div className="text-muted-foreground text-[8px]">Sentiment</div>
-                        <div className={`font-mono font-semibold capitalize ${
-                          metrics.darkPoolSentiment === 'bullish' ? 'text-green-400' :
-                          metrics.darkPoolSentiment === 'bearish' ? 'text-red-400' : 'text-yellow-500'
-                        }`}>{metrics.darkPoolSentiment}</div>
-                      </div>
-                      <div className="bg-muted/30 rounded p-1">
-                        <div className="text-muted-foreground text-[8px]">% of Vol</div>
-                        <div className="font-mono font-semibold">{metrics.darkPoolPercent != null ? metrics.darkPoolPercent.toFixed(1) + '%' : '—'}</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground font-mono uppercase tracking-wider mb-0.5 text-[8px]">Institutional Flow</div>
-                    <div className="grid grid-cols-2 gap-1">
-                      <div className="bg-muted/30 rounded p-1">
-                        <div className="text-muted-foreground text-[8px]">Buying</div>
-                        <div className="font-mono font-semibold text-green-400">{metrics.institutionalBuying ? fmtVol(metrics.institutionalBuying) : '—'}</div>
-                      </div>
-                      <div className="bg-muted/30 rounded p-1">
-                        <div className="text-muted-foreground text-[8px]">Selling</div>
-                        <div className="font-mono font-semibold text-red-400">{metrics.institutionalSelling ? fmtVol(metrics.institutionalSelling) : '—'}</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground font-mono uppercase tracking-wider mb-0.5 text-[8px]">Options</div>
-                    <div className="grid grid-cols-3 gap-1">
-                      <div className="bg-muted/30 rounded p-1">
-                        <div className="text-muted-foreground text-[8px]">IV Rank</div>
-                        <div className={`font-mono font-semibold ${
-                          metrics.ivRank == null ? '' :
-                          metrics.ivRank >= 70 ? 'text-red-400' :
-                          metrics.ivRank >= 40 ? 'text-yellow-400' : 'text-green-400'
-                        }`}>{metrics.ivRank != null ? metrics.ivRank.toFixed(0) : '—'}</div>
-                      </div>
-                      <div className="bg-muted/30 rounded p-1">
-                        <div className="text-muted-foreground text-[8px]">C/P Ratio</div>
-                        <div className="font-mono font-semibold">{fmtNum(metrics.cpRatio)}</div>
-                      </div>
-                      <div className="bg-muted/30 rounded p-1">
-                        <div className="text-muted-foreground text-[8px]">Unusual</div>
-                        <div className="font-mono font-semibold text-orange-400">{metrics.unusualOptions ?? '—'}</div>
-                      </div>
-                    </div>
-                  </div>
+                <div className="h-1 bg-muted/40 rounded-full relative overflow-hidden">
+                  <div className="absolute h-full bg-gradient-to-r from-red-500/40 via-yellow-500/40 to-green-500/40 w-full" />
+                  <div className="absolute h-full w-0.5 bg-foreground" style={{ left: `${Math.max(0, Math.min(100, yearRangePct))}%` }} />
                 </div>
-              )
+              </div>
             )}
-
-            {tab === 'fund' && (
-              tabLoading && !fund ? (
-                <div className="flex items-center justify-center h-20"><RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" /></div>
-              ) : !fund ? (
-                <WidgetEmptyState type="error" message="Fundamentals unavailable" onRetry={fetchFund} />
-              ) : (
-                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[9px]">
-                  <div className="flex justify-between"><span className="text-muted-foreground">P/E</span><span className="font-mono font-semibold">{fmtNum(fund.pe)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">P/S</span><span className="font-mono font-semibold">{fmtNum(fund.ps)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">P/B</span><span className="font-mono font-semibold">{fmtNum(fund.pb)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">EPS</span><span className="font-mono font-semibold">${fmtNum(fund.eps)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Rev Grw</span><span className="font-mono font-semibold text-green-400">{fund.revenueGrowth != null ? fmtPct(fund.revenueGrowth) : '—'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">ROE</span><span className="font-mono font-semibold">{fund.roe != null ? fmtPct(fund.roe) : '—'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Gross Mgn</span><span className="font-mono font-semibold">{fund.grossMargin != null ? fmtPct(fund.grossMargin) : '—'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Net Mgn</span><span className="font-mono font-semibold">{fund.netMargin != null ? fmtPct(fund.netMargin) : '—'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Op Mgn</span><span className="font-mono font-semibold">{fund.operatingMargin != null ? fmtPct(fund.operatingMargin) : '—'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">D/E</span><span className="font-mono font-semibold">{fmtNum(fund.debtToEquity)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Beta</span><span className="font-mono font-semibold">{fmtNum(fund.beta)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Div Yld</span><span className="font-mono font-semibold">{fund.divYield != null ? fmtPct(fund.divYield) : '—'}</span></div>
-                </div>
-              )
-            )}
+            <div className="grid grid-cols-3 gap-1 text-[8px]">
+              <div className="bg-muted/30 rounded p-1">
+                <div className="text-muted-foreground">Mkt Cap</div>
+                <div className="font-mono font-semibold">{fmtCap(quote.marketCap)}</div>
+              </div>
+              <div className="bg-muted/30 rounded p-1">
+                <div className="text-muted-foreground">Vol</div>
+                <div className="font-mono font-semibold">{fmtVol(quote.volume)}</div>
+              </div>
+              <div className="bg-muted/30 rounded p-1">
+                <div className="text-muted-foreground">Avg Vol</div>
+                <div className="font-mono font-semibold">{fmtVol(quote.avgVolume)}</div>
+              </div>
+            </div>
           </>
         )}
       </div>
