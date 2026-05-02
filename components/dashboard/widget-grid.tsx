@@ -95,7 +95,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v35'
+const STORAGE_KEY = 'trading-dashboard-rgl-v36'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -476,21 +476,21 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
 // shrink any widget down to a single row (~10px) — essentially just
 // the title bar — which is the practical floor.
 const DEFAULT_LAYOUT: any[] = [
-  // TOP ROW: Ticker Info (with Quote/Levels/Metrics/Fund tabs) + Company Profile
-  { i: 'ticker-info',       x: 0, y: 0,    w: 4,  h: 12, minH: 1, minW: 1 },
-  { i: 'company-profile',   x: 4, y: 0,    w: 8,  h: 12, minH: 1, minW: 1 },
-  // MAIN CHART
-  { i: 'chart',             x: 0, y: 12,   w: 12, h: 30, minH: 1, minW: 1 },
-  // BOTTOM ROW: Technicals + Analyst + Catalyst/Risk
-  { i: 'technicals',        x: 0, y: 42,   w: 4,  h: 15, minH: 1, minW: 1 },
-  { i: 'analyst-ratings',   x: 4, y: 42,   w: 4,  h: 15, minH: 1, minW: 1 },
-  { i: 'catalyst-risk',     x: 8, y: 42,   w: 4,  h: 15, minH: 1, minW: 1 },
-  // BOTTOM ROW 2: Watchlist + News
-  { i: 'watchlist',         x: 0, y: 57,   w: 6,  h: 15, minH: 1, minW: 1 },
-  { i: 'news',              x: 6, y: 57,   w: 6,  h: 15, minH: 1, minW: 1 },
-  // BOTTOM ROW 3: Quick trade + Ideas
-  { i: 'quick-trade',       x: 0, y: 72,   w: 4,  h: 12, minH: 1, minW: 1 },
-  { i: 'trade-ideas',       x: 4, y: 72,   w: 8,  h: 12, minH: 1, minW: 1 },
+  // TOP ROW: Ticker Info + Company Profile + Analyst Ratings + Catalyst/Risk
+  { i: 'ticker-info',       x: 0,  y: 0,   w: 4,  h: 12, minH: 1, minW: 1 },
+  { i: 'company-profile',   x: 4,  y: 0,   w: 5,  h: 12, minH: 1, minW: 1 },
+  { i: 'analyst-ratings',   x: 9,  y: 0,   w: 5,  h: 12, minH: 1, minW: 1 },
+  // RIGHT PANEL: Catalyst/Risk spans top rows
+  { i: 'catalyst-risk',     x: 14, y: 0,   w: 6,  h: 12, minH: 1, minW: 1 },
+  // MAIN CHART (left) + Watchlist (right)
+  { i: 'chart',             x: 0,  y: 12,  w: 14, h: 30, minH: 1, minW: 1 },
+  { i: 'watchlist',         x: 14, y: 12,  w: 6,  h: 30, minH: 1, minW: 1 },
+  // BOTTOM ROW: Trade Ideas + News + Quick Trade
+  { i: 'trade-ideas',       x: 0,  y: 42,  w: 7,  h: 12, minH: 1, minW: 1 },
+  { i: 'news',              x: 7,  y: 42,  w: 7,  h: 15, minH: 1, minW: 1 },
+  { i: 'quick-trade',       x: 14, y: 42,  w: 6,  h: 15, minH: 1, minW: 1 },
+  // BOTTOM ROW 2: Technicals
+  { i: 'technicals',        x: 0,  y: 54,  w: 7,  h: 12, minH: 1, minW: 1 },
 ]
 
 interface SavedState {
@@ -1046,6 +1046,10 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                     <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
                       {widget.title}
                     </span>
+                    {/* Show ticker in header for all widgets except company-profile (redundant there) */}
+                    {selectedTicker && widget.type !== 'company-profile' && widget.type !== 'watchlist' && widget.type !== 'news' && widget.type !== 'trade-ideas' && widget.type !== 'market-overview' && (
+                      <span className="text-[9px] font-mono text-primary/70">— {selectedTicker}</span>
+                    )}
                   </div>
                   {isEditMode && (
                     <button onClick={() => removeWidget(widget.id)} className="text-muted-foreground hover:text-red-400">
