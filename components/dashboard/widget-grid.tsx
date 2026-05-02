@@ -95,7 +95,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v38'
+const STORAGE_KEY = 'trading-dashboard-rgl-v39'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -1010,7 +1010,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           <GridLayout
             className="layout"
             layout={visibleLayout}
-            cols={12}
+            cols={20}
             rowHeight={rowHeight}
             // Zero margin/padding so widgets sit flush against each
             // other (no gap stripes between cards). Borders provide
