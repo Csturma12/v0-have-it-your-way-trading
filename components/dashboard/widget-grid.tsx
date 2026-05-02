@@ -31,6 +31,7 @@ import { MarketOverview } from './market-overview'
 import { TechnicalIndicators } from './technical-indicators'
 import { OptionsChain } from './options-chain'
 import { MarketSectorPills } from './market-sector-pills'
+import { CommoditiesPills } from './commodities-pills'
 import { CompanyProfile } from './company-profile'
 import { Fundamentals } from './fundamentals'
 import { AnalystRatings } from './analyst-ratings'
@@ -907,6 +908,14 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             </span>
           </div>
           <MarketSectorPills onSelectTicker={onSelectTicker} />
+
+          {/* Commodities — oil, gas, metals, ag (ETF proxies) */}
+          <div className="px-2 pt-3 pb-0.5 border-t border-border/30 mt-2">
+            <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-muted-foreground">
+              COMMODITIES
+            </span>
+          </div>
+          <CommoditiesPills onSelectTicker={onSelectTicker} />
 
         </div>
         </aside>
