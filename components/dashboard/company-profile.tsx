@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Users, Globe, Briefcase } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { WidgetEmptyState } from './widget-empty-state'
 
@@ -28,14 +28,6 @@ interface CompanyData {
   profile: ProfileData | null
   aiSummary: string | null
   source: string
-}
-
-function formatNumber(num: number): string {
-  if (num >= 1e12) return `${(num / 1e12).toFixed(2)}T`
-  if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`
-  if (num >= 1e6) return `${(num / 1e6).toFixed(1)}M`
-  if (num >= 1e3) return `${(num / 1e3).toFixed(0)}K`
-  return num.toLocaleString()
 }
 
 export function CompanyProfile({ ticker }: CompanyProfileProps) {
@@ -131,71 +123,14 @@ export function CompanyProfile({ ticker }: CompanyProfileProps) {
         ) : !profile ? (
           <WidgetEmptyState type="no-ticker" />
         ) : activeTab === 'profile' ? (
-          <div className="space-y-2">
-            {/* Key Info Grid - Company name removed (shown in Ticker Info widget) */}
-            <div className="grid grid-cols-2 gap-1 text-[9px]">
-              {profile.sector && (
-                <div className="bg-muted/30 rounded p-1">
-                  <div className="text-muted-foreground flex items-center gap-0.5">
-                    <Briefcase className="w-2 h-2" /> Sector
-                  </div>
-                  <div className="font-mono font-semibold text-foreground truncate">{profile.sector}</div>
-                </div>
-              )}
-              {profile.industry && (
-                <div className="bg-muted/30 rounded p-1">
-                  <div className="text-muted-foreground">Industry</div>
-                  <div className="font-mono font-semibold text-foreground truncate">{profile.industry}</div>
-                </div>
-              )}
-              {profile.exchange && (
-                <div className="bg-muted/30 rounded p-1">
-                  <div className="text-muted-foreground">Exchange</div>
-                  <div className="font-mono font-semibold text-foreground">{profile.exchange}</div>
-                </div>
-              )}
-              {profile.marketCap > 0 && (
-                <div className="bg-muted/30 rounded p-1">
-                  <div className="text-muted-foreground">Market Cap</div>
-                  <div className="font-mono font-semibold text-foreground">${formatNumber(profile.marketCap)}</div>
-                </div>
-              )}
-              {profile.employees > 0 && (
-                <div className="bg-muted/30 rounded p-1">
-                  <div className="text-muted-foreground flex items-center gap-0.5">
-                    <Users className="w-2 h-2" /> Employees
-                  </div>
-                  <div className="font-mono font-semibold text-foreground">{formatNumber(profile.employees)}</div>
-                </div>
-              )}
-              {profile.ceo && (
-                <div className="bg-muted/30 rounded p-1">
-                  <div className="text-muted-foreground">CEO</div>
-                  <div className="font-mono font-semibold text-foreground truncate">{profile.ceo}</div>
-                </div>
-              )}
+          /* Profile = description text only (per user spec) */
+          profile.description ? (
+            <div className="text-[10px] text-muted-foreground leading-relaxed">
+              {profile.description}
             </div>
-
-            {/* Description */}
-            {profile.description && (
-              <div className="text-[10px] text-muted-foreground leading-relaxed">
-                {profile.description}
-              </div>
-            )}
-
-            {/* Website */}
-            {profile.website && (
-              <a
-                href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-[9px] text-primary hover:underline"
-              >
-                <Globe className="w-2.5 h-2.5" />
-                {profile.website.replace(/^https?:\/\//, '')}
-              </a>
-            )}
-          </div>
+          ) : (
+            <div className="text-[10px] text-muted-foreground text-center py-4">No description available</div>
+          )
         ) : (
           /* Executives Tab */
           <div className="space-y-1">
