@@ -5,7 +5,7 @@ import GridLayoutImport from 'react-grid-layout'
 const GridLayout = GridLayoutImport as any
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
-import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check, Trash2, Star } from 'lucide-react'
+import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check, Trash2, Star, ChevronUp, ChevronDown } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -542,6 +542,9 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // dashboard, not an accidentally-resized one.
   const [isEditMode, setIsEditMode] = useState(false)
 
+  // (Collapse-to-header state lives further down, alongside the persistence
+  // keys — see COLLAPSED_KEY / COLLAPSED_H / collapsedHeights / toggleCollapse.)
+
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
   
@@ -630,6 +633,18 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // overwrite localStorage with the empty initial state before we've loaded.
   const [hasHydrated, setHasHydrated] = useState(false)
 
+  // Per-widget collapsed state. Map of widget id -> the height (in grid rows)
+  // the widget had BEFORE collapsing, so we can restore it on expand. While
+  // an id is in this map, the widget renders as a header-only strip and its
+  // layout `h` is forced to COLLAPSED_H.
+  const COLLAPSED_KEY = `v0-widget-grid-collapsed-v${LAYOUT_VERSION}`
+  const COLLAPSED_H = 3 // 3 rows × 10px rowHeight = ~30px, fits the header
+  const [collapsedHeights, setCollapsedHeights] = useState<Record<string, number>>({})
+  // Note: per-widget `isCollapsed` is computed inside the render loop from
+  // `layoutItem.h <= COLLAPSED_H` — that's the source of truth so collapse
+  // survives layout import/load. The `collapsedHeights` map only tracks the
+  // height to restore to when expanding.
+
   // Restore on mount + clean up old layout versions
   useEffect(() => {
     try {
@@ -644,6 +659,20 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
       Object.keys(localStorage)
         .filter(k => k.startsWith('v0-widget-grid-default-name-v') && k !== DEFAULT_LAYOUT_NAME_KEY)
         .forEach(k => localStorage.removeItem(k))
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('v0-widget-grid-collapsed-v') && k !== COLLAPSED_KEY)
+        .forEach(k => localStorage.removeItem(k))
+
+      // Restore per-widget collapsed state (map of id -> previous height)
+      try {
+        const collapsedRaw = localStorage.getItem(COLLAPSED_KEY)
+        if (collapsedRaw) {
+          const parsedCollapsed = JSON.parse(collapsedRaw)
+          if (parsedCollapsed && typeof parsedCollapsed === 'object') {
+            setCollapsedHeights(parsedCollapsed)
+          }
+        }
+      } catch { /* ignore */ }
 
       // 1) Restore saved layouts library
       const savedLib = localStorage.getItem(SAVED_LAYOUTS_KEY)
@@ -728,6 +757,18 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     } catch { /* quota / private mode */ }
   }, [defaultLayoutName, hasHydrated])
 
+  // Persist the per-widget collapsed map so collapses survive refresh
+  useEffect(() => {
+    if (!hasHydrated) return
+    try {
+      if (Object.keys(collapsedHeights).length > 0) {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify(collapsedHeights))
+      } else {
+        localStorage.removeItem(COLLAPSED_KEY)
+      }
+    } catch { /* quota / private mode */ }
+  }, [collapsedHeights, hasHydrated])
+
   // Mark a saved layout as the user's default (loads on every refresh).
   // Pass null to clear.
   const setAsDefault = (name: string | null) => {
@@ -792,6 +833,36 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const removeWidget = (id: string) => {
     setRightWidgets(w => w.filter(x => x.id !== id))
     setLayout(l => l.filter(x => x.i !== id))
+    // Drop any collapse state for the removed widget
+    setCollapsedHeights(prev => {
+      if (!(id in prev)) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+
+  // Toggle a widget between collapsed (header-only) and its prior height.
+  // Collapse: stash the current `h` in collapsedHeights, set layout `h` to
+  // COLLAPSED_H. Expand: restore the saved `h` and clear the entry.
+  // Layout compaction (vertical) handles re-flowing neighbors automatically.
+  const toggleCollapse = (id: string) => {
+    setLayout(prevLayout => {
+      const item = prevLayout.find(l => l.i === id)
+      if (!item) return prevLayout
+      if (id in collapsedHeights) {
+        const restoredH = collapsedHeights[id]
+        setCollapsedHeights(prev => {
+          const next = { ...prev }
+          delete next[id]
+          return next
+        })
+        return prevLayout.map(l => (l.i === id ? { ...l, h: restoredH } : l))
+      } else {
+        setCollapsedHeights(prev => ({ ...prev, [id]: item.h }))
+        return prevLayout.map(l => (l.i === id ? { ...l, h: COLLAPSED_H } : l))
+      }
+    })
   }
 
   // All widgets that can be added (default + addon, minus currently visible).
@@ -806,7 +877,14 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   }
 
   const visibleLayout = useMemo(
-    () => layout.filter(l => rightWidgets.some(w => w.id === l.i)),
+    () => layout
+      .filter(l => rightWidgets.some(w => w.id === l.i))
+      .map(l => l.h <= COLLAPSED_H
+        // Lock resize on collapsed widgets so users can't drag-resize an
+        // empty body. They can still expand via the chevron, then resize.
+        ? { ...l, isResizable: false }
+        : l
+      ),
     [layout, rightWidgets]
   )
 
@@ -1144,37 +1222,61 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             }}
             width={wrapperWidth}
           >
-            {rightWidgets.map(widget => (
-              <div
-                key={widget.id}
-                className={`h-full bg-card border border-border flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
-              >
-                {/* Widget header / drag bar */}
-                <div className={`widget-drag-handle flex items-center justify-between px-2 py-1 border-b border-border/50 bg-muted/30 ${isEditMode ? 'cursor-grab' : ''}`}>
-                  <div className="flex items-center gap-1.5">
-                    {isEditMode && <GripVertical className="w-3 h-3 text-green-500" />}
-                    <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
-                      {widget.title}
-                    </span>
-                    {/* Show ticker in header for all widgets except company-profile (redundant there) */}
-                    {selectedTicker && widget.type !== 'company-profile' && widget.type !== 'watchlist' && widget.type !== 'news' && widget.type !== 'trade-ideas' && widget.type !== 'market-overview' && (
-                      <span className="text-[9px] font-mono text-primary/70">— {selectedTicker}</span>
-                    )}
+            {rightWidgets.map(widget => {
+              const layoutItem = layout.find((l: any) => l.i === widget.id)
+              // Local boolean — also covers the case where layout `h` equals
+              // COLLAPSED_H but no entry exists in the map (e.g. fresh load).
+              const isCollapsed = !!layoutItem && layoutItem.h <= COLLAPSED_H
+              return (
+                <div
+                  key={widget.id}
+                  className={`h-full bg-card border border-border flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
+                >
+                  {/* Widget header / drag bar */}
+                  <div className={`widget-drag-handle flex items-center justify-between px-2 py-1 border-b border-border/50 bg-muted/30 ${isEditMode ? 'cursor-grab' : ''}`}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {isEditMode && <GripVertical className="w-3 h-3 text-green-500 shrink-0" />}
+                      <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground truncate">
+                        {widget.title}
+                      </span>
+                      {/* Show ticker in header for all widgets except company-profile (redundant there) */}
+                      {selectedTicker && widget.type !== 'company-profile' && widget.type !== 'watchlist' && widget.type !== 'news' && widget.type !== 'trade-ideas' && widget.type !== 'market-overview' && (
+                        <span className="text-[9px] font-mono text-primary/70 shrink-0">— {selectedTicker}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {/* Collapse / expand button — always visible */}
+                      <button
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); toggleCollapse(widget.id) }}
+                        className="text-muted-foreground hover:text-primary"
+                        title={isCollapsed ? 'Expand' : 'Collapse to header'}
+                      >
+                        {isCollapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                      </button>
+                      {isEditMode && (
+                        <button
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); removeWidget(widget.id) }}
+                          className="text-muted-foreground hover:text-red-400"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {isEditMode && (
-                    <button onClick={() => removeWidget(widget.id)} className="text-muted-foreground hover:text-red-400">
-                      <X className="w-3 h-3" />
-                    </button>
+                  {/* Widget content — hidden entirely when collapsed so it
+                      truly disappears (not just visually clipped). */}
+                  {!isCollapsed && (
+                    <div className="flex-1 min-h-0 overflow-auto">
+                      <WidgetErrorBoundary widgetName={widget.title}>
+                        {renderRight(widget)}
+                      </WidgetErrorBoundary>
+                    </div>
                   )}
                 </div>
-                {/* Widget content — scrollable if widget is small */}
-                <div className="flex-1 min-h-0 overflow-auto">
-                  <WidgetErrorBoundary widgetName={widget.title}>
-                    {renderRight(widget)}
-                  </WidgetErrorBoundary>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </GridLayout>
         </div>
       </div>
