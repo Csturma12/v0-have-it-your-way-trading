@@ -95,7 +95,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v37'
+const STORAGE_KEY = 'trading-dashboard-rgl-v38'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -605,30 +605,30 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     } catch { /* ignore */ }
   }, [])
 
-  // reset positions to DEFAULT_LAYOUT so the grid never drifts between sessions.
+  // Reset positions to DEFAULT_LAYOUT so the grid never drifts between sessions.
+  // Only restore user's custom layout if they explicitly saved it (userSaved: true).
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
         const parsed = JSON.parse(saved) as SavedState
-        if (parsed.rightWidgets) {
-          setRightWidgets(parsed.rightWidgets)
+        // ONLY restore widgets and layout if user explicitly saved them
+        if (parsed.userSaved) {
+          if (parsed.rightWidgets) {
+            setRightWidgets(parsed.rightWidgets)
+          }
+          if (parsed.layout) {
+            const normalized = parsed.layout.map((item: any) => ({
+              ...item,
+              minH: 1,
+              minW: 1,
+              maxH: undefined,
+              maxW: undefined,
+            }))
+            setLayout(normalized)
+          }
         }
-        // Restore layout positions only if the user explicitly saved them.
-        // ALWAYS force minH:1 / minW:1 on every loaded entry so any
-        // stale constraints from older versions can't lock widgets at
-        // a minimum size — this is what was making resize feel "stuck."
-        if (parsed.layout && parsed.userSaved) {
-          const normalized = parsed.layout.map((item: any) => ({
-            ...item,
-            minH: 1,
-            minW: 1,
-            // Strip any stale max constraints too.
-            maxH: undefined,
-            maxW: undefined,
-          }))
-          setLayout(normalized)
-        }
+        // If not userSaved, we keep DEFAULT_LAYOUT and DEFAULT_RIGHT_WIDGETS
       }
     } catch { /* ignore */ }
   }, [])
