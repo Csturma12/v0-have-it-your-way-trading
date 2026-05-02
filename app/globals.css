@@ -142,17 +142,9 @@
   pointer-events: auto;
 }
 
-/* CRITICAL: in edit mode, promote the hovered widget above its
-   neighbors. With margin=[0,0] (flush widgets) + compactType=null
-   (free-form), each widget's resize handles sit OUTSIDE its bounds
-   in the neighbor's territory. Without this rule, the neighbor's
-   body paints on top by DOM order and eats the mouse events — the
-   handle is technically there but unreachable. Promoting the
-   hovered widget pulls it above neighbors so its handles can be
-   grabbed. .resizing/.dragging already win at z-index 30/40. */
-.react-grid-layout:not(.rgl-locked) .react-grid-item:hover {
-  z-index: 5;
-}
+/* (No z-index promotion needed: handles now live INSIDE each widget's
+   bounds, so they're never covered by neighbors. .resizing / .dragging
+   are still raised by react-grid-layout's own classes during interaction.) */
 
 /* Show handles on hover, but ONLY if in edit mode (no .rgl-locked class) */
 .react-grid-layout:not(.rgl-locked) .react-grid-item:hover .react-resizable-handle {

@@ -1172,21 +1172,20 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             isResizable={isEditMode}
             resizeHandles={['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}
             draggableHandle=".widget-drag-handle"
-            // Free-form positioning (Bloomberg/TradingView style):
-            //   compactType={null}      — no auto-packing toward top
-            //   preventCollision={false} — resize/drag isn't blocked by neighbors
+            // Free-form, no-overlap positioning (the user's stated rules):
+            //   compactType={null}      — widgets stay exactly where placed
+            //                             (no auto-pack toward top of column).
+            //                             Place anything anywhere on the grid.
+            //   preventCollision={true} — drags / resizes that would overlap
+            //                             a neighbor are blocked. Only rule.
             //
-            // Why null instead of "vertical": with vertical compaction the
-            // top edge handles (N / NW / NE) appear broken because every
-            // resize is followed by a compaction step that snaps the widget
-            // back to the top of its column. User reports widgets are not
-            // resizable from all 8 points — that's the cause. Free-form
-            // lets all 8 handles work in all directions; widgets stay
-            // exactly where placed instead of auto-stacking. Overlaps are
-            // possible during resize but recoverable by dragging the
-            // affected widget out of the way.
+            // Resize handles live INSIDE each widget's bounds (see
+            // app/globals.css), which means: (a) ancestor overflow can't
+            // clip the top row's handles, and (b) flush neighbors with
+            // margin=[0,0] can't cover them via DOM stacking order. All 8
+            // sides resize on every widget, every row, every time.
             compactType={null}
-            preventCollision={false}
+            preventCollision={true}
             onLayoutChange={(newLayout: any) => {
               setLayout(newLayout)
             }}
