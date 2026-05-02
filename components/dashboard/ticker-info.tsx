@@ -1,28 +1,26 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Star, TrendingUp, TrendingDown, RefreshCw, Moon, Sunrise } from 'lucide-react'
+import { Star, RefreshCw, Moon, Sunrise } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useWatchlist } from '@/contexts/watchlist-context'
 
 /**
- * Ticker Info — slim header widget.
+ * Ticker Info — ultra-compact corner badge.
  *
- * Previously this widget was a 4-tabbed mini-app (Quote / Levels / Metrics /
- * Fund). Those tabs were redundant — the dashboard already has dedicated
- * standalone widgets for Metrics, Fundamentals, Technical Indicators, and
- * the new Levels combo (Key / S&R / GEX). So this widget now shows ONLY:
+ * Designed to live in a tiny top-corner cell (~3 rows tall) and still
+ * surface every important field. Layout is a single header line plus
+ * a 2-row data strip:
  *
- *   - Symbol, name, LIVE badge, star (watchlist), refresh
- *   - Big price + change
- *   - Pre/post-market line (when applicable)
- *   - Day's Range bar
- *   - 52-Week Range bar
- *   - Compact 3-cell row: Mkt Cap / Vol / Avg Vol
+ *   Row 1 (header):
+ *     [LIVE] AAPL  $198.12  +1.45 (+0.73%)   [pre/after $...] [* refresh]
+ *   Row 2 (range bars, side-by-side):
+ *     Day  [—————o———] $low–$high     52W  [——o———————] $low–$high
+ *   Row 3 (3 mini cells):
+ *     Mkt Cap | Vol | Avg Vol
  *
- * That's it. Drops a lot of vertical space and removes 3 server fetches
- * (technicals, fundamentals, ticker-bundle metrics) that other widgets
- * already make on their own.
+ * No headings, no padding wasted. All font sizes 8–10px except the
+ * price (text-xs / 12px) so it stays readable.
  */
 
 interface QuoteData {
@@ -48,7 +46,7 @@ interface QuoteData {
 function fmtVol(v: number): string {
   if (!v) return '—'
   if (v >= 1e9) return (v / 1e9).toFixed(2) + 'B'
-  if (v >= 1e6) return (v / 1e6).toFixed(2) + 'M'
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M'
   if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K'
   return v.toString()
 }
@@ -56,8 +54,8 @@ function fmtVol(v: number): string {
 function fmtCap(c: number): string {
   if (!c) return '—'
   if (c >= 1e12) return '$' + (c / 1e12).toFixed(2) + 'T'
-  if (c >= 1e9) return '$' + (c / 1e9).toFixed(2) + 'B'
-  if (c >= 1e6) return '$' + (c / 1e6).toFixed(1) + 'M'
+  if (c >= 1e9) return '$' + (c / 1e9).toFixed(1) + 'B'
+  if (c >= 1e6) return '$' + (c / 1e6).toFixed(0) + 'M'
   return '$' + c.toFixed(0)
 }
 
@@ -128,111 +126,101 @@ export function TickerInfo({ ticker }: { ticker: string }) {
   const yearRangePct = quote && quote.high52w > quote.low52w
     ? ((quote.price - quote.low52w) / (quote.high52w - quote.low52w)) * 100 : 50
 
+  if (quoteLoading && !quote) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+  if (quoteError) {
+    return <div className="px-2 py-1 text-[9px] text-red-400">{quoteError}</div>
+  }
+  if (!quote) return null
+
   return (
-    <div className="h-full overflow-hidden flex flex-col relative">
-      {/* Floating actions */}
-      <div className="absolute top-1 right-1 z-10 flex items-center gap-1">
+    <div className="h-full w-full flex flex-col px-1.5 py-1 gap-1 overflow-hidden text-[8px] leading-tight">
+      {/* Row 1 — single-line header. Symbol + price + change + actions */}
+      <div className="flex items-center gap-1.5 flex-shrink-0 min-w-0">
         <Badge
           variant="outline"
-          className={`text-[8px] px-1 py-0 ${source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}
+          className={`text-[7px] px-1 py-0 h-3.5 leading-none flex-shrink-0 ${source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}
         >
           {source === 'polygon' ? 'LIVE' : 'DEFAULT'}
         </Badge>
+        <span className="text-[10px] font-bold font-mono flex-shrink-0">{ticker}</span>
+        <span className="text-xs font-bold font-mono flex-shrink-0">${quote.price.toFixed(2)}</span>
+        <span className={`text-[9px] font-mono font-semibold flex-shrink-0 ${up ? 'text-green-400' : 'text-red-400'}`}>
+          {up ? '+' : ''}{quote.change.toFixed(2)} ({fmtPct(quote.changePercent)})
+        </span>
+        {/* Pre/post-market — same row, dimmer */}
+        {quote.extendedPrice != null && quote.extendedSession && quote.extendedSession !== 'closed' && (
+          <span className="flex items-center gap-0.5 text-[8px] font-mono flex-shrink-0 text-muted-foreground">
+            {quote.extendedSession === 'pre'
+              ? <Sunrise className="w-2 h-2 text-blue-400" />
+              : <Moon className="w-2 h-2 text-purple-400" />}
+            <span className="uppercase">{quote.extendedSession === 'pre' ? 'pre' : 'aft'}</span>
+            <span className="font-semibold text-foreground">${quote.extendedPrice.toFixed(2)}</span>
+            <span className={extUp ? 'text-green-400' : 'text-red-400'}>{fmtPct(quote.extendedChangePercent)}</span>
+          </span>
+        )}
+        {/* spacer pushes actions to the right */}
+        <span className="flex-1" />
+        {quote.name && (
+          <span className="text-[8px] text-muted-foreground truncate min-w-0 max-w-[120px]" title={quote.name}>
+            {quote.name}
+          </span>
+        )}
         <button
           onClick={toggleWatchlist}
-          className={`p-0.5 rounded transition-colors ${isInWatchlist ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`}
+          className={`p-0.5 rounded transition-colors flex-shrink-0 ${isInWatchlist ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`}
           title={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
         >
-          <Star className={`w-3 h-3 ${isInWatchlist ? 'fill-yellow-400' : ''}`} />
+          <Star className={`w-2.5 h-2.5 ${isInWatchlist ? 'fill-yellow-400' : ''}`} />
         </button>
-        <button onClick={fetchQuote} className="p-0.5 hover:bg-muted/50 rounded" title="Refresh">
-          <RefreshCw className={`w-3 h-3 text-muted-foreground ${quoteLoading ? 'animate-spin' : ''}`} />
+        <button onClick={fetchQuote} className="p-0.5 hover:bg-muted/50 rounded flex-shrink-0" title="Refresh">
+          <RefreshCw className={`w-2.5 h-2.5 text-muted-foreground ${quoteLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Header — symbol + price + change */}
-      <div className="px-2 pt-2 pb-1 pr-20 flex-shrink-0 border-b border-border/40">
-        {quoteLoading && !quote ? (
-          <div className="h-7 flex items-center"><RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" /></div>
-        ) : quoteError ? (
-          <div className="text-[9px] text-red-400">{quoteError}</div>
-        ) : quote ? (
-          <>
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm font-bold font-mono">{ticker}</span>
-              {quote.name && (
-                <span className="text-[9px] text-muted-foreground truncate flex-1">{quote.name}</span>
-              )}
+      {/* Row 2 — Day range + 52W range, SIDE BY SIDE */}
+      <div className="grid grid-cols-2 gap-2 flex-shrink-0">
+        {quote.high > quote.low && (
+          <div>
+            <div className="flex items-center justify-between text-muted-foreground mb-0.5">
+              <span>Day</span>
+              <span className="font-mono">${fmtNum(quote.low)}–{fmtNum(quote.high)}</span>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-bold font-mono">${quote.price.toFixed(2)}</span>
-              <div className={`flex items-center gap-0.5 text-[10px] font-mono font-semibold ${up ? 'text-green-400' : 'text-red-400'}`}>
-                {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                <span>{up ? '+' : ''}{quote.change.toFixed(2)} ({fmtPct(quote.changePercent)})</span>
-              </div>
+            <div className="h-0.5 bg-muted/40 rounded-full relative overflow-hidden">
+              <div className="absolute h-full bg-gradient-to-r from-red-500/40 via-yellow-500/40 to-green-500/40 w-full" />
+              <div className="absolute h-full w-0.5 bg-foreground" style={{ left: `${Math.max(0, Math.min(100, dayRangePct))}%` }} />
             </div>
-            {quote.extendedPrice != null && quote.extendedSession && quote.extendedSession !== 'closed' && (
-              <div className="flex items-center gap-1.5 text-[8px] mt-0.5">
-                {quote.extendedSession === 'pre'
-                  ? <Sunrise className="w-2.5 h-2.5 text-blue-400" />
-                  : <Moon className="w-2.5 h-2.5 text-purple-400" />}
-                <span className="font-mono text-muted-foreground uppercase">
-                  {quote.extendedSession === 'pre' ? 'Pre' : 'After'}
-                </span>
-                <span className="font-mono font-semibold">${quote.extendedPrice.toFixed(2)}</span>
-                <span className={`font-mono ${extUp ? 'text-green-400' : 'text-red-400'}`}>
-                  {extUp ? '+' : ''}{quote.extendedChange?.toFixed(2)} ({fmtPct(quote.extendedChangePercent)})
-                </span>
-              </div>
-            )}
-          </>
-        ) : null}
-      </div>
-
-      {/* Compact body — only Day/52w range bars + Mkt Cap / Vol / Avg Vol */}
-      <div className="flex-1 overflow-y-auto px-2 py-1.5 space-y-1.5">
-        {quote && (
-          <>
-            {quote.high > quote.low && (
-              <div className="text-[8px]">
-                <div className="flex items-center justify-between text-muted-foreground mb-0.5">
-                  <span>Day&apos;s Range</span>
-                  <span className="font-mono">${fmtNum(quote.low)} – ${fmtNum(quote.high)}</span>
-                </div>
-                <div className="h-1 bg-muted/40 rounded-full relative overflow-hidden">
-                  <div className="absolute h-full bg-gradient-to-r from-red-500/40 via-yellow-500/40 to-green-500/40 w-full" />
-                  <div className="absolute h-full w-0.5 bg-foreground" style={{ left: `${Math.max(0, Math.min(100, dayRangePct))}%` }} />
-                </div>
-              </div>
-            )}
-            {quote.high52w > quote.low52w && (
-              <div className="text-[8px]">
-                <div className="flex items-center justify-between text-muted-foreground mb-0.5">
-                  <span>52-Week</span>
-                  <span className="font-mono">${fmtNum(quote.low52w)} – ${fmtNum(quote.high52w)}</span>
-                </div>
-                <div className="h-1 bg-muted/40 rounded-full relative overflow-hidden">
-                  <div className="absolute h-full bg-gradient-to-r from-red-500/40 via-yellow-500/40 to-green-500/40 w-full" />
-                  <div className="absolute h-full w-0.5 bg-foreground" style={{ left: `${Math.max(0, Math.min(100, yearRangePct))}%` }} />
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-3 gap-1 text-[8px]">
-              <div className="bg-muted/30 rounded p-1">
-                <div className="text-muted-foreground">Mkt Cap</div>
-                <div className="font-mono font-semibold">{fmtCap(quote.marketCap)}</div>
-              </div>
-              <div className="bg-muted/30 rounded p-1">
-                <div className="text-muted-foreground">Vol</div>
-                <div className="font-mono font-semibold">{fmtVol(quote.volume)}</div>
-              </div>
-              <div className="bg-muted/30 rounded p-1">
-                <div className="text-muted-foreground">Avg Vol</div>
-                <div className="font-mono font-semibold">{fmtVol(quote.avgVolume)}</div>
-              </div>
-            </div>
-          </>
+          </div>
         )}
+        {quote.high52w > quote.low52w && (
+          <div>
+            <div className="flex items-center justify-between text-muted-foreground mb-0.5">
+              <span>52W</span>
+              <span className="font-mono">${fmtNum(quote.low52w)}–{fmtNum(quote.high52w)}</span>
+            </div>
+            <div className="h-0.5 bg-muted/40 rounded-full relative overflow-hidden">
+              <div className="absolute h-full bg-gradient-to-r from-red-500/40 via-yellow-500/40 to-green-500/40 w-full" />
+              <div className="absolute h-full w-0.5 bg-foreground" style={{ left: `${Math.max(0, Math.min(100, yearRangePct))}%` }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Row 3 — Mkt Cap / Vol / Avg Vol on a single line */}
+      <div className="flex items-center gap-2 flex-shrink-0 font-mono">
+        <span className="text-muted-foreground">MC</span>
+        <span className="font-semibold">{fmtCap(quote.marketCap)}</span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-muted-foreground">Vol</span>
+        <span className="font-semibold">{fmtVol(quote.volume)}</span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-muted-foreground">Avg</span>
+        <span className="font-semibold">{fmtVol(quote.avgVolume)}</span>
       </div>
     </div>
   )
