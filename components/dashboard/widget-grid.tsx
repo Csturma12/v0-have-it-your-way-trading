@@ -1209,13 +1209,20 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             isResizable={isEditMode}
             resizeHandles={['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}
             draggableHandle=".widget-drag-handle"
-            // compactType="vertical" + preventCollision=false lets users
-            // resize any widget to any size — neighbors get pushed down
-            // automatically. Previously this was {null} + preventCollision
-            // true, which blocked any resize that would touch a neighbor
-            // (the grid silently aborted the drag), making widgets feel
-            // "stuck" at certain heights.
-            compactType="vertical"
+            // Free-form positioning (Bloomberg/TradingView style):
+            //   compactType={null}      — no auto-packing toward top
+            //   preventCollision={false} — resize/drag isn't blocked by neighbors
+            //
+            // Why null instead of "vertical": with vertical compaction the
+            // top edge handles (N / NW / NE) appear broken because every
+            // resize is followed by a compaction step that snaps the widget
+            // back to the top of its column. User reports widgets are not
+            // resizable from all 8 points — that's the cause. Free-form
+            // lets all 8 handles work in all directions; widgets stay
+            // exactly where placed instead of auto-stacking. Overlaps are
+            // possible during resize but recoverable by dragging the
+            // affected widget out of the way.
+            compactType={null}
             preventCollision={false}
             onLayoutChange={(newLayout: any) => {
               setLayout(newLayout)
