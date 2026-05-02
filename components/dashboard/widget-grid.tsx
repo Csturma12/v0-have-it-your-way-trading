@@ -5,7 +5,7 @@ import GridLayoutImport from 'react-grid-layout'
 const GridLayout = GridLayoutImport as any
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
-import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check, Trash2, Star } from 'lucide-react'
+import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check, Trash2, Star, ChevronUp, ChevronDown } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -542,6 +542,31 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // dashboard, not an accidentally-resized one.
   const [isEditMode, setIsEditMode] = useState(false)
 
+  // Collapse-to-header state. Stores each widget's pre-collapse height (in
+  // grid rows) so we can restore exactly what the user had when they expand.
+  const [collapsedHeights, setCollapsedHeights] = useState<Record<string, number>>({})
+  // Collapsed widget height in grid rows. With rowHeight=10px the header
+  // bar renders cleanly at 3 rows (~30px) without clipping.
+  const COLLAPSED_HEIGHT = 3
+
+  // Toggle a widget between collapsed (header-only) and its previous height.
+  // Available always (not just edit mode) so users can quickly hide/show
+  // widget bodies without unlocking the layout.
+  const toggleCollapse = (widgetId: string) => {
+    setLayout((prev: any[]) => {
+      const item = prev.find(l => l.i === widgetId)
+      if (!item) return prev
+      const isCurrentlyCollapsed = item.h <= COLLAPSED_HEIGHT
+      if (isCurrentlyCollapsed) {
+        const restoreH = collapsedHeights[widgetId] ?? 18
+        return prev.map(l => l.i === widgetId ? { ...l, h: restoreH } : l)
+      } else {
+        setCollapsedHeights(c => ({ ...c, [widgetId]: item.h }))
+        return prev.map(l => l.i === widgetId ? { ...l, h: COLLAPSED_HEIGHT } : l)
+      }
+    })
+  }
+
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
   
@@ -629,6 +654,15 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // Track whether we've finished the first-mount restore. We don't want to
   // overwrite localStorage with the empty initial state before we've loaded.
   const [hasHydrated, setHasHydrated] = useState(false)
+
+  // Per-widget collapsed state. Map of widget id -> the height (in grid rows)
+  // the widget had BEFORE collapsing, so we can restore it on expand. While
+  // an id is in this map, the widget renders as a header-only strip and its
+  // layout `h` is forced to COLLAPSED_H.
+  const COLLAPSED_KEY = `v0-widget-grid-collapsed-v${LAYOUT_VERSION}`
+  const COLLAPSED_H = 3 // 3 rows × 10px rowHeight = ~30px, fits the header
+  const [collapsedHeights, setCollapsedHeights] = useState<Record<string, number>>({})
+  const isCollapsed = (id: string) => id in collapsedHeights
 
   // Restore on mount + clean up old layout versions
   useEffect(() => {
@@ -1144,37 +1178,59 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
             }}
             width={wrapperWidth}
           >
-            {rightWidgets.map(widget => (
-              <div
-                key={widget.id}
-                className={`h-full bg-card border border-border flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
-              >
-                {/* Widget header / drag bar */}
-                <div className={`widget-drag-handle flex items-center justify-between px-2 py-1 border-b border-border/50 bg-muted/30 ${isEditMode ? 'cursor-grab' : ''}`}>
-                  <div className="flex items-center gap-1.5">
-                    {isEditMode && <GripVertical className="w-3 h-3 text-green-500" />}
-                    <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
-                      {widget.title}
-                    </span>
-                    {/* Show ticker in header for all widgets except company-profile (redundant there) */}
-                    {selectedTicker && widget.type !== 'company-profile' && widget.type !== 'watchlist' && widget.type !== 'news' && widget.type !== 'trade-ideas' && widget.type !== 'market-overview' && (
-                      <span className="text-[9px] font-mono text-primary/70">— {selectedTicker}</span>
-                    )}
+            {rightWidgets.map(widget => {
+              const layoutItem = layout.find((l: any) => l.i === widget.id)
+              const isCollapsed = !!layoutItem && layoutItem.h <= COLLAPSED_HEIGHT
+              return (
+                <div
+                  key={widget.id}
+                  className={`h-full bg-card border border-border flex flex-col relative ${isEditMode ? 'ring-2 ring-primary/30' : ''}`}
+                >
+                  {/* Widget header / drag bar */}
+                  <div className={`widget-drag-handle flex items-center justify-between px-2 py-1 border-b border-border/50 bg-muted/30 ${isEditMode ? 'cursor-grab' : ''}`}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {isEditMode && <GripVertical className="w-3 h-3 text-green-500 shrink-0" />}
+                      <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground truncate">
+                        {widget.title}
+                      </span>
+                      {/* Show ticker in header for all widgets except company-profile (redundant there) */}
+                      {selectedTicker && widget.type !== 'company-profile' && widget.type !== 'watchlist' && widget.type !== 'news' && widget.type !== 'trade-ideas' && widget.type !== 'market-overview' && (
+                        <span className="text-[9px] font-mono text-primary/70 shrink-0">— {selectedTicker}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {/* Collapse / expand button — always visible */}
+                      <button
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); toggleCollapse(widget.id) }}
+                        className="text-muted-foreground hover:text-primary"
+                        title={isCollapsed ? 'Expand' : 'Collapse to header'}
+                      >
+                        {isCollapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                      </button>
+                      {isEditMode && (
+                        <button
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); removeWidget(widget.id) }}
+                          className="text-muted-foreground hover:text-red-400"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {isEditMode && (
-                    <button onClick={() => removeWidget(widget.id)} className="text-muted-foreground hover:text-red-400">
-                      <X className="w-3 h-3" />
-                    </button>
+                  {/* Widget content — hidden entirely when collapsed so it
+                      truly disappears (not just visually clipped). */}
+                  {!isCollapsed && (
+                    <div className="flex-1 min-h-0 overflow-auto">
+                      <WidgetErrorBoundary widgetName={widget.title}>
+                        {renderRight(widget)}
+                      </WidgetErrorBoundary>
+                    </div>
                   )}
                 </div>
-                {/* Widget content — scrollable if widget is small */}
-                <div className="flex-1 min-h-0 overflow-auto">
-                  <WidgetErrorBoundary widgetName={widget.title}>
-                    {renderRight(widget)}
-                  </WidgetErrorBoundary>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </GridLayout>
         </div>
       </div>
