@@ -1152,48 +1152,14 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           <NewsTickerBanner />
         </div>
 
-        {/* Grid */}
-        <style jsx global>{`
-          .react-grid-item > .react-resizable-handle {
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            background: rgba(34, 197, 94, 0.8);
-            border-radius: 3px;
-            z-index: 100;
-            pointer-events: auto !important;
-            opacity: 1;
-            transition: background 0.15s, transform 0.15s;
-          }
-          .react-grid-item > .react-resizable-handle:hover {
-            background: rgba(34, 197, 94, 1);
-            transform: scale(1.2);
-          }
-          .react-grid-item > .react-resizable-handle::after {
-            content: '';
-            position: absolute;
-            width: 6px;
-            height: 6px;
-            border-right: 2px solid rgba(255,255,255,0.9);
-            border-bottom: 2px solid rgba(255,255,255,0.9);
-          }
-          .react-resizable-handle-sw { bottom: -4px; left: -4px; cursor: sw-resize; }
-          .react-resizable-handle-sw::after { transform: rotate(135deg); bottom: 4px; left: 4px; }
-          .react-resizable-handle-se { bottom: -4px; right: -4px; cursor: se-resize; }
-          .react-resizable-handle-se::after { transform: rotate(45deg); bottom: 4px; right: 4px; }
-          .react-resizable-handle-nw { top: -4px; left: -4px; cursor: nw-resize; }
-          .react-resizable-handle-nw::after { transform: rotate(-135deg); top: 4px; left: 4px; }
-          .react-resizable-handle-ne { top: -4px; right: -4px; cursor: ne-resize; }
-          .react-resizable-handle-ne::after { transform: rotate(-45deg); top: 4px; right: 4px; }
-          .react-resizable-handle-w { left: -4px; top: 50%; transform: translateY(-50%); cursor: w-resize; width: 10px; height: 24px; }
-          .react-resizable-handle-e { right: -4px; top: 50%; transform: translateY(-50%); cursor: e-resize; width: 10px; height: 24px; }
-          .react-resizable-handle-n { top: -4px; left: 50%; transform: translateX(-50%); cursor: n-resize; width: 24px; height: 10px; }
-          .react-resizable-handle-s { bottom: -4px; left: 50%; transform: translateX(-50%); cursor: s-resize; width: 24px; height: 10px; }
-          .react-resizable-handle-w::after, .react-resizable-handle-e::after,
-          .react-resizable-handle-n::after, .react-resizable-handle-s::after { display: none; }
-          .react-resizable-handle-w:hover, .react-resizable-handle-e:hover { transform: translateY(-50%) scale(1.1); }
-          .react-resizable-handle-n:hover, .react-resizable-handle-s:hover { transform: translateX(-50%) scale(1.1); }
-        `}</style>
+        {/* Grid
+            Resize handle styling is owned by app/globals.css. An earlier
+            inline <style jsx global> block was duplicating those rules but
+            with broken sizes (W/E shrunk to 24px tall, N/S shrunk to 24px
+            wide), which collapsed the side/top/bottom handles into tiny
+            unfindable center strips. globals.css gives n/s a full-width
+            bar (left:12px; right:12px) and e/w a full-height bar
+            (top:12px; bottom:12px). Removed the inline override. */}
         <div ref={wrapperRef} className={`flex-1 overflow-y-auto overflow-x-hidden widget-scroll ${isEditMode ? '' : 'rgl-locked'}`}>
           <GridLayout
             className="layout"
