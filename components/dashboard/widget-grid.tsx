@@ -576,18 +576,33 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     })
   }, [])
 
-  // Track wrapper width AND height for responsive grid
+  // Track wrapper WIDTH from the wrapper, but VIEWPORT height from window.
+  // CRITICAL: do NOT measure the wrapper's own height — it grows with the
+  // grid content, which creates a feedback loop with dynamic rowHeight
+  // (taller widgets -> taller wrapper -> bigger rowHeight -> taller widgets).
+  // We want the available viewport space, which is fixed regardless of how
+  // tall the grid currently is.
   useEffect(() => {
     const updateSize = () => {
       if (wrapperRef.current) {
         setWrapperWidth(wrapperRef.current.offsetWidth)
-        setWrapperHeight(wrapperRef.current.offsetHeight)
+        // Available height = viewport - distance from top of viewport to top of grid
+        const top = wrapperRef.current.getBoundingClientRect().top
+        const available = Math.max(400, window.innerHeight - top - 16) // 16px bottom padding
+        setWrapperHeight(available)
       }
     }
     updateSize()
+    // Observe BOTH wrapper resize (for width changes from sidebar toggle) AND
+    // window resize (for actual viewport changes). Do NOT observe wrapper
+    // height changes — those are caused by content growth, not real resizes.
     const resizeObserver = new ResizeObserver(updateSize)
     if (wrapperRef.current) resizeObserver.observe(wrapperRef.current)
-    return () => resizeObserver.disconnect()
+    window.addEventListener('resize', updateSize)
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', updateSize)
+    }
   }, [])
 
   // Dynamic rowHeight — the dashboard always fills the available viewport
@@ -610,7 +625,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
 
   // Simple localStorage persistence so manual resizes survive HMR / refresh.
   // Bump VERSION when DEFAULT_LAYOUT changes to force fresh layout for all users.
-  const LAYOUT_VERSION = 5
+  const LAYOUT_VERSION = 6
   const STORAGE_KEY = `v0-widget-grid-layout-v${LAYOUT_VERSION}`
 
   // Restore on mount + clean up old layout versions
