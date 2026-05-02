@@ -1152,21 +1152,12 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
           <NewsTickerBanner />
         </div>
 
-        {/* Grid
-            Resize handle styling is owned by app/globals.css. An earlier
-            inline <style jsx global> block was duplicating those rules but
-            with broken sizes (W/E shrunk to 24px tall, N/S shrunk to 24px
-            wide), which collapsed the side/top/bottom handles into tiny
-            unfindable center strips. globals.css gives n/s a full-width
-            bar (left:12px; right:12px) and e/w a full-height bar
-            (top:12px; bottom:12px). Removed the inline override. */}
-        {/* pt-2 leaves 8px of headroom above row 0 so the N/NW/NE resize
-            handles (positioned at top:-4px outside each widget's bounds)
-            aren't clipped by the wrapper's overflow-y-auto. Without this,
-            top-row widgets are not resizable from their top edge — every
-            other row works fine because their handles sit inside the
-            scrollable content area. */}
-        <div ref={wrapperRef} className={`flex-1 overflow-y-auto overflow-x-hidden widget-scroll pt-2 ${isEditMode ? '' : 'rgl-locked'}`}>
+        {/* Grid — resize handle CSS lives in app/globals.css.
+            Handles are positioned INSIDE each widget's bounds (not outside),
+            so they can never be clipped by overflow:auto on this wrapper or
+            eaten by neighboring widgets. Every widget is resizable from all
+            8 sides regardless of its position in the grid. */}
+        <div ref={wrapperRef} className={`flex-1 overflow-y-auto overflow-x-hidden widget-scroll ${isEditMode ? '' : 'rgl-locked'}`}>
           <GridLayout
             className="layout"
             layout={visibleLayout}
