@@ -613,9 +613,15 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const LAYOUT_VERSION = 5
   const STORAGE_KEY = `v0-widget-grid-layout-v${LAYOUT_VERSION}`
 
-  // Restore on mount
+  // Restore on mount + clean up old layout versions
   useEffect(() => {
     try {
+      // Delete every cached layout from older versions so the user's
+      // browser doesn't accumulate stale data forever.
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('v0-widget-grid-layout-v') && k !== STORAGE_KEY)
+        .forEach(k => localStorage.removeItem(k))
+
       const saved = localStorage.getItem(STORAGE_KEY)
       if (!saved) return
       const parsed = JSON.parse(saved)
