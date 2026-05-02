@@ -95,7 +95,7 @@ function SortablePillItem({ id, children }: { id: string; children: React.ReactN
   )
 }
 
-const STORAGE_KEY = 'trading-dashboard-rgl-v36'
+const STORAGE_KEY = 'trading-dashboard-rgl-v37'
 // Layout is intentionally NOT persisted by default — the default layout is always restored
 // on page load. Only explicit "Save Layout" in edit mode writes to storage.
 
@@ -467,8 +467,8 @@ const ALL_AVAILABLE_WIDGETS: RightWidget[] = WIDGET_SECTIONS.flatMap(s => s.widg
 
 // Default set shown on first load
 const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
-  ['ticker-info','company-profile','chart','analyst-ratings','fundamentals',
-   'catalysts-risk','news','watchlist','quick-trade','trade-ideas'].includes(w.id)
+  ['ticker-info','company-profile','analyst-ratings','catalysts-risk',
+   'chart','watchlist','trade-ideas','news','quick-trade','technicals'].includes(w.id)
 )
 
 // Default sizes calibrated for ROW_HEIGHT=10. Each `h` unit = 10px,
@@ -481,7 +481,7 @@ const DEFAULT_LAYOUT: any[] = [
   { i: 'company-profile',   x: 4,  y: 0,   w: 5,  h: 12, minH: 1, minW: 1 },
   { i: 'analyst-ratings',   x: 9,  y: 0,   w: 5,  h: 12, minH: 1, minW: 1 },
   // RIGHT PANEL: Catalyst/Risk spans top rows
-  { i: 'catalyst-risk',     x: 14, y: 0,   w: 6,  h: 12, minH: 1, minW: 1 },
+  { i: 'catalysts-risk',    x: 14, y: 0,   w: 6,  h: 12, minH: 1, minW: 1 },
   // MAIN CHART (left) + Watchlist (right)
   { i: 'chart',             x: 0,  y: 12,  w: 14, h: 30, minH: 1, minW: 1 },
   { i: 'watchlist',         x: 14, y: 12,  w: 6,  h: 30, minH: 1, minW: 1 },
