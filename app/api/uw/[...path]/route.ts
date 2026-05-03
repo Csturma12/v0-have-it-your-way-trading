@@ -128,7 +128,14 @@ function ttlFor(path: string): number {
     // a day, realized vol is computed off the daily close.
     path.includes('volatility/stats') ||
     path.includes('volatility/term-structure') ||
-    path.includes('volatility/realized')
+    path.includes('volatility/realized') ||
+    // Phase 4: greek flow + sector/ETF tides + correlations.
+    // These tick during market hours but not as fast as raw flow alerts;
+    // 10s is a good balance vs API spend.
+    path.includes('greek-flow') ||
+    path.includes('sector-tide') ||
+    path.includes('etf-tide') ||
+    path.includes('market/correlations')
   )
     return 10_000
 

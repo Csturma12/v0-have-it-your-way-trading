@@ -76,6 +76,7 @@ import { OptionsCombo } from './options-combo'
 import { LevelsCombo } from './levels-combo'
 import { EarningsRadar } from './earnings-radar'
 import { ShortsProfile } from './shorts-profile'
+import { MarketFlow } from './market-flow'
 import {
   Cpu,
   Scale,
@@ -425,6 +426,7 @@ type RightWidgetType =
   // Each phase of the UW endpoint rollout adds one tabbed widget here.
   | 'earnings-radar'
   | 'shorts-profile'
+  | 'market-flow'
 
 interface RightWidget {
   id: string
@@ -487,6 +489,7 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
       { id: 'dark-pool-flow',     type: 'dark-pool-flow',     title: 'Dark Pool Flow (Live)' },
       { id: 'signals-feed',       type: 'signals-feed',       title: 'Signals (Flow + Congress + Insider)' },
       { id: 'shorts-profile',     type: 'shorts-profile',     title: 'Shorts (Snapshot / Volume / Screener)' },
+      { id: 'market-flow',        type: 'market-flow',        title: 'Market Flow (Greek / Sector / ETF / Corr)' },
     ],
   },
   {
@@ -988,6 +991,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     // (not symbol-aware) so it doesn't take a ticker prop.
     if (widget.type === 'earnings-radar')  return <EarningsRadar />
     if (widget.type === 'shorts-profile')  return <ShortsProfile ticker={selectedTicker} />
+    if (widget.type === 'market-flow')     return <MarketFlow ticker={selectedTicker} />
     return null
   }
 
