@@ -162,7 +162,14 @@ function ttlFor(path: string): number {
     // Expiry breakdown updates EOD by UW.
     path.includes('financials') ||
     path.includes('insider-buy-sells') ||
-    path.includes('expiry-breakdown')
+    path.includes('expiry-breakdown') ||
+    // Phase 6: ETF holdings/exposure are reference data (rebalance
+    // monthly/quarterly). in-out-flow updates daily after close.
+    // The /etfs/{t}/info, /etfs/{t}/holdings paths already match
+    // the path.endsWith('/info') and path.includes('holdings')
+    // checks above, but we add explicit entries for clarity:
+    path.includes('etfs/') ||
+    path.includes('in-out-flow')
   )
     return 5 * 60_000
 

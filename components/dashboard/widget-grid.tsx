@@ -78,6 +78,7 @@ import { EarningsRadar } from './earnings-radar'
 import { ShortsProfile } from './shorts-profile'
 import { MarketFlow } from './market-flow'
 import { StockProfile } from './stock-profile'
+import { ETFProfile } from './etf-profile'
 import {
   Cpu,
   Scale,
@@ -429,6 +430,7 @@ type RightWidgetType =
   | 'shorts-profile'
   | 'market-flow'
   | 'stock-profile'
+  | 'etf-profile'
 
 interface RightWidget {
   id: string
@@ -447,6 +449,7 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
   { id: 'company-profile',    type: 'company-profile',    title: 'Company Profile' },
   { id: 'fundamentals',       type: 'fundamentals',       title: 'Fundamentals' },
   { id: 'stock-profile',      type: 'stock-profile',      title: 'Stock Profile (Snapshot / Financials / Insider / Expiry)' },
+  { id: 'etf-profile',        type: 'etf-profile',        title: 'ETF Profile (Info / Holdings / Exposure / Flows)' },
   { id: 'metrics',            type: 'metrics',            title: 'Metrics' },
   ],
   },
@@ -996,6 +999,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'shorts-profile')  return <ShortsProfile ticker={selectedTicker} />
     if (widget.type === 'market-flow')     return <MarketFlow ticker={selectedTicker} />
     if (widget.type === 'stock-profile')   return <StockProfile ticker={selectedTicker} />
+    if (widget.type === 'etf-profile')     return <ETFProfile ticker={selectedTicker} />
     return null
   }
 
