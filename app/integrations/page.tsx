@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { MarketDataSelector } from '@/components/dashboard/market-data-selector'
+import { TradingViewCard } from '@/components/integrations/tradingview-card'
 
 interface BrokerageConfig {
   id: string
@@ -304,6 +305,16 @@ export default function IntegrationsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Charting & Analysis Integrations — TradingView handle storage */}
+        <section>
+          <h2 className="text-sm font-bold font-mono tracking-widest text-muted-foreground uppercase mb-4">
+            Charting &amp; Analysis
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <TradingViewCard />
           </div>
         </section>
 
