@@ -112,7 +112,11 @@ function ttlFor(path: string): number {
     path.includes('flow-alerts') ||
     path.includes('flow-recent') ||
     path.includes('option-trades') ||
-    path.startsWith('darkpool/')
+    path.startsWith('darkpool/') ||
+    // Phase 7: per-contract live data — flow + intraday update tick-by-
+    // tick during market hours.
+    (path.startsWith('option-contract/') && path.endsWith('/flow')) ||
+    (path.startsWith('option-contract/') && path.endsWith('/intraday'))
   )
     return 3_000
 
@@ -169,7 +173,10 @@ function ttlFor(path: string): number {
     // the path.endsWith('/info') and path.includes('holdings')
     // checks above, but we add explicit entries for clarity:
     path.includes('etfs/') ||
-    path.includes('in-out-flow')
+    path.includes('in-out-flow') ||
+    // Phase 7: per-contract historic + volume profile are EOD data.
+    (path.startsWith('option-contract/') && path.endsWith('/historic')) ||
+    (path.startsWith('option-contract/') && path.endsWith('/volume-profile'))
   )
     return 5 * 60_000
 

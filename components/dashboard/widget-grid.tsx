@@ -79,6 +79,7 @@ import { ShortsProfile } from './shorts-profile'
 import { MarketFlow } from './market-flow'
 import { StockProfile } from './stock-profile'
 import { ETFProfile } from './etf-profile'
+import { ContractDrilldown } from './contract-drilldown'
 import {
   Cpu,
   Scale,
@@ -431,6 +432,7 @@ type RightWidgetType =
   | 'market-flow'
   | 'stock-profile'
   | 'etf-profile'
+  | 'contract-drilldown'
 
 interface RightWidget {
   id: string
@@ -496,6 +498,7 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
       { id: 'signals-feed',       type: 'signals-feed',       title: 'Signals (Flow + Congress + Insider)' },
       { id: 'shorts-profile',     type: 'shorts-profile',     title: 'Shorts (Snapshot / Volume / Screener)' },
       { id: 'market-flow',        type: 'market-flow',        title: 'Market Flow (Greek / Sector / ETF / Corr)' },
+      { id: 'contract-drilldown', type: 'contract-drilldown', title: 'Contract Drilldown (Flow / Hist / Intra / Profile)' },
     ],
   },
   {
@@ -1000,6 +1003,9 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'market-flow')     return <MarketFlow ticker={selectedTicker} />
     if (widget.type === 'stock-profile')   return <StockProfile ticker={selectedTicker} />
     if (widget.type === 'etf-profile')     return <ETFProfile ticker={selectedTicker} />
+    // Contract Drilldown is contract-keyed (not ticker-keyed). It owns
+    // its own contract input field internally.
+    if (widget.type === 'contract-drilldown') return <ContractDrilldown />
     return null
   }
 
