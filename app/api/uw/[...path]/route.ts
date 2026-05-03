@@ -123,7 +123,12 @@ function ttlFor(path: string): number {
     path.includes('market-tide') ||
     path.includes('total-options-volume') ||
     path.includes('iv-rank') ||
-    path.includes('iv-term-structure')
+    path.includes('iv-term-structure') ||
+    // Vol suite Phase 1: stats and term structure update once or twice
+    // a day, realized vol is computed off the daily close.
+    path.includes('volatility/stats') ||
+    path.includes('volatility/term-structure') ||
+    path.includes('volatility/realized')
   )
     return 10_000
 
