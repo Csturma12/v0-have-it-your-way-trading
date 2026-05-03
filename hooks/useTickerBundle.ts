@@ -26,6 +26,9 @@ export interface TickerBundle {
   spotExposures: any[] | null
   ivRank: any[] | null
   ivTermStructure: any[] | null
+  // Vol suite Phase 1 — added alongside ivRank/ivTermStructure
+  volatilityStats: any[] | null
+  realizedVol: any[] | null
   maxPain: any[] | null
   optionsVolume: any[] | null
   oiChange: any[] | null

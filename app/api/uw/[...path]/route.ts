@@ -112,7 +112,11 @@ function ttlFor(path: string): number {
     path.includes('flow-alerts') ||
     path.includes('flow-recent') ||
     path.includes('option-trades') ||
-    path.startsWith('darkpool/')
+    path.startsWith('darkpool/') ||
+    // Phase 7: per-contract live data — flow + intraday update tick-by-
+    // tick during market hours.
+    (path.startsWith('option-contract/') && path.endsWith('/flow')) ||
+    (path.startsWith('option-contract/') && path.endsWith('/intraday'))
   )
     return 3_000
 
@@ -123,18 +127,56 @@ function ttlFor(path: string): number {
     path.includes('market-tide') ||
     path.includes('total-options-volume') ||
     path.includes('iv-rank') ||
-    path.includes('iv-term-structure')
+    path.includes('iv-term-structure') ||
+    // Vol suite Phase 1: stats and term structure update once or twice
+    // a day, realized vol is computed off the daily close.
+    path.includes('volatility/stats') ||
+    path.includes('volatility/term-structure') ||
+    path.includes('volatility/realized') ||
+    // Phase 4: greek flow + sector/ETF tides + correlations.
+    // These tick during market hours but not as fast as raw flow alerts;
+    // 10s is a good balance vs API spend.
+    path.includes('greek-flow') ||
+    path.includes('sector-tide') ||
+    path.includes('etf-tide') ||
+    path.includes('market/correlations')
   )
     return 10_000
 
   // Reference data — long TTL
+  // Earnings calendars don't tick intraday — the schedule is set the
+  // night before and only changes when a company moves their report.
+  // Short interest data updates daily after market close (FINRA cycle).
   if (
     path.endsWith('/info') ||
     path.includes('holdings') ||
     path.includes('weights') ||
     path.includes('exposure') ||
     path.includes('economic-calendar') ||
-    path.includes('fda-calendar')
+    path.includes('fda-calendar') ||
+    path.includes('earnings/premarket') ||
+    path.includes('earnings/afterhours') ||
+    path.includes('earnings/calendar') ||
+    path.includes('short-data') ||
+    path.includes('short-interest-float') ||
+    path.includes('volume-and-ratio') ||
+    path.includes('short-screener') ||
+    // Phase 5: company fundamentals + insider activity + expiry breakdown.
+    // Financials are quarterly. Insider filings are daily SEC cadence.
+    // Expiry breakdown updates EOD by UW.
+    path.includes('financials') ||
+    path.includes('insider-buy-sells') ||
+    path.includes('expiry-breakdown') ||
+    // Phase 6: ETF holdings/exposure are reference data (rebalance
+    // monthly/quarterly). in-out-flow updates daily after close.
+    // The /etfs/{t}/info, /etfs/{t}/holdings paths already match
+    // the path.endsWith('/info') and path.includes('holdings')
+    // checks above, but we add explicit entries for clarity:
+    path.includes('etfs/') ||
+    path.includes('in-out-flow') ||
+    // Phase 7: per-contract historic + volume profile are EOD data.
+    (path.startsWith('option-contract/') && path.endsWith('/historic')) ||
+    (path.startsWith('option-contract/') && path.endsWith('/volume-profile'))
   )
     return 5 * 60_000
 

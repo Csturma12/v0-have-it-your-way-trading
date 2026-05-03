@@ -45,6 +45,17 @@ interface BundleResult {
   spotExposures: any
   ivRank: any
   ivTermStructure: any
+  // Volatility suite expansion (Phase 1):
+  // volatilityStats   = /stock/{t}/volatility/stats — current iv/rv plus
+  //                     52w high/low for both. Drives the IV/RV range
+  //                     bars in IV Surface.
+  // realizedVol       = /stock/{t}/volatility/realized — time series of
+  //                     implied vs realized (RV shifted 30d back so you
+  //                     can see whether IV historically over- or under-
+  //                     priced the actual move). Drives the IV-vs-RV
+  //                     sparkline in IV Surface.
+  volatilityStats: any
+  realizedVol: any
   maxPain: any
   optionsVolume: any
   oiChange: any
@@ -124,6 +135,12 @@ export async function GET(
     spotExposures:         () => uw(`stock/${ticker}/spot-exposures`, apiKey),
     ivRank:                () => uw(`stock/${ticker}/iv-rank`, apiKey),
     ivTermStructure:       () => uw(`stock/${ticker}/volatility/term-structure`, apiKey),
+    // Vol suite Phase 1 — see BundleResult interface for what each does.
+    // 52w stats are reference-class (slow-moving), realized is also slow.
+    // Both go in the second wave so wave 1 stays at 7 fast-changing
+    // endpoints (info/state/greek/iv-rank/term-structure/maxPain).
+    volatilityStats:       () => uw(`stock/${ticker}/volatility/stats`, apiKey),
+    realizedVol:           () => uw(`stock/${ticker}/volatility/realized`, apiKey),
     maxPain:               () => uw(`stock/${ticker}/max-pain`, apiKey),
     optionsVolume:         () => uw(`stock/${ticker}/options-volume`, apiKey),
     oiChange:              () => uw(`stock/${ticker}/oi-change`, apiKey),
@@ -158,6 +175,8 @@ export async function GET(
     spotExposures: null,
     ivRank: null,
     ivTermStructure: null,
+    volatilityStats: null,
+    realizedVol: null,
     maxPain: null,
     optionsVolume: null,
     oiChange: null,
