@@ -77,6 +77,7 @@ import { LevelsCombo } from './levels-combo'
 import { EarningsRadar } from './earnings-radar'
 import { ShortsProfile } from './shorts-profile'
 import { MarketFlow } from './market-flow'
+import { StockProfile } from './stock-profile'
 import {
   Cpu,
   Scale,
@@ -427,6 +428,7 @@ type RightWidgetType =
   | 'earnings-radar'
   | 'shorts-profile'
   | 'market-flow'
+  | 'stock-profile'
 
 interface RightWidget {
   id: string
@@ -441,11 +443,12 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
   {
     section: 'Stock Info',
     widgets: [
-      { id: 'ticker-info',        type: 'ticker-info',        title: 'Ticker Info' },
-      { id: 'company-profile',    type: 'company-profile',    title: 'Company Profile' },
-      { id: 'fundamentals',       type: 'fundamentals',       title: 'Fundamentals' },
-      { id: 'metrics',            type: 'metrics',            title: 'Metrics' },
-    ],
+  { id: 'ticker-info',        type: 'ticker-info',        title: 'Ticker Info' },
+  { id: 'company-profile',    type: 'company-profile',    title: 'Company Profile' },
+  { id: 'fundamentals',       type: 'fundamentals',       title: 'Fundamentals' },
+  { id: 'stock-profile',      type: 'stock-profile',      title: 'Stock Profile (Snapshot / Financials / Insider / Expiry)' },
+  { id: 'metrics',            type: 'metrics',            title: 'Metrics' },
+  ],
   },
   {
     section: 'Charts & Technicals',
@@ -992,6 +995,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'earnings-radar')  return <EarningsRadar />
     if (widget.type === 'shorts-profile')  return <ShortsProfile ticker={selectedTicker} />
     if (widget.type === 'market-flow')     return <MarketFlow ticker={selectedTicker} />
+    if (widget.type === 'stock-profile')   return <StockProfile ticker={selectedTicker} />
     return null
   }
 

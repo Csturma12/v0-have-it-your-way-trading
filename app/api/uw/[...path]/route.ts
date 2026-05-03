@@ -156,7 +156,13 @@ function ttlFor(path: string): number {
     path.includes('short-data') ||
     path.includes('short-interest-float') ||
     path.includes('volume-and-ratio') ||
-    path.includes('short-screener')
+    path.includes('short-screener') ||
+    // Phase 5: company fundamentals + insider activity + expiry breakdown.
+    // Financials are quarterly. Insider filings are daily SEC cadence.
+    // Expiry breakdown updates EOD by UW.
+    path.includes('financials') ||
+    path.includes('insider-buy-sells') ||
+    path.includes('expiry-breakdown')
   )
     return 5 * 60_000
 
