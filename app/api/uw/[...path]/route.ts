@@ -135,6 +135,7 @@ function ttlFor(path: string): number {
   // Reference data — long TTL
   // Earnings calendars don't tick intraday — the schedule is set the
   // night before and only changes when a company moves their report.
+  // Short interest data updates daily after market close (FINRA cycle).
   if (
     path.endsWith('/info') ||
     path.includes('holdings') ||
@@ -144,7 +145,11 @@ function ttlFor(path: string): number {
     path.includes('fda-calendar') ||
     path.includes('earnings/premarket') ||
     path.includes('earnings/afterhours') ||
-    path.includes('earnings/calendar')
+    path.includes('earnings/calendar') ||
+    path.includes('short-data') ||
+    path.includes('short-interest-float') ||
+    path.includes('volume-and-ratio') ||
+    path.includes('short-screener')
   )
     return 5 * 60_000
 

@@ -75,6 +75,7 @@ import { DarkPoolCombo } from './dark-pool-combo'
 import { OptionsCombo } from './options-combo'
 import { LevelsCombo } from './levels-combo'
 import { EarningsRadar } from './earnings-radar'
+import { ShortsProfile } from './shorts-profile'
 import {
   Cpu,
   Scale,
@@ -423,6 +424,7 @@ type RightWidgetType =
   // Tabbed widgets — Webull-style boxes with related data behind tabs.
   // Each phase of the UW endpoint rollout adds one tabbed widget here.
   | 'earnings-radar'
+  | 'shorts-profile'
 
 interface RightWidget {
   id: string
@@ -484,6 +486,7 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
       { id: 'dark-pool-blocks',   type: 'dark-pool-blocks',   title: 'Dark Pool / Blocks' },
       { id: 'dark-pool-flow',     type: 'dark-pool-flow',     title: 'Dark Pool Flow (Live)' },
       { id: 'signals-feed',       type: 'signals-feed',       title: 'Signals (Flow + Congress + Insider)' },
+      { id: 'shorts-profile',     type: 'shorts-profile',     title: 'Shorts (Snapshot / Volume / Screener)' },
     ],
   },
   {
@@ -984,6 +987,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     // Tabbed widgets — Webull-style boxes. Earnings Radar is market-wide
     // (not symbol-aware) so it doesn't take a ticker prop.
     if (widget.type === 'earnings-radar')  return <EarningsRadar />
+    if (widget.type === 'shorts-profile')  return <ShortsProfile ticker={selectedTicker} />
     return null
   }
 
