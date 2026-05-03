@@ -21,6 +21,7 @@ const GridLayout = GridLayoutImport as any
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import { Lock, Unlock, RotateCcw, Plus, X, GripVertical, Save, Check, Trash2, Star, ChevronUp, ChevronDown } from 'lucide-react'
+import { useUserLayouts } from '@/lib/hooks/use-user-layouts'
 import {
   DndContext,
   closestCenter,
@@ -509,42 +510,43 @@ const ALL_AVAILABLE_WIDGETS: RightWidget[] = WIDGET_SECTIONS.flatMap(s => s.widg
 // field on every item — and that's the thing we were missing.
 const ALL_HANDLES = ['s', 'n', 'e', 'w', 'se', 'sw', 'ne', 'nw'] as const
 
-// Default set shown on first load - matches DEFAULT_LAYOUT below
-const DEFAULT_RIGHT_WIDGETS: RightWidget[] = ALL_AVAILABLE_WIDGETS.filter(w =>
-  ['ticker-info','company-profile','technicals','catalysts-risk','analyst-ratings',
-   'chart','watchlist','trade-ideas','quick-trade','market-overview','news'].includes(w.id)
-)
-
-// Trading terminal layout - matches user's reference screenshots.
-// Grid: cols=24, ROW_HEIGHT=10px. Total height ~800px (standard laptop viewport).
-// Layout structure:
-//   TOP ROW (180px):    5 info widgets equal height across full width
-//   CHART ROW (300px):  big chart on left, watchlist on right (under analyst-ratings)
-//   ACTION ROW (180px): trade-ideas + quick-trade side by side, market-overview right
-//   NEWS ROW (140px):   news full width, market-overview spans down to align
+// FACTORY DEFAULT LAYOUT
+// Captured from the user's browser-customized "published" layout on 2026-05-02.
+// This is the exact arrangement every new user sees on first login, and the
+// "Default Layout" entry in the layout menu always restores this snapshot.
+// It is NOT one of the user's 5 saved layouts — it lives in code and is
+// always available regardless of how many custom layouts they have.
+//
+// To re-capture in the future: open published site -> DevTools -> Console:
+//   copy(localStorage.getItem('v0-widget-grid-layout-v7'))
+// Then strip the runtime fields (`moved`, `static`, `resizeHandles`) — those
+// are added by react-grid-layout at runtime and shouldn't be persisted in
+// the source default. visibleLayout in this file re-stamps resizeHandles
+// on every render.
 const DEFAULT_LAYOUT: any[] = [
-  // TOP ROW (h:18 = 180px) - all 5 widgets equal height
-  // No minH/minW/maxH/maxW on any item — widgets resize freely with no
-  // constraints. RGL's only enforcement is that w and h must be positive
-  // integers (so you can't shrink below 1 grid cell), which is fine.
-  { i: 'ticker-info',       x: 0,   y: 0,   w: 5,  h: 18 },
-  { i: 'company-profile',   x: 5,   y: 0,   w: 5,  h: 18 },
-  { i: 'technicals',        x: 10,  y: 0,   w: 5,  h: 18 },
-  { i: 'catalysts-risk',    x: 15,  y: 0,   w: 5,  h: 18 },
-  { i: 'analyst-ratings',   x: 20,  y: 0,   w: 4,  h: 18 },
-
-  // CHART ROW (h:30 = 300px) - chart with watchlist on right
-  { i: 'chart',             x: 0,   y: 18,  w: 20, h: 30 },
-  { i: 'watchlist',         x: 20,  y: 18,  w: 4,  h: 30 },
-
-  // ACTION ROW (h:18 = 180px) - trade-ideas + quick-trade, market-overview on right
-  { i: 'trade-ideas',       x: 0,   y: 48,  w: 10, h: 18 },
-  { i: 'quick-trade',       x: 10,  y: 48,  w: 10, h: 18 },
-  { i: 'market-overview',   x: 20,  y: 48,  w: 4,  h: 32 },
-
-  // NEWS ROW (h:14 = 140px) - news full width, aligns with bottom of market-overview
-  { i: 'news',              x: 0,   y: 66,  w: 20, h: 14 },
+  { i: 'ticker-info',     x: 0,  y: 0,   w: 3,  h: 8  },
+  { i: 'iv-surface',      x: 0,  y: 8,   w: 3,  h: 11 },
+  { i: 'company-profile', x: 3,  y: 0,   w: 5,  h: 19 },
+  { i: 'levels-combo',    x: 8,  y: 0,   w: 4,  h: 19 },
+  { i: 'technicals',      x: 12, y: 0,   w: 4,  h: 19 },
+  { i: 'fundamentals',    x: 16, y: 0,   w: 4,  h: 19 },
+  { i: 'analyst-ratings', x: 20, y: 0,   w: 4,  h: 13 },
+  { i: 'signals-feed',    x: 20, y: 13,  w: 4,  h: 15 },
+  { i: 'chart',           x: 0,  y: 19,  w: 13, h: 67 },
+  { i: 'metrics',         x: 13, y: 19,  w: 3,  h: 31 },
+  { i: 'catalysts-risk',  x: 16, y: 19,  w: 4,  h: 31 },
+  { i: 'news',            x: 20, y: 28,  w: 4,  h: 45 },
+  { i: 'watchlist',       x: 13, y: 50,  w: 4,  h: 79 },
+  { i: 'options-combo',   x: 0,  y: 86,  w: 13, h: 54 },
+  { i: 'trade-ideas',     x: 17, y: 98,  w: 7,  h: 18 },
 ]
+
+// Default widget set shown on first load — matches DEFAULT_LAYOUT above.
+// Order matters because rightWidgets controls the sidebar order.
+const DEFAULT_WIDGET_IDS = DEFAULT_LAYOUT.map(l => l.i)
+const DEFAULT_RIGHT_WIDGETS: RightWidget[] = DEFAULT_WIDGET_IDS
+  .map(id => ALL_AVAILABLE_WIDGETS.find(w => w.id === id))
+  .filter((w): w is RightWidget => Boolean(w))
 
 interface SavedState {
   layout: any[]
@@ -576,9 +578,43 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const [layoutSaved, setLayoutSaved] = useState(false)
   
-  // Named layouts feature
-  const [savedLayouts, setSavedLayouts] = useState<Array<{ name: string; layout: any[]; widgets: RightWidget[] }>>([])
+  // SAVED LAYOUTS — Supabase-backed via useUserLayouts.
+  // Each user can store up to 5 named layouts in public.user_layouts. The
+  // 5-cap is enforced server-side by a Postgres trigger. This hook also
+  // auto-migrates any pre-Supabase localStorage layouts on first login.
+  // The factory DEFAULT_LAYOUT (above) is always available regardless of
+  // how many user layouts exist — it lives in code and shows up under
+  // "System Layouts" in the menu.
+  const {
+    user,
+    layouts: userLayouts,
+    saveLayout: saveLayoutToSupabase,
+    deleteLayout: deleteLayoutFromSupabase,
+    setAsDefault: setAsDefaultInSupabase,
+  } = useUserLayouts()
+
+  // Adapter: map Supabase rows back to the {name, layout, widgets} shape
+  // the existing layout menu UI was already built around. Zero UI changes
+  // needed downstream — just point the existing references at this.
+  const savedLayouts = useMemo(
+    () => userLayouts.map(l => ({
+      id: l.id,
+      name: l.name,
+      layout: l.layout,
+      widgets: l.widgets as RightWidget[],
+    })),
+    [userLayouts]
+  )
+
+  // The user's chosen default name is now derived from Supabase rather than
+  // tracked locally. The DB trigger guarantees only one row has is_default=true.
+  const defaultLayoutNameFromDb = useMemo(
+    () => userLayouts.find(l => l.isDefault)?.name ?? null,
+    [userLayouts]
+  )
+
   const [newLayoutName, setNewLayoutName] = useState('')
+  const [layoutSaveError, setLayoutSaveError] = useState<string | null>(null)
   const [wrapperWidth, setWrapperWidth] = useState(1200)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -648,15 +684,19 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // Users can unlock "Edit Layout" mode to resize widgets if they want.
   const rowHeight = 10
 
-  // Simple localStorage persistence so manual resizes survive HMR / refresh.
-  // Bump VERSION when DEFAULT_LAYOUT changes to force fresh layout for all users.
-  const LAYOUT_VERSION = 7
+  // localStorage key for the LIVE working draft only. Saved/named layouts
+  // and the user's chosen default both live in Supabase now (see
+  // useUserLayouts hook above). The draft key keeps in-progress edits
+  // alive across HMR / refresh without hitting the database on every drag.
+  //
+  // Bump VERSION when DEFAULT_LAYOUT changes to force every browser to
+  // discard its stale draft and pick up the new default. v8 = ships the
+  // captured published layout (15 widgets, freeform). The cleanup loop
+  // below auto-deletes all earlier vN keys so users don't accumulate
+  // stale data, and (more importantly) so the old draft can't override
+  // the new default on first mount.
+  const LAYOUT_VERSION = 8
   const STORAGE_KEY = `v0-widget-grid-layout-v${LAYOUT_VERSION}`
-  const SAVED_LAYOUTS_KEY = `v0-widget-grid-saved-layouts-v${LAYOUT_VERSION}`
-  // Name of the saved layout the user marked as their personal default.
-  // Loaded BEFORE DEFAULT_LAYOUT on mount so a refresh restores their pick.
-  const DEFAULT_LAYOUT_NAME_KEY = `v0-widget-grid-default-name-v${LAYOUT_VERSION}`
-  const [defaultLayoutName, setDefaultLayoutName] = useState<string | null>(null)
   // Track whether we've finished the first-mount restore. We don't want to
   // overwrite localStorage with the empty initial state before we've loaded.
   const [hasHydrated, setHasHydrated] = useState(false)
@@ -676,16 +716,12 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // Restore on mount + clean up old layout versions
   useEffect(() => {
     try {
-      // Delete every cached layout from older versions so the user's
-      // browser doesn't accumulate stale data forever.
+      // Delete every cached layout key from older versions so the user's
+      // browser doesn't accumulate stale data forever. Saved-layouts and
+      // default-name keys are NOT cleaned here — useUserLayouts handles
+      // those during its one-time migration into Supabase.
       Object.keys(localStorage)
         .filter(k => k.startsWith('v0-widget-grid-layout-v') && k !== STORAGE_KEY)
-        .forEach(k => localStorage.removeItem(k))
-      Object.keys(localStorage)
-        .filter(k => k.startsWith('v0-widget-grid-saved-layouts-v') && k !== SAVED_LAYOUTS_KEY)
-        .forEach(k => localStorage.removeItem(k))
-      Object.keys(localStorage)
-        .filter(k => k.startsWith('v0-widget-grid-default-name-v') && k !== DEFAULT_LAYOUT_NAME_KEY)
         .forEach(k => localStorage.removeItem(k))
       Object.keys(localStorage)
         .filter(k => k.startsWith('v0-widget-grid-collapsed-v') && k !== COLLAPSED_KEY)
@@ -702,57 +738,50 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
         }
       } catch { /* ignore */ }
 
-      // 1) Restore saved layouts library
-      const savedLib = localStorage.getItem(SAVED_LAYOUTS_KEY)
-      let restoredLib: Array<{ name: string; layout: any[]; widgets: RightWidget[] }> = []
-      if (savedLib) {
-        try {
-          const parsedLib = JSON.parse(savedLib)
-          if (Array.isArray(parsedLib)) {
-            restoredLib = parsedLib
-            setSavedLayouts(parsedLib)
-          }
-        } catch { /* ignore corrupt entry */ }
-      }
-
-      // 2) Restore the user's chosen default name
-      const chosenDefault = localStorage.getItem(DEFAULT_LAYOUT_NAME_KEY)
-      if (chosenDefault) setDefaultLayoutName(chosenDefault)
-
-      // 3) Restore the live layout — prefer the user's chosen default if it
-      //    still exists in the saved library; otherwise fall back to the
-      //    last-active layout from STORAGE_KEY.
-      const matchingDefault = chosenDefault
-        ? restoredLib.find(l => l.name === chosenDefault)
-        : null
-
+      // Restore the live working draft from STORAGE_KEY. This is still
+      // localStorage-backed (not Supabase): it's the in-progress layout
+      // the user is currently editing — we don't want every drag/resize
+      // hitting the database. Saved/named layouts and the user's default
+      // pick now come from Supabase via useUserLayouts (see effect below
+      // that overrides this draft once Supabase data is ready).
+      //
       // Strip any legacy minH/minW/maxH/maxW from persisted layouts so
-      // older saved layouts don't keep enforcing constraints we no longer
-      // want. Layouts are stored verbatim; we just delete those fields on
-      // load. (No min/max anywhere — user requirement.)
+      // older drafts don't re-introduce constraints we no longer want.
       const stripConstraints = (item: any) => {
         const { minH, minW, maxH, maxW, ...rest } = item
         return rest
       }
-
-      if (matchingDefault) {
-        setLayout(matchingDefault.layout.map(stripConstraints))
-        setRightWidgets(matchingDefault.widgets)
-      } else {
-        const saved = localStorage.getItem(STORAGE_KEY)
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (parsed?.layout && Array.isArray(parsed.layout)) {
-            setLayout(parsed.layout.map(stripConstraints))
-          }
-          if (parsed?.rightWidgets && Array.isArray(parsed.rightWidgets)) {
-            setRightWidgets(parsed.rightWidgets)
-          }
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed?.layout && Array.isArray(parsed.layout)) {
+          setLayout(parsed.layout.map(stripConstraints))
+        }
+        if (parsed?.rightWidgets && Array.isArray(parsed.rightWidgets)) {
+          setRightWidgets(parsed.rightWidgets)
         }
       }
     } catch { /* ignore corrupt storage */ }
     setHasHydrated(true)
   }, [])
+
+  // Once Supabase layouts are loaded for an authenticated user, apply the
+  // user's chosen default (is_default=true). This overrides whatever was
+  // restored from the localStorage draft so cross-device default actually
+  // wins. We only run this ONCE per login (tracked by hasAppliedDbDefault)
+  // so that subsequent local edits aren't blown away every render.
+  const [hasAppliedDbDefault, setHasAppliedDbDefault] = useState(false)
+  useEffect(() => {
+    if (hasAppliedDbDefault) return
+    if (!user) return
+    if (userLayouts.length === 0) return
+    const defaultRow = userLayouts.find(l => l.isDefault)
+    if (defaultRow) {
+      setLayout(defaultRow.layout)
+      setRightWidgets(defaultRow.widgets as RightWidget[])
+    }
+    setHasAppliedDbDefault(true)
+  }, [user, userLayouts, hasAppliedDbDefault])
 
   // Save the LIVE layout on every change (only after hydration)
   useEffect(() => {
@@ -762,25 +791,8 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     } catch { /* quota / private mode */ }
   }, [layout, rightWidgets, hasHydrated])
 
-  // Persist the saved-layouts library on every change (only after hydration)
-  useEffect(() => {
-    if (!hasHydrated) return
-    try {
-      localStorage.setItem(SAVED_LAYOUTS_KEY, JSON.stringify(savedLayouts))
-    } catch { /* quota / private mode */ }
-  }, [savedLayouts, hasHydrated])
-
-  // Persist the chosen default name (only after hydration)
-  useEffect(() => {
-    if (!hasHydrated) return
-    try {
-      if (defaultLayoutName) {
-        localStorage.setItem(DEFAULT_LAYOUT_NAME_KEY, defaultLayoutName)
-      } else {
-        localStorage.removeItem(DEFAULT_LAYOUT_NAME_KEY)
-      }
-    } catch { /* quota / private mode */ }
-  }, [defaultLayoutName, hasHydrated])
+  // (Saved layouts and the chosen default are now persisted in Supabase by
+  // useUserLayouts — no local persistence effect needed for those.)
 
   // Persist the per-widget collapsed map so collapses survive refresh
   useEffect(() => {
@@ -794,57 +806,76 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     } catch { /* quota / private mode */ }
   }, [collapsedHeights, hasHydrated])
 
-  // Mark a saved layout as the user's default (loads on every refresh).
-  // Pass null to clear.
-  const setAsDefault = (name: string | null) => {
-    setDefaultLayoutName(name)
+  // Mark a saved layout as the user's default (loads on every login).
+  // Looks up the row by name in the Supabase-backed list. Passing null
+  // would have meant "clear the default" — we no longer expose that
+  // because removing the star is now done by clicking another star
+  // (DB trigger ensures only one is_default=true per user).
+  const setAsDefault = async (name: string | null) => {
+    if (!name) return
+    const row = userLayouts.find(l => l.name === name)
+    if (!row) return
+    const { error } = await setAsDefaultInSupabase(row.id)
+    if (error) console.error('[v0] setAsDefault failed:', error)
   }
 
-  // Save layout with a custom name (in-memory only until Supabase templates are built)
-  const saveLayoutWithName = () => {
-    if (!newLayoutName.trim()) return
-    const newSavedLayout = {
-      name: newLayoutName.trim(),
-      layout: [...layout],
-      widgets: [...rightWidgets],
+  // Save the live layout to Supabase under newLayoutName.
+  // - If a layout with that name exists, overwrite it (the hook handles this)
+  // - If it's a brand-new name and the user already has 5 layouts, the
+  //   Postgres BEFORE INSERT trigger raises an error and the hook returns
+  //   it as a friendly message — we display it under the name input.
+  const saveLayoutWithName = async () => {
+    const trimmed = newLayoutName.trim()
+    if (!trimmed) return
+    setLayoutSaveError(null)
+    if (!user) {
+      setLayoutSaveError('Sign in to save layouts')
+      return
     }
-    setSavedLayouts(prev => [...prev.filter(l => l.name !== newLayoutName.trim()), newSavedLayout])
+    const { error } = await saveLayoutToSupabase(trimmed, layout, rightWidgets)
+    if (error) {
+      setLayoutSaveError(error)
+      return
+    }
     setNewLayoutName('')
     setLayoutSaved(true)
     setTimeout(() => setLayoutSaved(false), 2000)
   }
 
-  // Save layout shortcut
+  // Save layout shortcut (toolbar button) — no name, just flashes confirmation.
+  // Live edits are already persisted to localStorage on every change, so this
+  // is purely a visual ack. To save under a name, use the layout menu.
   const saveLayout = () => {
     setLayoutSaved(true)
     setTimeout(() => setLayoutSaved(false), 2000)
   }
 
-  // Load a saved layout by name. Strip legacy min/max constraints from
-  // older saved layouts so they don't re-introduce limits we don't want.
+  // Load a saved layout by name. Layouts come straight from Supabase already
+  // stripped of runtime fields; visibleLayout re-stamps resizeHandles.
   const loadSavedLayout = (saved: { name: string; layout: any[]; widgets: RightWidget[] }) => {
-    const normalized = saved.layout.map((item: any) => {
-      const { minH, minW, maxH, maxW, ...rest } = item
-      return rest
-    })
-    setLayout(normalized)
+    setLayout(saved.layout)
     setRightWidgets(saved.widgets)
     setShowLayoutMenu(false)
   }
 
-  // Delete a saved layout (and clear it as default if it was)
-  const deleteSavedLayout = (name: string) => {
-    setSavedLayouts(prev => prev.filter(l => l.name !== name))
-    if (defaultLayoutName === name) setDefaultLayoutName(null)
+  // Delete a saved layout from Supabase. The DB cascades nothing destructive
+  // (it's a leaf table); if the deleted row was the default, the user simply
+  // has no default until they pick a new one (or DEFAULT_LAYOUT loads).
+  const deleteSavedLayout = async (name: string) => {
+    const row = userLayouts.find(l => l.name === name)
+    if (!row) return
+    const { error } = await deleteLayoutFromSupabase(row.id)
+    if (error) console.error('[v0] deleteSavedLayout failed:', error)
   }
 
-  // Reset to system default layout, clear persisted storage AND drop any
-  // saved-as-default pin (so System Default actually wins on next refresh).
+  // Reset to factory DEFAULT_LAYOUT (the snapshot baked into this file).
+  // Drops the local working draft; does NOT touch Supabase saved layouts.
+  // To clear the user's chosen default in Supabase, they pick a different
+  // saved layout's star, or delete the row.
   const resetLayout = () => {
     try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
     setLayout(DEFAULT_LAYOUT)
     setRightWidgets(DEFAULT_RIGHT_WIDGETS)
-    setDefaultLayoutName(null)
     setShowLayoutMenu(false)
   }
 
@@ -1094,23 +1125,35 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                       })}
                     </div>
 
-                    {/* Save Current Layout */}
+                    {/* Save Current Layout — backed by Supabase, capped at 5 per user */}
                     <div className="px-3 py-2 border-b border-border">
                       <div className="flex gap-1 mb-1">
                         <input
                           type="text"
-                          placeholder="Layout name..."
+                          placeholder={user ? 'Layout name...' : 'Sign in to save'}
                           value={newLayoutName}
-                          onChange={(e) => setNewLayoutName(e.target.value)}
+                          disabled={!user}
+                          onChange={(e) => { setNewLayoutName(e.target.value); setLayoutSaveError(null) }}
                           onKeyDown={(e) => e.key === 'Enter' && saveLayoutWithName()}
-                          className="flex-1 h-5 text-[9px] font-mono bg-muted/30 border border-border/50 rounded px-1.5"
+                          className="flex-1 h-5 text-[9px] font-mono bg-muted/30 border border-border/50 rounded px-1.5 disabled:opacity-50"
                         />
                         <button
                           onClick={saveLayoutWithName}
-                          className="px-2 py-1 text-[9px] font-mono bg-primary/20 hover:bg-primary/30 border border-primary/30 rounded"
+                          disabled={!user}
+                          className="px-2 py-1 text-[9px] font-mono bg-primary/20 hover:bg-primary/30 border border-primary/30 rounded disabled:opacity-50"
                         >
                           Save
                         </button>
+                      </div>
+                      <div className="flex items-center justify-between text-[8px] font-mono">
+                        <span className="text-muted-foreground/60">
+                          {user ? `${savedLayouts.length} / 5 layouts` : 'Sign in to save layouts'}
+                        </span>
+                        {layoutSaveError && (
+                          <span className="text-red-400 truncate ml-2" title={layoutSaveError}>
+                            {layoutSaveError}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1121,13 +1164,13 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                           Saved Layouts
                         </div>
                         {savedLayouts.map(saved => {
-                          const isDefault = saved.name === defaultLayoutName
+                          const isDefault = saved.name === defaultLayoutNameFromDb
                           return (
                             <div key={saved.name} className="flex items-center gap-1 px-3 py-1.5 border-b border-border hover:bg-muted/20">
                               <button
-                                onClick={() => setAsDefault(isDefault ? null : saved.name)}
+                                onClick={() => setAsDefault(saved.name)}
                                 className={isDefault ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400'}
-                                title={isDefault ? 'Default layout — loads on every refresh. Click to unset.' : 'Set as default — load this layout on every refresh.'}
+                                title={isDefault ? 'Default layout — loads on every login.' : 'Set as default — load this layout on every login.'}
                               >
                                 <Star className={`w-2.5 h-2.5 ${isDefault ? 'fill-amber-400' : ''}`} />
                               </button>
