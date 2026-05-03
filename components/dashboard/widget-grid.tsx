@@ -688,8 +688,14 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   // and the user's chosen default both live in Supabase now (see
   // useUserLayouts hook above). The draft key keeps in-progress edits
   // alive across HMR / refresh without hitting the database on every drag.
-  // Bump VERSION when DEFAULT_LAYOUT changes to force fresh layout for all users.
-  const LAYOUT_VERSION = 7
+  //
+  // Bump VERSION when DEFAULT_LAYOUT changes to force every browser to
+  // discard its stale draft and pick up the new default. v8 = ships the
+  // captured published layout (15 widgets, freeform). The cleanup loop
+  // below auto-deletes all earlier vN keys so users don't accumulate
+  // stale data, and (more importantly) so the old draft can't override
+  // the new default on first mount.
+  const LAYOUT_VERSION = 8
   const STORAGE_KEY = `v0-widget-grid-layout-v${LAYOUT_VERSION}`
   // Track whether we've finished the first-mount restore. We don't want to
   // overwrite localStorage with the empty initial state before we've loaded.
