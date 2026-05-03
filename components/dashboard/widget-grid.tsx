@@ -74,6 +74,7 @@ import { OiChanges } from './oi-changes'
 import { DarkPoolCombo } from './dark-pool-combo'
 import { OptionsCombo } from './options-combo'
 import { LevelsCombo } from './levels-combo'
+import { EarningsRadar } from './earnings-radar'
 import {
   Cpu,
   Scale,
@@ -419,6 +420,9 @@ type RightWidgetType =
   | 'iv-surface' | 'signals-feed' | 'oi-changes'
   // Combo widgets — combine related panels into one grid cell
   | 'dark-pool-combo' | 'options-combo' | 'levels-combo'
+  // Tabbed widgets — Webull-style boxes with related data behind tabs.
+  // Each phase of the UW endpoint rollout adds one tabbed widget here.
+  | 'earnings-radar'
 
 interface RightWidget {
   id: string
@@ -453,6 +457,7 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
       { id: 'analyst-ratings',    type: 'analyst-ratings',    title: 'Analyst Ratings' },
       { id: 'catalysts',          type: 'catalysts',          title: 'Catalysts' },
       { id: 'catalysts-risk',     type: 'catalysts-risk',     title: 'Catalysts & Risk' },
+      { id: 'earnings-radar',     type: 'earnings-radar',     title: 'Earnings Radar' },
       { id: 'news',               type: 'news',               title: 'Market News' },
     ],
   },
@@ -976,6 +981,9 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'dark-pool-combo') return <DarkPoolCombo ticker={selectedTicker} />
     if (widget.type === 'options-combo')   return <OptionsCombo ticker={selectedTicker} />
     if (widget.type === 'levels-combo')    return <LevelsCombo ticker={selectedTicker} />
+    // Tabbed widgets — Webull-style boxes. Earnings Radar is market-wide
+    // (not symbol-aware) so it doesn't take a ticker prop.
+    if (widget.type === 'earnings-radar')  return <EarningsRadar />
     return null
   }
 

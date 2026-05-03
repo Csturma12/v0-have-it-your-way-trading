@@ -133,13 +133,18 @@ function ttlFor(path: string): number {
     return 10_000
 
   // Reference data — long TTL
+  // Earnings calendars don't tick intraday — the schedule is set the
+  // night before and only changes when a company moves their report.
   if (
     path.endsWith('/info') ||
     path.includes('holdings') ||
     path.includes('weights') ||
     path.includes('exposure') ||
     path.includes('economic-calendar') ||
-    path.includes('fda-calendar')
+    path.includes('fda-calendar') ||
+    path.includes('earnings/premarket') ||
+    path.includes('earnings/afterhours') ||
+    path.includes('earnings/calendar')
   )
     return 5 * 60_000
 
