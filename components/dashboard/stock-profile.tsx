@@ -146,15 +146,52 @@ function FinancialsTab({ ticker }: { ticker: string }) {
 // UW's insider-buy-sells endpoint returns aggregated monthly counts +
 // dollar values. Net = buy_value - sell_value. Honest about the noise:
 // most insider sales are scheduled grants (10b5-1) and aren't signal.
+// Falls back to Finnhub if UW fails.
+
+async function fetchInsiderWithFallback(url: string) {
+  // Try UW first
+  try {
+    const r = await fetch(url)
+    if (r.ok) {
+      const json = await r.json()
+      if (json?.data?.length > 0 || (Array.isArray(json) && json.length > 0)) {
+        return { data: json.data ?? json, source: 'uw' }
+      }
+    }
+  } catch (e) {
+    console.warn('[InsiderTab] UW fetch failed, trying Finnhub')
+  }
+
+  // Extract ticker from URL for Finnhub fallback
+  const tickerMatch = url.match(/\/stock\/([^/]+)\//)
+  const ticker = tickerMatch?.[1]
+  if (!ticker) return { data: [], source: 'none' }
+
+  // Fallback to Finnhub
+  try {
+    const r = await fetch(`/api/finnhub/insider?symbol=${ticker}`)
+    if (r.ok) {
+      const json = await r.json()
+      return { data: json.data ?? [], source: 'finnhub' }
+    }
+  } catch (e) {
+    console.warn('[InsiderTab] Finnhub fallback also failed')
+  }
+
+  return { data: [], source: 'none' }
+}
+
 function InsiderTab({ ticker }: { ticker: string }) {
   const { data, error, isLoading } = useSWR(
     ticker ? `/api/uw/stock/${ticker}/insider-buy-sells` : null,
-    fetcher,
+    fetchInsiderWithFallback,
     { revalidateOnFocus: false }
   )
 
+  const source = data?.source
+
   const rows = useMemo(() => {
-    const raw = data?.data ?? data ?? []
+    const raw = data?.data ?? []
     if (!Array.isArray(raw)) return []
     return raw.slice(0, 12).map((r: any) => {
       const buyValue = Number(r.purchases_value ?? r.buy_value ?? 0)
@@ -189,6 +226,12 @@ function InsiderTab({ ticker }: { ticker: string }) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {/* Source indicator when using fallback */}
+      {source && source !== 'uw' && (
+        <div className="px-2 py-1 text-[8px] font-mono text-amber-400 bg-amber-400/10 border-b border-border/40 flex-shrink-0">
+          Data from {source.toUpperCase()} (UW unavailable)
+        </div>
+      )}
       {/* Summary card */}
       {summary && (
         <div className="grid grid-cols-3 gap-1 p-1.5 border-b border-border/30 text-[9px] font-mono flex-shrink-0">

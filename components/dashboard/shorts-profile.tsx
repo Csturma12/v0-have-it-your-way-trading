@@ -91,19 +91,62 @@ function fmtMcap(v: unknown): string {
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// Fallback-aware fetcher: tries UW, then Finnhub for short data
+// ──────────────────────────────────────────────────────────────────────
+async function fetchShortDataWithFallback(url: string): Promise<{ data: ShortDataRow[], source: string }> {
+  // Try UW first
+  try {
+    const r = await fetch(url)
+    if (r.ok) {
+      const json = await r.json()
+      if (json?.data?.length > 0) {
+        return { data: json.data, source: 'uw' }
+      }
+    }
+  } catch (e) {
+    console.warn('[ShortsProfile] UW fetch failed, trying Finnhub')
+  }
+
+  // Extract ticker from URL for Finnhub fallback
+  const tickerMatch = url.match(/\/stock\/([^/]+)\//)
+  const ticker = tickerMatch?.[1]
+  if (!ticker) return { data: [], source: 'none' }
+
+  // Fallback to Finnhub (note: short-interest may require premium tier)
+  try {
+    const r = await fetch(`/api/finnhub/short-interest?symbol=${ticker}`)
+    if (r.ok) {
+      const json = await r.json()
+      if (json.data?.length > 0) {
+        return { data: json.data, source: 'finnhub' }
+      }
+    }
+    // Finnhub short-interest is premium (403) — no fallback available
+    console.warn('[ShortsProfile] Finnhub short-interest unavailable (may require premium)')
+  } catch (e) {
+    console.warn('[ShortsProfile] Finnhub fallback also failed')
+  }
+
+  // No fallback available for shorts — return empty with indicator
+  return { data: [], source: 'unavailable' }
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // Tab 1: Snapshot
 // ──────────────────────────────────────────────────────────────────────
 function SnapshotTab({ ticker }: { ticker: string }) {
-  const { data: shortData, error: e1, isLoading: l1 } = useSWR<{ data?: ShortDataRow[] }>(
+  const { data: shortData, error: e1, isLoading: l1 } = useSWR<{ data: ShortDataRow[], source: string }>(
     ticker ? `/api/uw/stock/${ticker}/short-data` : null,
-    fetcher,
+    fetchShortDataWithFallback,
     { refreshInterval: 5 * 60_000, revalidateOnFocus: false }
   )
-  const { data: floatData, error: e2, isLoading: l2 } = useSWR<{ data?: ShortDataRow[] }>(
+  const { data: floatData, error: e2, isLoading: l2 } = useSWR<{ data: ShortDataRow[], source: string }>(
     ticker ? `/api/uw/stock/${ticker}/short-interest-float` : null,
-    fetcher,
+    fetchShortDataWithFallback,
     { refreshInterval: 5 * 60_000, revalidateOnFocus: false }
   )
+
+  const source = shortData?.source || floatData?.source
 
   const merged = useMemo<ShortDataRow | null>(() => {
     const a = shortData?.data?.[0]
@@ -111,6 +154,9 @@ function SnapshotTab({ ticker }: { ticker: string }) {
     if (!a && !b) return null
     return { ...(b ?? {}), ...(a ?? {}) }
   }, [shortData, floatData])
+
+  // Show fallback indicator
+  const isFallback = source && source !== 'uw'
 
   if (e1 || e2) {
     return (
@@ -155,6 +201,17 @@ function SnapshotTab({ ticker }: { ticker: string }) {
 
   return (
     <div className="h-full overflow-y-auto p-2 space-y-2">
+      {/* Fallback indicator */}
+      {source === 'unavailable' && (
+        <div className="px-2 py-1 text-[8px] font-mono text-red-400 bg-red-400/10 rounded">
+          Short data temporarily unavailable (UW rate limited, no fallback for this data type)
+        </div>
+      )}
+      {isFallback && source !== 'unavailable' && (
+        <div className="px-2 py-1 text-[8px] font-mono text-amber-400 bg-amber-400/10 rounded">
+          Data from {source?.toUpperCase()} (UW unavailable) — some fields may be missing
+        </div>
+      )}
       {/* Squeeze indicator at the top */}
       <div className="bg-muted/30 rounded p-2">
         <div className="flex items-center justify-between text-[8px] uppercase tracking-wider text-muted-foreground">

@@ -40,6 +40,53 @@ interface EarningsRow {
   actual_eps?: string | number
 }
 
+/**
+ * Fetcher with Finnhub fallback for earnings data.
+ * Tries UW first; if UW fails (rate limit, down), falls back to Finnhub.
+ */
+const fetchEarningsWithFallback = async (uwUrl: string): Promise<{ data: EarningsRow[], source: string }> => {
+  // Try UW first
+  try {
+    const r = await fetch(uwUrl)
+    if (r.ok) {
+      const json = await r.json()
+      if (json?.data?.length > 0) {
+        return { data: json.data, source: 'uw' }
+      }
+    }
+  } catch (e) {
+    console.warn('[EarningsRadar] UW fetch failed, trying Finnhub fallback')
+  }
+
+  // Fallback to Finnhub earnings calendar
+  try {
+    const now = new Date()
+    const fromDate = now.toISOString().split('T')[0]
+    const toDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const r = await fetch(`/api/finnhub/earnings?from=${fromDate}&to=${toDate}`)
+    if (r.ok) {
+      const json = await r.json()
+      // Transform Finnhub shape to our EarningsRow shape
+      const rows: EarningsRow[] = (json?.earningsCalendar || []).map((e: any) => ({
+        ticker: e.symbol,
+        symbol: e.symbol,
+        report_date: e.date,
+        date: e.date,
+        street_mean_est: e.epsEstimate,
+        actual_eps: e.epsActual,
+        // Finnhub doesn't provide these fields
+        market_cap: null,
+        expected_move: null,
+      }))
+      return { data: rows, source: 'finnhub' }
+    }
+  } catch (e) {
+    console.warn('[EarningsRadar] Finnhub fallback also failed')
+  }
+
+  return { data: [], source: 'none' }
+}
+
 const fetcher = async (url: string) => {
   const r = await fetch(url)
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
@@ -85,9 +132,10 @@ interface EarningsListProps {
 }
 
 function EarningsList({ endpoint, emptyLabel }: EarningsListProps) {
-  const { data, error, isLoading } = useSWR<{ data?: EarningsRow[] }>(
+  // Use fallback-aware fetcher: tries UW first, falls back to Finnhub
+  const { data, error, isLoading } = useSWR<{ data: EarningsRow[], source: string }>(
     endpoint,
-    fetcher,
+    fetchEarningsWithFallback,
     {
       // Earnings calendars don't change intraday; refresh every 10 min.
       refreshInterval: 10 * 60_000,
@@ -105,6 +153,8 @@ function EarningsList({ endpoint, emptyLabel }: EarningsListProps) {
       return (bm || 0) - (am || 0)
     })
   }, [data])
+
+  const source = data?.source
 
   if (error) {
     return (
@@ -132,6 +182,12 @@ function EarningsList({ endpoint, emptyLabel }: EarningsListProps) {
 
   return (
     <div className="h-full overflow-y-auto">
+      {/* Source indicator */}
+      {source && source !== 'uw' && (
+        <div className="px-2 py-1 text-[8px] font-mono text-amber-400 bg-amber-400/10 border-b border-border/40">
+          Data from {source.toUpperCase()} (UW unavailable)
+        </div>
+      )}
       <table className="w-full text-[10px] font-mono">
         <thead className="sticky top-0 bg-background border-b border-border/40">
           <tr className="text-[8px] uppercase tracking-wider text-muted-foreground">

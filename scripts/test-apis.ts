@@ -138,7 +138,7 @@ async function main() {
     results.push({ provider: 'UW', endpoint: 'flow-alerts', status: 'skip', error: 'No API key' })
   }
 
-  // Test Finnhub
+  // Test Finnhub (core endpoints)
   if (FINNHUB_KEY) {
     results.push(
       await testEndpoint(
@@ -161,6 +161,31 @@ async function main() {
         'Finnhub',
         'company-news',
         `https://finnhub.io/api/v1/company-news?symbol=AAPL&from=2024-01-01&to=2024-12-31&token=${FINNHUB_KEY}`
+      )
+    )
+
+    // Finnhub fallback endpoints (used when UW is down)
+    results.push(
+      await testEndpoint(
+        'Finnhub-Fallback',
+        'earnings-calendar',
+        `https://finnhub.io/api/v1/calendar/earnings?from=2024-01-01&to=2024-01-31&token=${FINNHUB_KEY}`
+      )
+    )
+
+    results.push(
+      await testEndpoint(
+        'Finnhub-Fallback',
+        'insider-transactions',
+        `https://finnhub.io/api/v1/stock/insider-transactions?symbol=AAPL&token=${FINNHUB_KEY}`
+      )
+    )
+
+    results.push(
+      await testEndpoint(
+        'Finnhub-Fallback',
+        'short-interest',
+        `https://finnhub.io/api/v1/stock/short-interest?symbol=AAPL&token=${FINNHUB_KEY}`
       )
     )
   } else {
