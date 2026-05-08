@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const API_KEY = process.env.ALPHA_VANTAGE_API_KEY
+const UW_API_KEY = process.env.UNUSUAL_WHALES_API_KEY
 const BASE_URL = 'https://www.alphavantage.co/query'
+const UW_BASE = 'https://api.unusualwhales.com/api'
 
 // Mock sector performance data
 const MOCK_SECTORS = {
@@ -83,11 +85,56 @@ const MOCK_GAINERS_LOSERS = {
   ],
 }
 
+// Try UW sector-tide first — gives real-time sector flow data
+async function fetchUWSectorTide() {
+  if (!UW_API_KEY) return null
+  try {
+    const res = await fetch(`${UW_BASE}/sector-tide`, {
+      headers: { Authorization: `Bearer ${UW_API_KEY}`, Accept: 'application/json' },
+      next: { revalidate: 60 },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    // UW returns array of { sector, call_premium, put_premium, net_premium, ... }
+    const sectors = data?.data || []
+    if (!sectors.length) return null
+
+    // Convert UW format to our format — use net_premium as performance proxy
+    const sorted = [...sectors].sort((a: any, b: any) =>
+      parseFloat(b.net_premium || 0) - parseFloat(a.net_premium || 0)
+    )
+    const realTime = sorted.map((s: any) => ({
+      sector: s.sector || s.name || 'Unknown',
+      performance: parseFloat(s.net_premium_change_pct || s.net_premium || 0),
+    }))
+    return {
+      realTimePerformance: realTime,
+      daily: realTime, // UW only gives current snapshot
+      weekly: realTime,
+      monthly: realTime,
+      source: 'uw',
+    }
+  } catch {
+    return null
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const type = searchParams.get('type') || 'sectors' // sectors, gainers, losers, active
 
   let source = 'mock'
+
+  // Try UW first for sector data (real-time flow-based)
+  if (type === 'sectors' && UW_API_KEY) {
+    const uwData = await fetchUWSectorTide()
+    if (uwData) {
+      return NextResponse.json({
+        ...uwData,
+        timestamp: Date.now(),
+      })
+    }
+  }
 
   if (!API_KEY) {
     console.warn('[Alpha Vantage] ALPHA_VANTAGE_API_KEY env var is not set — returning sample data.')

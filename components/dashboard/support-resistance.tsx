@@ -33,33 +33,38 @@ export function SupportResistance({ ticker }: { ticker: string }) {
     setLoading(true)
     setError(null)
     try {
-      // Fetch technicals, quote data, AND Flash Alpha GEX levels in parallel
-      const [techRes, quoteRes, flashAlphaRes] = await Promise.all([
+      // Fetch technicals, quote data, AND UW spot-exposures in parallel
+      // UW spot-exposures gives us GEX/DEX levels directly — no need for Flash Alpha
+      const [techRes, quoteRes, uwSpotRes] = await Promise.all([
         fetch(`/api/technicals?ticker=${ticker}`),
         fetch(`/api/polygon/quote?ticker=${ticker}`),
-        fetch(`/api/flash-alpha?symbol=${ticker}&endpoint=levels`),
+        fetch(`/api/uw/stock/${ticker}/spot-exposures`),
       ])
 
       const techData = techRes.ok ? await techRes.json() : null
       const quoteData = quoteRes.ok ? await quoteRes.json() : null
-      const flashAlphaData = flashAlphaRes.ok ? await flashAlphaRes.json() : null
+      const uwSpotData = uwSpotRes.ok ? await uwSpotRes.json() : null
 
       const price = quoteData?.quote?.price || 100
       const high = quoteData?.quote?.high || price * 1.02
       const low = quoteData?.quote?.low || price * 0.98
       const close = quoteData?.quote?.prevClose || price
 
-      // Use Flash Alpha GEX levels if available (more accurate for options-driven stocks)
-      const faLevels = flashAlphaData?.data?.levels || []
-      const faResistance = faLevels.filter((l: any) => l.type === 'resistance' || l.level > price).slice(0, 2)
-      const faSupport = faLevels.filter((l: any) => l.type === 'support' || l.level < price).slice(0, 2)
+      // Use UW spot-exposures to find GEX levels — high gamma strikes act as support/resistance
+      const spotData = uwSpotData?.data || []
+      const sortedByGex = [...spotData].sort((a: any, b: any) =>
+        Math.abs(parseFloat(b.gex) || 0) - Math.abs(parseFloat(a.gex) || 0)
+      )
+      const topStrikes = sortedByGex.slice(0, 8).map((s: any) => parseFloat(s.strike))
+      const uwResistance = topStrikes.filter((s: number) => s > price).sort((a, b) => a - b).slice(0, 2)
+      const uwSupport = topStrikes.filter((s: number) => s < price).sort((a, b) => b - a).slice(0, 2)
 
-      // Calculate pivot points (fallback)
+      // Calculate pivot points (fallback if UW levels unavailable)
       const pivot = (high + low + close) / 3
-      const r1 = faResistance[0]?.level || 2 * pivot - low
-      const r2 = faResistance[1]?.level || pivot + (high - low)
-      const s1 = faSupport[0]?.level || 2 * pivot - high
-      const s2 = faSupport[1]?.level || pivot - (high - low)
+      const r1 = uwResistance[0] || 2 * pivot - low
+      const r2 = uwResistance[1] || pivot + (high - low)
+      const s1 = uwSupport[0] || 2 * pivot - high
+      const s2 = uwSupport[1] || pivot - (high - low)
 
       // Get SMA values from technicals or estimate
       const sma20 = techData?.data?.SMA?.value || price * 0.98
@@ -67,7 +72,7 @@ export function SupportResistance({ ticker }: { ticker: string }) {
       const sma200 = techData?.data?.SMA200?.value || price * 0.90
 
       // Update source based on what data we got
-      const src = flashAlphaData?.data ? 'flash-alpha' : (quoteData?.source || 'default')
+      const src = spotData.length > 0 ? 'uw' : (quoteData?.source || 'polygon')
 
       // Use real OHLC highs/lows from quote data, not fake multipliers
       const monthlyHigh = quoteData?.quote?.monthHigh || quoteData?.quote?.high52w || high
@@ -120,8 +125,8 @@ export function SupportResistance({ ticker }: { ticker: string }) {
     <div className="h-full overflow-hidden flex flex-col relative">
       {/* Floating actions */}
       <div className="absolute top-1 right-1 z-10 flex items-center gap-1">
-        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
-          {source === 'polygon' ? 'LIVE' : 'DEFAULT'}
+        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${source === 'uw' ? 'border-blue-500/50 text-blue-400' : source === 'polygon' ? 'border-green-500/50 text-green-400' : 'border-yellow-500/50 text-yellow-500'}`}>
+          {source === 'uw' ? 'UW' : source === 'polygon' ? 'POLY' : 'DEFAULT'}
         </Badge>
         <button onClick={fetchLevels} className="p-0.5 hover:bg-muted/50 rounded">
           <RefreshCw className={`w-3 h-3 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
