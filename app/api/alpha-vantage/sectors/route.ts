@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const API_KEY = process.env.ALPHA_VANTAGE_API_KEY
-const UW_API_KEY = process.env.UNUSUAL_WHALES_API_KEY
-const BASE_URL = 'https://www.alphavantage.co/query'
+/**
+ * Sector performance + gainers/losers endpoint.
+ *
+ * MIGRATED: Now tries UW -> Tradier -> Polygon -> mock.
+ * Alpha Vantage removed (deprecated SECTOR endpoint + tight rate limits).
+ */
+
+const UW_API_KEY = process.env.UW_API_KEY
+const TRADIER_KEY = process.env.TRADIER_API_KEY
+const POLYGON_KEY = process.env.POLYGON_API_KEY
 const UW_BASE = 'https://api.unusualwhales.com/api'
 
 // Mock sector performance data
@@ -136,89 +143,87 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  if (!API_KEY) {
-    console.warn('[Alpha Vantage] ALPHA_VANTAGE_API_KEY env var is not set — returning sample data.')
-  }
+  // Try Tradier for gainers/losers (real-time quotes on popular tickers)
+  if (type === 'gainers' || type === 'losers' || type === 'active') {
+    if (TRADIER_KEY) {
+      try {
+        const baseUrl = process.env.TRADIER_ENV === 'sandbox'
+          ? 'https://sandbox.tradier.com'
+          : 'https://api.tradier.com'
 
-  if (API_KEY && type === 'sectors') {
-    try {
-      const res = await fetch(`${BASE_URL}?function=SECTOR&apikey=${API_KEY}`, {
-        next: { revalidate: 300 },
-      })
+        const res = await fetch(
+          `${baseUrl}/v1/markets/quotes?symbols=SPY,QQQ,AAPL,MSFT,GOOGL,AMZN,NVDA,TSLA,META,AMD,INTC,BA,DIS,PFE,KO`,
+          {
+            headers: { Authorization: `Bearer ${TRADIER_KEY}`, Accept: 'application/json' },
+            next: { revalidate: 60 },
+          }
+        )
 
-      if (!res.ok) {
-        console.error(`[Alpha Vantage] SECTOR HTTP ${res.status} ${res.statusText} — returning sample data.`)
-      } else {
-        const data = await res.json()
+        if (res.ok) {
+          const data = await res.json()
+          const quotes = Array.isArray(data.quotes?.quote) ? data.quotes.quote : [data.quotes?.quote].filter(Boolean)
 
-        // Alpha Vantage uses these keys for known issues:
-        //  - "Note":        rate-limited (5/min, 500/day on free tier)
-        //  - "Information": premium endpoint / deprecated / paid tier required
-        //  - "Error Message": invalid key / bad params
-        if (data?.Note) {
-          console.warn('[Alpha Vantage] SECTOR rate-limited:', data.Note)
-        } else if (data?.Information) {
-          console.warn('[Alpha Vantage] SECTOR endpoint message (likely deprecated or premium-only):', data.Information)
-        } else if (data?.['Error Message']) {
-          console.error('[Alpha Vantage] SECTOR error:', data['Error Message'])
-        } else if (data?.['Rank A: Real-Time Performance']) {
-          const parseSector = (obj: Record<string, string>) =>
-            Object.entries(obj).map(([sector, perf]) => ({
-              sector,
-              performance: parseFloat(perf.replace('%', '')),
-            })).sort((a, b) => b.performance - a.performance)
+          const mapped = quotes.map((q: any) => ({
+            ticker: q.symbol,
+            price: q.last || 0,
+            change: q.change || 0,
+            changePercent: q.change_percentage || 0,
+            volume: q.volume || 0,
+          }))
+
+          const sorted = [...mapped].sort((a, b) => b.changePercent - a.changePercent)
 
           return NextResponse.json({
-            realTimePerformance: parseSector(data['Rank A: Real-Time Performance']),
-            daily: parseSector(data['Rank B: 1 Day Performance'] || {}),
-            weekly: parseSector(data['Rank C: 5 Day Performance'] || {}),
-            monthly: parseSector(data['Rank D: 1 Month Performance'] || {}),
-            quarterly: parseSector(data['Rank E: 3 Month Performance'] || {}),
-            yearly: parseSector(data['Rank G: 1 Year Performance'] || {}),
-            source: 'alpha_vantage',
+            topGainers: sorted.filter(s => s.changePercent > 0).slice(0, 10),
+            topLosers: sorted.filter(s => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent).slice(0, 10),
+            mostActive: [...mapped].sort((a, b) => b.volume - a.volume).slice(0, 10),
+            source: 'tradier',
             timestamp: Date.now(),
           })
-        } else {
-          // Unknown shape — log the top-level keys so we can see what came back
-          console.warn('[Alpha Vantage] SECTOR returned unexpected shape. Top-level keys:', Object.keys(data || {}))
         }
+      } catch (err) {
+        console.error('[Sectors] Tradier gainers error:', err)
       }
-    } catch (err) {
-      console.error('[Alpha Vantage] Sectors fetch threw:', err)
+    }
+
+    // Fallback to Polygon gainers/losers snapshot
+    if (POLYGON_KEY) {
+      try {
+        const [gainersRes, losersRes] = await Promise.all([
+          fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/gainers?apiKey=${POLYGON_KEY}`, { next: { revalidate: 60 } }),
+          fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/losers?apiKey=${POLYGON_KEY}`, { next: { revalidate: 60 } }),
+        ])
+
+        if (gainersRes.ok && losersRes.ok) {
+          const gData = await gainersRes.json()
+          const lData = await losersRes.json()
+
+          const mapTicker = (t: any) => ({
+            ticker: t.ticker,
+            price: t.day?.c || t.prevDay?.c || 0,
+            change: t.todaysChange || 0,
+            changePercent: t.todaysChangePerc || 0,
+            volume: t.day?.v || 0,
+          })
+
+          const topGainers = (gData.tickers || []).slice(0, 10).map(mapTicker)
+          const topLosers = (lData.tickers || []).slice(0, 10).map(mapTicker)
+
+          return NextResponse.json({
+            topGainers,
+            topLosers,
+            mostActive: [...topGainers, ...topLosers].sort((a, b) => b.volume - a.volume).slice(0, 10),
+            source: 'polygon',
+            timestamp: Date.now(),
+          })
+        }
+      } catch (err) {
+        console.error('[Sectors] Polygon gainers error:', err)
+      }
     }
   }
 
-  if (API_KEY && (type === 'gainers' || type === 'losers' || type === 'active')) {
-    try {
-      const res = await fetch(`${BASE_URL}?function=TOP_GAINERS_LOSERS&apikey=${API_KEY}`, {
-        next: { revalidate: 60 },
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        
-        const parseList = (list: any[]) => list?.slice(0, 10).map(item => ({
-          ticker: item.ticker,
-          price: parseFloat(item.price),
-          change: parseFloat(item.change_amount),
-          changePercent: parseFloat(item.change_percentage.replace('%', '')),
-          volume: parseInt(item.volume),
-        })) || []
-
-        return NextResponse.json({
-          topGainers: parseList(data.top_gainers),
-          topLosers: parseList(data.top_losers),
-          mostActive: parseList(data.most_actively_traded),
-          source: 'alpha_vantage',
-          timestamp: Date.now(),
-        })
-      }
-    } catch (err) {
-      console.error('[Alpha Vantage] Gainers/Losers error:', err)
-    }
-  }
-
-  // Return mock data
+  // Fallback to mock data
   if (type === 'sectors') {
     return NextResponse.json({
       ...MOCK_SECTORS,
