@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
  * Alpha Vantage removed (deprecated SECTOR endpoint + tight rate limits).
  */
 
-const UW_API_KEY = process.env.UW_API_KEY
+const UW_API_KEY = process.env.UNUSUAL_WHALES_API_KEY
 const TRADIER_KEY = process.env.TRADIER_API_KEY
 const POLYGON_KEY = process.env.POLYGON_API_KEY
 const UW_BASE = 'https://api.unusualwhales.com/api'
@@ -92,11 +92,11 @@ const MOCK_GAINERS_LOSERS = {
   ],
 }
 
-// Try UW sector-tide first — gives real-time sector flow data
+// Try UW market-tide first — gives real-time sector/market flow data
 async function fetchUWSectorTide() {
   if (!UW_API_KEY) return null
   try {
-    const res = await fetch(`${UW_BASE}/sector-tide`, {
+    const res = await fetch(`${UW_BASE}/market/market-tide`, {
       headers: { Authorization: `Bearer ${UW_API_KEY}`, Accept: 'application/json' },
       next: { revalidate: 60 },
     })

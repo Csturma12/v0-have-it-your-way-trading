@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
  */
 
 const UW_BASE = 'https://api.unusualwhales.com/api'
-const UW_KEY = process.env.UW_API_KEY
+const UW_KEY = process.env.UNUSUAL_WHALES_API_KEY
 
 const VALID_ENDPOINTS = ['gex', 'dex', 'levels'] as const
 type Endpoint = (typeof VALID_ENDPOINTS)[number]
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       data: null,
       source: 'uw',
       ok: false,
-      reason: 'UW_API_KEY not configured',
+      reason: 'UNUSUAL_WHALES_API_KEY not configured',
     })
   }
 
