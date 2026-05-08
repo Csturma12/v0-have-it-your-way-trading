@@ -1,138 +1,146 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const POLYGON_API_KEY = process.env.POLYGON_API_KEY
+/**
+ * Batch quotes endpoint — Tradier primary, Polygon fallback.
+ *
+ * Tradier supports up to 100 symbols per request with real-time data.
+ * Polygon is 15-min delayed on free tier but has extended-hours snapshots.
+ */
 
-// Rate limiting: max 5 requests per minute to Polygon
-const rateLimitWindow = 60 * 1000 // 1 minute
-const maxRequests = 5
-const requestTimestamps: number[] = []
+const TRADIER_KEY = process.env.TRADIER_API_KEY
+const POLYGON_KEY = process.env.POLYGON_API_KEY
+const TRADIER_BASE = process.env.TRADIER_BASE_URL || 'https://api.tradier.com'
 
-// In-memory cache for responses (15 second TTL)
+// In-memory cache (15 second TTL)
 const cache = new Map<string, { data: Record<string, unknown>; timestamp: number }>()
-const CACHE_TTL = 15 * 1000 // 15 seconds
-
-function isRateLimited(): boolean {
-  const now = Date.now()
-  // Remove timestamps older than the window
-  while (requestTimestamps.length > 0 && requestTimestamps[0] < now - rateLimitWindow) {
-    requestTimestamps.shift()
-  }
-  return requestTimestamps.length >= maxRequests
-}
-
-function recordRequest(): void {
-  requestTimestamps.push(Date.now())
-}
+const CACHE_TTL = 15 * 1000
 
 function getCacheKey(tickers: string[]): string {
   return tickers.sort().join(',')
 }
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const tickersParam = searchParams.get('tickers')
+function detectSession(): 'pre' | 'post' | 'regular' | 'closed' {
+  const nowET = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const hour = nowET.getHours()
+  const minute = nowET.getMinutes()
+  const day = nowET.getDay()
+  const timeDecimal = hour + minute / 60
 
-  if (!tickersParam) {
-    return NextResponse.json({ error: 'tickers param required' }, { status: 400 })
-  }
+  if (day === 0 || day === 6) return 'closed'
+  if (timeDecimal >= 4 && timeDecimal < 9.5) return 'pre'
+  if (timeDecimal >= 16 && timeDecimal < 20) return 'post'
+  if (timeDecimal >= 9.5 && timeDecimal < 16) return 'regular'
+  return 'closed'
+}
 
-  const tickers = tickersParam.split(',').map(t => t.trim()).filter(Boolean).slice(0, 50)
+interface QuoteData {
+  price: number
+  change: number
+  changePct: number
+  open: number
+  high: number
+  low: number
+  volume: number
+  prevClose: number
+  bid?: number
+  ask?: number
+  extendedPrice?: number
+  extendedChangePct?: number
+  session: 'pre' | 'post' | 'regular' | 'closed'
+  source: 'tradier' | 'polygon'
+}
 
-  if (!POLYGON_API_KEY) {
-    return NextResponse.json({ error: 'POLYGON_API_KEY not configured' }, { status: 500 })
-  }
-
-  // Check cache first
-  const cacheKey = getCacheKey(tickers)
-  const cached = cache.get(cacheKey)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return NextResponse.json({ 
-      ...cached.data, 
-      cached: true, 
-      updatedAt: new Date(cached.timestamp).toISOString() 
-    })
-  }
-
-  // Check rate limit before making external request
-  if (isRateLimited()) {
-    // Return stale cache if available, otherwise return rate limit error
-    if (cached) {
-      return NextResponse.json({ 
-        ...cached.data, 
-        cached: true, 
-        stale: true,
-        updatedAt: new Date(cached.timestamp).toISOString() 
-      })
-    }
-    return NextResponse.json({ 
-      error: 'Rate limited - please wait before refreshing', 
-      retryAfter: 60 
-    }, { status: 429 })
-  }
-
-  recordRequest()
+// --------------- TRADIER ---------------
+async function fetchTradierBatch(tickers: string[]): Promise<Record<string, QuoteData> | null> {
+  if (!TRADIER_KEY || tickers.length === 0) return null
 
   try {
-    // Use Polygon snapshot endpoint which returns all tickers in one call
-    const url = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?tickers=${tickers.join(',')}&apiKey=${POLYGON_API_KEY}`
-    const res = await fetch(url, { next: { revalidate: 15 } })
-
-    if (!res.ok) {
-      throw new Error(`Polygon API error: ${res.status}`)
-    }
+    const url = `${TRADIER_BASE}/v1/markets/quotes?symbols=${tickers.join(',')}&greeks=false`
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${TRADIER_KEY}`,
+        Accept: 'application/json',
+      },
+      next: { revalidate: 5 },
+    })
+    if (!res.ok) return null
 
     const data = await res.json()
+    const session = detectSession()
+    const quotes: Record<string, QuoteData> = {}
 
-    // Build a map of symbol -> price data
-    const quotes: Record<string, {
-      price: number
-      change: number
-      changePct: number
-      open: number
-      high: number
-      low: number
-      volume: number
-      prevClose: number
-      extendedPrice?: number
-      extendedChangePct?: number
-      session: 'pre' | 'post' | 'regular' | 'closed'
-    }> = {}
+    // Tradier returns single object if 1 symbol, array if multiple
+    const rawQuotes = Array.isArray(data.quotes?.quote)
+      ? data.quotes.quote
+      : data.quotes?.quote
+        ? [data.quotes.quote]
+        : []
 
-    const nowET = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
-    const hour = nowET.getHours()
-    const minute = nowET.getMinutes()
-    const timeDecimal = hour + minute / 60
+    for (const q of rawQuotes) {
+      if (!q.symbol) continue
+      const prevClose = q.prevclose ?? q.close ?? 0
+      const price = q.last ?? 0
+      const change = q.change ?? (price - prevClose)
+      const changePct = q.change_percentage ?? (prevClose ? (change / prevClose) * 100 : 0)
 
-    // Determine current session
-    const isPreMarket = timeDecimal >= 4 && timeDecimal < 9.5
-    const isPostMarket = timeDecimal >= 16 && timeDecimal < 20
-    const isRegular = timeDecimal >= 9.5 && timeDecimal < 16
-    const session = isPreMarket ? 'pre' : isPostMarket ? 'post' : isRegular ? 'regular' : 'closed'
+      quotes[q.symbol] = {
+        price,
+        change,
+        changePct,
+        open: q.open ?? 0,
+        high: q.high ?? 0,
+        low: q.low ?? 0,
+        volume: q.volume ?? 0,
+        prevClose,
+        bid: q.bid ?? undefined,
+        ask: q.ask ?? undefined,
+        session,
+        source: 'tradier',
+      }
+    }
+
+    return Object.keys(quotes).length > 0 ? quotes : null
+  } catch (e) {
+    console.error('[v0] Tradier batch-quotes error:', e)
+    return null
+  }
+}
+
+// --------------- POLYGON ---------------
+async function fetchPolygonBatch(tickers: string[]): Promise<Record<string, QuoteData> | null> {
+  if (!POLYGON_KEY || tickers.length === 0) return null
+
+  try {
+    const url = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?tickers=${tickers.join(',')}&apiKey=${POLYGON_KEY}`
+    const res = await fetch(url, { next: { revalidate: 15 } })
+    if (!res.ok) return null
+
+    const data = await res.json()
+    const session = detectSession()
+    const quotes: Record<string, QuoteData> = {}
 
     for (const ticker of (data.tickers ?? [])) {
       const day = ticker.day ?? {}
       const prevDay = ticker.prevDay ?? {}
       const lastTrade = ticker.lastTrade ?? {}
-      const lastQuote = ticker.lastQuote ?? {}
-      const todayClose = ticker.day?.c ?? lastTrade.p ?? 0
+      const price = day.c ?? lastTrade.p ?? 0
       const prevClose = prevDay.c ?? 0
-      const change = todayClose - prevClose
+      const change = price - prevClose
       const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0
 
-      // Extended hours price from pre/post market data
       let extendedPrice: number | undefined
       let extendedChangePct: number | undefined
 
-      if (ticker.preMarket?.o && isPreMarket) {
+      if (ticker.preMarket?.o && session === 'pre') {
         extendedPrice = ticker.preMarket.o
-        extendedChangePct = prevClose > 0 && extendedPrice !== undefined ? ((extendedPrice - prevClose) / prevClose) * 100 : 0
-      } else if (ticker.afterHours?.o && isPostMarket) {
+        extendedChangePct = prevClose > 0 && extendedPrice ? ((extendedPrice - prevClose) / prevClose) * 100 : 0
+      } else if (ticker.afterHours?.o && session === 'post') {
         extendedPrice = ticker.afterHours.o
-        extendedChangePct = prevClose > 0 && extendedPrice !== undefined ? ((extendedPrice - prevClose) / prevClose) * 100 : 0
+        extendedChangePct = prevClose > 0 && extendedPrice ? ((extendedPrice - prevClose) / prevClose) * 100 : 0
       }
 
       quotes[ticker.ticker] = {
-        price: todayClose || lastTrade.p || lastQuote.P || 0,
+        price,
         change,
         changePct,
         open: day.o ?? 0,
@@ -143,34 +151,82 @@ export async function GET(req: NextRequest) {
         extendedPrice,
         extendedChangePct,
         session,
+        source: 'polygon',
       }
     }
 
-    const response = { quotes, session, updatedAt: new Date().toISOString() }
-    
-    // Store in cache
-    cache.set(cacheKey, { data: response, timestamp: Date.now() })
-    
-    // Clean up old cache entries (keep cache under 100 entries)
-    if (cache.size > 100) {
-      const oldestKey = cache.keys().next().value
-      if (oldestKey) cache.delete(oldestKey)
-    }
-    
-    return NextResponse.json(response)
-  } catch (err) {
-    console.error('[batch-quotes]', err)
-    
-    // Return stale cache on error if available
+    return Object.keys(quotes).length > 0 ? quotes : null
+  } catch (e) {
+    console.error('[v0] Polygon batch-quotes error:', e)
+    return null
+  }
+}
+
+// --------------- MAIN HANDLER ---------------
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const tickersParam = searchParams.get('tickers')
+
+  if (!tickersParam) {
+    return NextResponse.json({ error: 'tickers param required' }, { status: 400 })
+  }
+
+  const tickers = tickersParam
+    .split(',')
+    .map(t => t.trim().toUpperCase())
+    .filter(Boolean)
+    .slice(0, 100) // Tradier supports up to 100
+
+  // Check cache first
+  const cacheKey = getCacheKey(tickers)
+  const cached = cache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return NextResponse.json({
+      ...cached.data,
+      cached: true,
+      updatedAt: new Date(cached.timestamp).toISOString(),
+    })
+  }
+
+  // Try Tradier first (real-time)
+  let quotes = await fetchTradierBatch(tickers)
+  let source: 'tradier' | 'polygon' | 'none' = quotes ? 'tradier' : 'none'
+
+  // Fallback to Polygon if Tradier unavailable
+  if (!quotes) {
+    quotes = await fetchPolygonBatch(tickers)
+    source = quotes ? 'polygon' : 'none'
+  }
+
+  if (!quotes) {
+    // Return stale cache on total failure
     if (cached) {
-      return NextResponse.json({ 
-        ...cached.data, 
-        cached: true, 
+      return NextResponse.json({
+        ...cached.data,
+        cached: true,
         stale: true,
-        error: 'Using cached data due to API error'
+        error: 'Using cached data - no live data available',
       })
     }
-    
-    return NextResponse.json({ error: 'Failed to fetch quotes' }, { status: 500 })
+    return NextResponse.json({ error: 'No market data sources available' }, { status: 503 })
   }
+
+  const session = detectSession()
+  const response = {
+    quotes,
+    session,
+    source,
+    updatedAt: new Date().toISOString(),
+  }
+
+  // Store in cache
+  cache.set(cacheKey, { data: response, timestamp: Date.now() })
+
+  // Clean up old cache entries
+  if (cache.size > 100) {
+    const oldestKey = cache.keys().next().value
+    if (oldestKey) cache.delete(oldestKey)
+  }
+
+  return NextResponse.json(response)
 }

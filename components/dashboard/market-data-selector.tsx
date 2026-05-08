@@ -7,33 +7,44 @@ import { Check, AlertCircle, Zap } from 'lucide-react'
 
 const DATA_SOURCES = [
   {
+    id: 'tradier',
+    name: 'Tradier',
+    description: 'Real-time quotes, live options chains with greeks, intraday bars',
+    tier: 'Free (brokerage account)',
+    latency: '~100ms',
+    uptime: '99.9%',
+    features: ['Stocks', 'Options', 'Real-time Quotes', 'Order Execution'],
+    status: 'connected',
+    recommended: true,
+  },
+  {
+    id: 'uw',
+    name: 'Unusual Whales',
+    description: 'Options flow, dark pool, greeks, IV, shorts, earnings, insider, congress',
+    tier: 'Paid subscription',
+    latency: '~200ms',
+    uptime: '99.9%',
+    features: ['Options Flow', 'Dark Pool', 'Greeks', 'Shorts', 'Catalysts'],
+    status: 'connected',
+  },
+  {
+    id: 'finnhub',
+    name: 'Finnhub',
+    description: 'Company profiles, fundamentals, news, analyst ratings, ticker search',
+    tier: 'Free (60 req/min)',
+    latency: '~300ms',
+    uptime: '99.8%',
+    features: ['Fundamentals', 'News', 'Analyst Ratings', 'Company Info'],
+    status: 'connected',
+  },
+  {
     id: 'polygon',
     name: 'Polygon.io',
-    description: 'Real-time, full historical data, options chains',
-    tier: 'Free (5 req/min) / Premium',
+    description: 'Historical daily bars, ticker details, backup fundamentals',
+    tier: 'Free (5 req/min)',
     latency: '~500ms',
     uptime: '99.9%',
-    features: ['Stocks', 'Options', 'Crypto', 'Forex', 'Indices'],
-    status: 'connected',
-  },
-  {
-    id: 'alpha_vantage',
-    name: 'Alpha Vantage',
-    description: 'Intraday, daily, weekly, monthly timeseries',
-    tier: 'Free (25 req/day, 5 req/min)',
-    latency: '~1000ms',
-    uptime: '99.5%',
-    features: ['Stocks', 'Technical Indicators'],
-    status: 'connected',
-  },
-  {
-    id: 'tradier',
-    name: 'Tradier Sandbox',
-    description: 'Options chains, account data, 15-min delayed quotes',
-    tier: 'Free Forever',
-    latency: '~200ms',
-    uptime: '99.8%',
-    features: ['Stocks', 'Options', 'Account Data'],
+    features: ['Historical Bars', 'Ticker Search', 'Reference Data'],
     status: 'connected',
   },
 ]
@@ -133,11 +144,11 @@ export function MarketDataSelector() {
         ))}
       </div>
 
-      <div className="p-3 rounded bg-yellow-500/10 border border-yellow-500/20 flex gap-2">
-        <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-        <div className="text-[11px] text-yellow-700">
-          <p className="font-bold mb-1">Rate Limits:</p>
-          <p>Polygon: 5 req/min free. Alpha Vantage: 5 req/min, 500/day. Tradier: unlimited.</p>
+      <div className="p-3 rounded bg-blue-500/10 border border-blue-500/20 flex gap-2">
+        <Zap className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+        <div className="text-[11px] text-blue-200">
+          <p className="font-bold mb-1">Data Stack:</p>
+          <p>Tradier (real-time) + UW (options intel) + Finnhub (fundamentals) + Polygon (historical). No Alpha Vantage needed.</p>
         </div>
       </div>
     </div>

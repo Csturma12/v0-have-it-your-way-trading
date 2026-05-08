@@ -77,8 +77,8 @@ function PillSection({
           <span className="text-[11px] font-mono font-bold tracking-widest uppercase truncate text-foreground">
             {title}
           </span>
-          <span className={`text-[8px] font-mono px-1 rounded ${source === 'alpha_vantage' ? 'text-green-400' : 'text-amber-400'}`}>
-            {source === 'alpha_vantage' ? 'LIVE' : 'DEMO'}
+          <span className={`text-[8px] font-mono px-1 rounded ${source === 'tradier' ? 'text-green-400' : source === 'polygon' ? 'text-blue-400' : source === 'uw' ? 'text-purple-400' : 'text-amber-400'}`}>
+            {source === 'tradier' ? 'LIVE' : source === 'polygon' ? 'POLY' : source === 'uw' ? 'UW' : source?.toUpperCase() || 'DEMO'}
           </span>
         </div>
         <div className="flex items-center gap-1">
