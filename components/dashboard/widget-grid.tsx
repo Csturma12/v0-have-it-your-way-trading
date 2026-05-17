@@ -571,6 +571,83 @@ const DEFAULT_RIGHT_WIDGETS: RightWidget[] = DEFAULT_WIDGET_IDS
   .map(id => ALL_AVAILABLE_WIDGETS.find(w => w.id === id))
   .filter((w): w is RightWidget => Boolean(w))
 
+// ─── SYSTEM PRESET TEMPLATES ────────────────────────────────────────────────
+// These are built-in layouts users can load. "Max Data" is the default above.
+// Each preset has a layout array (grid positions) and widget IDs.
+
+const PRESET_TEMPLATES: Record<string, { layout: any[], widgetIds: string[], description: string }> = {
+  // Flow Focus: Options flow, dark pool, GEX — for momentum traders
+  'Flow Focus': {
+    description: 'Options flow + dark pool',
+    widgetIds: ['chart', 'options-flow', 'dark-pool-combo', 'gex-levels', 'watchlist', 'news'],
+    layout: [
+      { i: 'chart',           x: 0,  y: 0,  w: 14, h: 45 },
+      { i: 'options-flow',    x: 14, y: 0,  w: 10, h: 22 },
+      { i: 'dark-pool-combo', x: 14, y: 22, w: 10, h: 23 },
+      { i: 'gex-levels',      x: 0,  y: 45, w: 8,  h: 25 },
+      { i: 'watchlist',       x: 8,  y: 45, w: 6,  h: 25 },
+      { i: 'news',            x: 14, y: 45, w: 10, h: 25 },
+    ],
+  },
+  // Fundamentals: Company data, analyst ratings, financials — for value investors
+  'Fundamentals': {
+    description: 'Research + fundamentals',
+    widgetIds: ['chart', 'company-profile', 'fundamentals', 'analyst-ratings', 'metrics', 'news', 'watchlist'],
+    layout: [
+      { i: 'chart',           x: 0,  y: 0,  w: 12, h: 40 },
+      { i: 'company-profile', x: 12, y: 0,  w: 6,  h: 20 },
+      { i: 'fundamentals',    x: 18, y: 0,  w: 6,  h: 20 },
+      { i: 'analyst-ratings', x: 12, y: 20, w: 6,  h: 20 },
+      { i: 'metrics',         x: 18, y: 20, w: 6,  h: 20 },
+      { i: 'news',            x: 0,  y: 40, w: 12, h: 30 },
+      { i: 'watchlist',       x: 12, y: 40, w: 12, h: 30 },
+    ],
+  },
+  // Chart Focus: Big chart with minimal distractions
+  'Chart Focus': {
+    description: 'Large chart + watchlist',
+    widgetIds: ['chart-with-watchlist', 'ticker-info', 'technicals'],
+    layout: [
+      { i: 'chart-with-watchlist', x: 0,  y: 0,  w: 20, h: 60 },
+      { i: 'ticker-info',          x: 20, y: 0,  w: 4,  h: 30 },
+      { i: 'technicals',           x: 20, y: 30, w: 4,  h: 30 },
+    ],
+  },
+  // Options Trading: Options chain, IV surface, greeks
+  'Options Trading': {
+    description: 'Options chain + greeks',
+    widgetIds: ['chart', 'options-combo', 'iv-surface', 'gex-levels', 'ticker-info', 'watchlist'],
+    layout: [
+      { i: 'chart',         x: 0,  y: 0,  w: 14, h: 35 },
+      { i: 'ticker-info',   x: 14, y: 0,  w: 5,  h: 12 },
+      { i: 'iv-surface',    x: 14, y: 12, w: 5,  h: 23 },
+      { i: 'watchlist',     x: 19, y: 0,  w: 5,  h: 35 },
+      { i: 'options-combo', x: 0,  y: 35, w: 14, h: 35 },
+      { i: 'gex-levels',    x: 14, y: 35, w: 10, h: 35 },
+    ],
+  },
+  // Minimal: Just the essentials
+  'Minimal': {
+    description: 'Clean + simple',
+    widgetIds: ['chart', 'watchlist', 'ticker-info'],
+    layout: [
+      { i: 'chart',       x: 0,  y: 0,  w: 18, h: 50 },
+      { i: 'watchlist',   x: 18, y: 0,  w: 6,  h: 30 },
+      { i: 'ticker-info', x: 18, y: 30, w: 6,  h: 20 },
+    ],
+  },
+}
+
+// Helper to load a preset template
+function getPresetLayout(presetName: string): { layout: any[], widgets: RightWidget[] } | null {
+  const preset = PRESET_TEMPLATES[presetName]
+  if (!preset) return null
+  const widgets = preset.widgetIds
+    .map(id => ALL_AVAILABLE_WIDGETS.find(w => w.id === id))
+    .filter((w): w is RightWidget => Boolean(w))
+  return { layout: preset.layout, widgets }
+}
+
 interface SavedState {
   layout: any[]
   rightWidgets: RightWidget[]
@@ -899,6 +976,15 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
     setLayout(DEFAULT_LAYOUT)
     setRightWidgets(DEFAULT_RIGHT_WIDGETS)
+    setShowLayoutMenu(false)
+  }
+
+  // Load a preset system template
+  const loadPresetTemplate = (presetName: string) => {
+    const preset = getPresetLayout(presetName)
+    if (!preset) return
+    setLayout(preset.layout)
+    setRightWidgets(preset.widgets)
     setShowLayoutMenu(false)
   }
 
@@ -1236,8 +1322,17 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
                       onClick={() => { resetLayout(); setShowLayoutMenu(false) }}
                       className="w-full text-left px-3 py-1.5 text-[10px] font-mono hover:bg-muted/20 hover:text-primary"
                     >
-                      Default Layout
+                      Max Data <span className="text-[8px] text-muted-foreground/60">(all widgets)</span>
                     </button>
+                    {Object.entries(PRESET_TEMPLATES).map(([name, preset]) => (
+                      <button
+                        key={name}
+                        onClick={() => loadPresetTemplate(name)}
+                        className="w-full text-left px-3 py-1.5 text-[10px] font-mono hover:bg-muted/20 hover:text-primary"
+                      >
+                        {name} <span className="text-[8px] text-muted-foreground/60">({preset.description})</span>
+                      </button>
+                    ))}
                   </>
                 )}
 
