@@ -80,6 +80,7 @@ import { MarketFlow } from './market-flow'
 import { StockProfile } from './stock-profile'
 import { ETFProfile } from './etf-profile'
 import { ContractDrilldown } from './contract-drilldown'
+import { ChartWithWatchlist } from './chart-with-watchlist'
 import {
   Cpu,
   Scale,
@@ -433,6 +434,7 @@ type RightWidgetType =
   | 'stock-profile'
   | 'etf-profile'
   | 'contract-drilldown'
+  | 'chart-with-watchlist'
 
 interface RightWidget {
   id: string
@@ -456,12 +458,13 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
   ],
   },
   {
-    section: 'Charts & Technicals',
-    widgets: [
-      { id: 'chart',              type: 'chart',              title: 'Chart' },
-      { id: 'technicals',         type: 'technicals',         title: 'Technical Indicators' },
-      { id: 'support-resistance', type: 'support-resistance', title: 'Support & Resistance' },
-    ],
+  section: 'Charts & Technicals',
+  widgets: [
+    { id: 'chart',                type: 'chart',                title: 'Chart' },
+    { id: 'chart-with-watchlist', type: 'chart-with-watchlist', title: 'Chart + Watchlist' },
+    { id: 'technicals',           type: 'technicals',           title: 'Technical Indicators' },
+    { id: 'support-resistance',   type: 'support-resistance',   title: 'Support & Resistance' },
+  ],
   },
   {
     section: 'Catalysts & Analyst',
@@ -968,8 +971,9 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
   )
 
   const renderRight = (widget: RightWidget) => {
-    if (widget.type === 'chart')           return <TradingViewAdvancedChart ticker={selectedTicker} onChangeTicker={onSelectTicker} />
-    if (widget.type === 'company-profile')   return <CompanyProfile ticker={selectedTicker} />
+    if (widget.type === 'chart')               return <TradingViewAdvancedChart ticker={selectedTicker} onChangeTicker={onSelectTicker} />
+    if (widget.type === 'chart-with-watchlist') return <ChartWithWatchlist ticker={selectedTicker} onChangeTicker={onSelectTicker} />
+    if (widget.type === 'company-profile')     return <CompanyProfile ticker={selectedTicker} />
     if (widget.type === 'ticker-info')       return <TickerInfo ticker={selectedTicker} />
     if (widget.type === 'support-resistance')return <SupportResistance ticker={selectedTicker} />
     if (widget.type === 'fundamentals')      return <Fundamentals ticker={selectedTicker} />
