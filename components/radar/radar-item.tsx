@@ -10,6 +10,17 @@ interface Props {
   item: RadarItemT
 }
 
+const TS_TEMPLATE =
+  process.env.NEXT_PUBLIC_TRENDSPIDER_URL_TEMPLATE ||
+  'https://app.trendspider.com/charting/?symbol={TICKER}'
+const SA_TEMPLATE =
+  process.env.NEXT_PUBLIC_SEEKING_ALPHA_URL_TEMPLATE ||
+  'https://seekingalpha.com/symbol/{TICKER}'
+
+function externalUrl(template: string, ticker: string): string {
+  return template.replace(/\{TICKER\}/gi, encodeURIComponent(ticker))
+}
+
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts
   const s = Math.max(0, Math.floor(diff / 1000))
@@ -100,16 +111,16 @@ export function RadarItem({ item }: Props) {
         {item.ticker ? (
           <div className="ml-auto flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
             <a
-              href={`https://trendspider.com/markets/${item.ticker}-stock-price-and-forecast`}
+              href={externalUrl(TS_TEMPLATE, item.ticker)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-cyan-400"
-              title="Open in TrendSpider"
+              title="Open in TrendSpider (uses your existing logged-in session)"
             >
               <LineChart className="h-3 w-3" /> TS
             </a>
             <a
-              href={`https://seekingalpha.com/symbol/${item.ticker}`}
+              href={externalUrl(SA_TEMPLATE, item.ticker)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-orange-400"

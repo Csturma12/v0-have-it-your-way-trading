@@ -158,9 +158,9 @@ export default function RadarPage() {
       <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-2 bg-zinc-950">
         <div className="flex items-center gap-3">
           <Radar className="h-4 w-4 text-emerald-400" />
-          <h1 className="text-sm font-semibold tracking-wide uppercase">Pre-Move Radar</h1>
+          <h1 className="text-sm font-semibold tracking-wide uppercase">Trading Tools</h1>
           <span className="text-[10px] text-zinc-500">
-            UW · SEC EDGAR · USAspending · DoD · Apewisdom
+            Pre-Move Radar · UW · SEC EDGAR · USAspending · DoD · Apewisdom
           </span>
         </div>
         <div className="font-mono text-[10px] text-zinc-500 tabular-nums">

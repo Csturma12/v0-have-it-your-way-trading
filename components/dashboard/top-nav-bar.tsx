@@ -88,7 +88,7 @@ const NAV_ITEMS: NavItem[] = [
     accent: 'green',
   },
   {
-    label: 'Radar',
+    label: 'Trading Tools',
     href: '/radar',
     icon: Radar,
     accent: 'green',
