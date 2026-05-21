@@ -69,6 +69,7 @@ import { DarkPoolFlow } from './dark-pool-flow'
 import { KeyLevels } from './key-levels'
 import { IVSurface } from './iv-surface'
 import { SignalsFeed } from './signals-feed'
+import { TradingToolsFeed } from './trading-tools-feed'
 import { OiChanges } from './oi-changes'
 // Combo widgets — unify related panels into a single grid cell to save space
 import { DarkPoolCombo } from './dark-pool-combo'
@@ -423,7 +424,7 @@ type RightWidgetType =
   | 'dark-pool-blocks'
   // Bundle-backed UW widgets (single shared SWR fetch via useTickerBundle)
   | 'options-flow' | 'dark-pool-flow' | 'key-levels'
-  | 'iv-surface' | 'signals-feed' | 'oi-changes'
+  | 'iv-surface' | 'signals-feed' | 'trading-tools' | 'oi-changes'
   // Combo widgets — combine related panels into one grid cell
   | 'dark-pool-combo' | 'options-combo' | 'levels-combo'
   // Tabbed widgets — Webull-style boxes with related data behind tabs.
@@ -499,6 +500,7 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
       { id: 'dark-pool-blocks',   type: 'dark-pool-blocks',   title: 'Dark Pool / Blocks' },
       { id: 'dark-pool-flow',     type: 'dark-pool-flow',     title: 'Dark Pool Flow (Live)' },
       { id: 'signals-feed',       type: 'signals-feed',       title: 'Signals (Flow + Congress + Insider)' },
+      { id: 'trading-tools',      type: 'trading-tools',      title: 'Trading Tools (UW + SEC + Gov + Social)' },
       { id: 'shorts-profile',     type: 'shorts-profile',     title: 'Shorts (Snapshot / Volume / Screener)' },
       { id: 'market-flow',        type: 'market-flow',        title: 'Market Flow (Greek / Sector / ETF / Corr)' },
       { id: 'contract-drilldown', type: 'contract-drilldown', title: 'Contract Drilldown (Flow / Hist / Intra / Profile)' },
@@ -559,6 +561,7 @@ const DEFAULT_LAYOUT: any[] = [
   { i: 'metrics',         x: 13, y: 19,  w: 3,  h: 31 },
   { i: 'catalysts-risk',  x: 16, y: 19,  w: 4,  h: 31 },
   { i: 'news',            x: 20, y: 28,  w: 4,  h: 45 },
+  { i: 'trading-tools',   x: 20, y: 73,  w: 4,  h: 25 },
   { i: 'watchlist',       x: 13, y: 50,  w: 4,  h: 79 },
   { i: 'options-combo',   x: 0,  y: 86,  w: 13, h: 54 },
   { i: 'trade-ideas',     x: 17, y: 98,  w: 7,  h: 18 },
@@ -1081,6 +1084,7 @@ export function WidgetGrid({ selectedTicker, onSelectTicker }: WidgetGridProps) 
     if (widget.type === 'key-levels')      return <KeyLevels ticker={selectedTicker} />
     if (widget.type === 'iv-surface')      return <IVSurface ticker={selectedTicker} />
     if (widget.type === 'signals-feed')    return <SignalsFeed ticker={selectedTicker} />
+    if (widget.type === 'trading-tools')   return <TradingToolsFeed ticker={selectedTicker} />
     if (widget.type === 'oi-changes')      return <OiChanges ticker={selectedTicker} />
     // Combo widgets — wrap related panels in one cell
     if (widget.type === 'dark-pool-combo') return <DarkPoolCombo ticker={selectedTicker} />

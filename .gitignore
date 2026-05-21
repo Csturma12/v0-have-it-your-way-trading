@@ -18,3 +18,6 @@ node_modules
 # flips between `.next/types/...` and `.next/dev/types/...` so it
 # never stays clean in git. Safe to ignore — Next regenerates it.
 next-env.d.ts
+
+# TS incremental build cache
+*.tsbuildinfo
