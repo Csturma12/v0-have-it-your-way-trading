@@ -1001,21 +1001,16 @@ export default function ClaudeIdeasPage() {
                         </button>
                         <button 
                           onClick={async () => {
-                            if (tradingMode === 'autonomous') {
-                              setExecutingTrade(idea.id)
-                              const result = await executeTrade({
-                                ticker: idea.ticker,
-                                side: idea.action === 'buy' ? 'buy' : 'sell',
-                                quantity: 10, // Default quantity
-                                orderType: 'market',
-                              })
-                              setTradeResult({ id: idea.id, success: result.success, message: result.message })
-                              setExecutingTrade(null)
-                              setTimeout(() => setTradeResult(null), 3000)
-                            } else {
-                              // Manual mode - stage for review
-                              console.log(`[v0] Staged ${idea.action.toUpperCase()} trade for ${idea.ticker}`)
-                            }
+                            setExecutingTrade(idea.id)
+                            const result = await executeTrade({
+                              ticker: idea.ticker,
+                              side: idea.action === 'buy' ? 'buy' : 'sell',
+                              quantity: 10,
+                              orderType: 'market',
+                            })
+                            setTradeResult({ id: idea.id, success: result.success, message: result.message })
+                            setExecutingTrade(null)
+                            setTimeout(() => setTradeResult(null), 3000)
                           }}
                           disabled={executingTrade === idea.id}
                           className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 ${
