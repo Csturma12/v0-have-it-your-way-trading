@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 import { 
   Shield, Brain, Sparkles, Clock, Target, CheckCircle, Search, Filter,
-  Plus, History, X, ArrowUpRight, Zap, AlertTriangle, RefreshCw, TrendingDown
+  Plus, History, X, ArrowUpRight, Zap, AlertTriangle, RefreshCw, TrendingDown, Loader
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useLiveQuotes } from '@/hooks/useLiveQuotes'
+import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 
 type Model = 'claude' | 'openai'
 type RiskLevel = 'low' | 'medium' | 'high'
@@ -197,6 +198,7 @@ export default function HedgesPage() {
   const [hedgeTypeFilter, setHedgeTypeFilter] = useState<HedgeType | 'all'>('all')
   const [riskFilter, setRiskFilter] = useState<RiskLevel | 'all'>('all')
   const [showFilters, setShowFilters] = useState(false)
+  const { executeTrade, loading: isExecuting } = useBrokerTrade('alpaca')
   
   const [ideas, setIdeas] = useState<HedgeIdea[]>([...CLAUDE_IDEAS, ...OPENAI_IDEAS])
   const [stagedTrades, setStagedTrades] = useState<StagedTrade[]>([])
@@ -245,10 +247,17 @@ export default function HedgesPage() {
     }
   }
 
-  const handleExecuteTrade = (trade: StagedTrade) => {
+  const handleExecuteTrade = async (trade: StagedTrade) => {
+    // Execute the first leg as a market order on Alpaca
+    const firstLeg = trade.legs[0]
+    await executeTrade({
+      ticker: firstLeg.ticker || trade.ticker,
+      side: firstLeg.action,
+      quantity: firstLeg.qty,
+      orderType: 'market',
+    })
     setStagedTrades(prev => prev.filter(t => t.id !== trade.id))
     setExecutionHistory(prev => [...prev, { ...trade, status: 'executed' }])
-    router.push(`/quicktrade?ticker=${trade.ticker}&strategy=${encodeURIComponent(trade.strategy)}`)
   }
 
   const handleCancelTrade = (trade: StagedTrade) => {
@@ -462,8 +471,8 @@ export default function HedgesPage() {
                       <span className="text-sm text-muted-foreground">{trade.legs.length} legs | Staged: {trade.stagedAt.toLocaleTimeString()}</span>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="text-red-400 border-red-500/40 hover:bg-red-500/20" onClick={() => handleExecuteTrade(trade)}>
-                        <ArrowUpRight className="w-4 h-4 mr-1" /> Execute
+                      <Button size="sm" variant="outline" className="text-red-400 border-red-500/40 hover:bg-red-500/20" onClick={() => handleExecuteTrade(trade)} disabled={isExecuting}>
+                        {isExecuting ? <Loader className="w-4 h-4 mr-1 animate-spin" /> : <ArrowUpRight className="w-4 h-4 mr-1" />} Execute
                       </Button>
                       <Button size="sm" variant="outline" className="text-muted-foreground border-border hover:bg-muted/20" onClick={() => handleCancelTrade(trade)}>
                         <X className="w-4 h-4" />

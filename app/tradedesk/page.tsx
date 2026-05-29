@@ -13,10 +13,12 @@ import {
   AlertTriangle,
   ArrowUpRight,
   ArrowDownRight,
+  Loader,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
+import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 
 interface TradeIdea {
   id: string
@@ -198,8 +200,25 @@ const signalTypeColors: Record<string, string> = {
   sentiment: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
 }
 
-function TradeCard({ idea, accent }: { idea: TradeIdea; accent: string }) {
+function TradeCard({ idea, accent, executeTrade, isExecuting }: { idea: TradeIdea; accent: string; executeTrade: (order: { ticker: string; side: 'buy' | 'sell'; quantity: number; orderType: 'market' | 'limit' | 'stop' }) => Promise<{ success: boolean; orderId?: string; message?: string }>; isExecuting: boolean }) {
   const [staged, setStaged] = useState(false)
+  const [tradeResult, setTradeResult] = useState<{ success: boolean; message?: string } | null>(null)
+
+  const handleStageTrade = async () => {
+    if (staged) {
+      setStaged(false)
+      return
+    }
+    setStaged(true)
+    const result = await executeTrade({
+      ticker: idea.ticker,
+      side: idea.action === 'BUY' ? 'buy' : 'sell',
+      quantity: 10,
+      orderType: 'market',
+    })
+    setTradeResult({ success: result.success, message: result.message })
+    setTimeout(() => setTradeResult(null), 3000)
+  }
 
   return (
     <div className={`p-4 rounded-lg border ${idea.action === 'BUY' ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'} relative`}>
@@ -270,10 +289,16 @@ function TradeCard({ idea, accent }: { idea: TradeIdea; accent: string }) {
           size="sm"
           variant={staged ? 'default' : 'outline'}
           className={`h-7 text-[10px] ${staged ? 'bg-green-500 hover:bg-green-600' : ''}`}
-          onClick={() => setStaged(!staged)}
+          onClick={handleStageTrade}
+          disabled={isExecuting}
         >
-          {staged ? 'Staged' : 'Stage Trade'}
+          {isExecuting ? <Loader className="w-3 h-3 animate-spin" /> : staged ? 'Staged' : 'Stage Trade'}
         </Button>
+        {tradeResult && (
+          <div className={`absolute bottom-2 right-2 text-[9px] px-2 py-1 rounded ${tradeResult.success ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+            {tradeResult.success ? 'Order placed!' : tradeResult.message || 'Failed'}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -281,6 +306,7 @@ function TradeCard({ idea, accent }: { idea: TradeIdea; accent: string }) {
 
 export default function TradeDeskPage() {
   const [refreshing, setRefreshing] = useState(false)
+  const { executeTrade, loading: isExecuting } = useBrokerTrade('alpaca')
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -335,7 +361,7 @@ export default function TradeDeskPage() {
               </div>
             </div>
             {CLAUDE_IDEAS.map((idea) => (
-              <TradeCard key={idea.id} idea={idea} accent="bg-amber-500" />
+              <TradeCard key={idea.id} idea={idea} accent="bg-amber-500" executeTrade={executeTrade} isExecuting={isExecuting} />
             ))}
           </div>
 
@@ -357,7 +383,7 @@ export default function TradeDeskPage() {
               </div>
             </div>
             {OPENAI_IDEAS.map((idea) => (
-              <TradeCard key={idea.id} idea={idea} accent="bg-emerald-500" />
+              <TradeCard key={idea.id} idea={idea} accent="bg-emerald-500" executeTrade={executeTrade} isExecuting={isExecuting} />
             ))}
           </div>
         </div>

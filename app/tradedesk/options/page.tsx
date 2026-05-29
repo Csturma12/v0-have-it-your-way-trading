@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 import { 
   BarChart3, Brain, Sparkles, Clock, Target, CheckCircle, Search, Filter,
-  Plus, History, X, Save, ArrowUpRight, Zap, AlertTriangle, RefreshCw, TrendingUp, TrendingDown
+  Plus, History, X, ArrowUpRight, Zap, AlertTriangle, RefreshCw, TrendingUp, TrendingDown, Loader
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useLiveQuotes } from '@/hooks/useLiveQuotes'
+import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 
 type Model = 'claude' | 'openai'
 type RiskLevel = 'low' | 'medium' | 'high'
@@ -207,6 +208,7 @@ export default function OptionsPage() {
   const [riskFilter, setRiskFilter] = useState<RiskLevel | 'all'>('all')
   const [strategyFilter, setStrategyFilter] = useState<'all' | 'spreads' | 'singles' | 'premium'>('all')
   const [showFilters, setShowFilters] = useState(false)
+  const { executeTrade, loading: isExecuting } = useBrokerTrade('alpaca')
   
   const [ideas, setIdeas] = useState<OptionIdea[]>([...CLAUDE_IDEAS, ...OPENAI_IDEAS])
   const [stagedTrades, setStagedTrades] = useState<StagedTrade[]>([])
@@ -262,10 +264,17 @@ export default function OptionsPage() {
     }
   }
 
-  const handleExecuteTrade = (trade: StagedTrade) => {
+  const handleExecuteTrade = async (trade: StagedTrade) => {
+    // Execute the first leg as a market order on Alpaca
+    const firstLeg = trade.legs[0]
+    await executeTrade({
+      ticker: trade.ticker,
+      side: firstLeg.action,
+      quantity: 1,
+      orderType: 'market',
+    })
     setStagedTrades(prev => prev.filter(t => t.id !== trade.id))
     setExecutionHistory(prev => [...prev, { ...trade, status: 'executed' }])
-    router.push(`/quicktrade?ticker=${trade.ticker}&strategy=${encodeURIComponent(trade.strategy)}`)
   }
 
   const handleCancelTrade = (trade: StagedTrade) => {
@@ -458,8 +467,8 @@ export default function OptionsPage() {
                       <span className="text-sm text-muted-foreground">Staged: {trade.stagedAt.toLocaleTimeString()}</span>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="text-amber-400 border-amber-500/40 hover:bg-amber-500/20" onClick={() => handleExecuteTrade(trade)}>
-                        <ArrowUpRight className="w-4 h-4 mr-1" /> Execute
+                      <Button size="sm" variant="outline" className="text-amber-400 border-amber-500/40 hover:bg-amber-500/20" onClick={() => handleExecuteTrade(trade)} disabled={isExecuting}>
+                        {isExecuting ? <Loader className="w-4 h-4 mr-1 animate-spin" /> : <ArrowUpRight className="w-4 h-4 mr-1" />} Execute
                       </Button>
                       <Button size="sm" variant="outline" className="text-red-400 border-red-500/40 hover:bg-red-500/20" onClick={() => handleCancelTrade(trade)}>
                         <X className="w-4 h-4" />

@@ -74,37 +74,26 @@ export function QuickTradeBox({ selectedTicker, price, mode = 'manual', onModeCh
   const handleSubmit = async () => {
     if (!selectedTicker || !quantity) return
 
-    if (mode === 'autonomous') {
-      if (isOption) {
-        await executeTrade({
-          ticker: selectedTicker,
-          side: orderType,
-          quantity: parseInt(quantity),
-          orderType: limitPx ? 'limit' : 'market',
-          limitPrice: limitPx ? parseFloat(limitPx) : undefined,
-          assetClass: 'option',
-          expiration,
-          strike: parseFloat(strike),
-          optionType: optType,
-        })
-      } else {
-        await executeTrade({
-          ticker: selectedTicker,
-          side: orderType,
-          quantity: parseInt(quantity),
-          orderType: 'market',
-          assetClass: 'stock',
-        })
-      }
+    if (isOption) {
+      await executeTrade({
+        ticker: selectedTicker,
+        side: orderType,
+        quantity: parseInt(quantity),
+        orderType: limitPx ? 'limit' : 'market',
+        limitPrice: limitPx ? parseFloat(limitPx) : undefined,
+        assetClass: 'option',
+        expiration,
+        strike: parseFloat(strike),
+        optionType: optType,
+      })
     } else {
-      // Manual mode — log only
-      if (isOption) {
-        console.log(
-          `[v0] Manual ${orderType.toUpperCase()} ${quantity} ${selectedTicker} ${expiration} $${strike}${optType.toUpperCase()[0]} ${limitPx ? '@ $' + limitPx : 'MKT'}`,
-        )
-      } else {
-        console.log(`[v0] Manual ${orderType.toUpperCase()} ${quantity} shares of ${selectedTicker} @ $${price}`)
-      }
+      await executeTrade({
+        ticker: selectedTicker,
+        side: orderType,
+        quantity: parseInt(quantity),
+        orderType: 'market',
+        assetClass: 'stock',
+      })
     }
     setQuantity('')
   }
