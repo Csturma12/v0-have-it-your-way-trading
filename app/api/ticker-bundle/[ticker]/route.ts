@@ -8,9 +8,14 @@ import { NextRequest, NextResponse } from 'next/server'
  *
  * GET /api/ticker-bundle/NVDA
  *
+ * RATE LIMIT OPTIMIZATION:
+ * - Server-side cache with 30s TTL for fast-changing data
+ * - 5-minute TTL for slow-changing data (insider, congress)
+ * - Staggered waves to avoid UW bucket exhaustion
+ * 
  * Response shape:
  *   {
- *     ticker, asOf,
+ *     ticker, asOf, cached,
  *     info: {...}                     // company/ETF profile
  *     state: {...}                    // last price, day high/low, vol
  *     greekExposure: {...}            // total GEX/DEX/charm/vanna
@@ -28,16 +33,28 @@ import { NextRequest, NextResponse } from 'next/server'
  *     congress: [...]
  *     errors: { <slot>: string }      // per-slot fetch failures
  *   }
- *
- * All fetches go to /api/uw/... internally so they share the
- * universal proxy's TTL cache and rate-limit handling.
  */
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// ──────────────────────────────────────────────────────────────────────
+// Server-side cache to reduce UW API calls
+// ──────────────────────────────────────────────────────────────────────
+interface CacheEntry {
+  data: BundleResult
+  timestamp: number
+  fastDataTimestamp: number  // When fast-changing data was last fetched
+}
+
+const bundleCache = new Map<string, CacheEntry>()
+const FAST_TTL = 30_000      // 30s for greeks, flow, dark pool
+const SLOW_TTL = 5 * 60_000  // 5min for insider, congress, info
+
 interface BundleResult {
   ticker: string
   asOf: string
+  cached?: boolean
+  cacheAge?: number
   info: any
   state: any
   greekExposure: any
@@ -45,15 +62,6 @@ interface BundleResult {
   spotExposures: any
   ivRank: any
   ivTermStructure: any
-  // Volatility suite expansion (Phase 1):
-  // volatilityStats   = /stock/{t}/volatility/stats — current iv/rv plus
-  //                     52w high/low for both. Drives the IV/RV range
-  //                     bars in IV Surface.
-  // realizedVol       = /stock/{t}/volatility/realized — time series of
-  //                     implied vs realized (RV shifted 30d back so you
-  //                     can see whether IV historically over- or under-
-  //                     priced the actual move). Drives the IV-vs-RV
-  //                     sparkline in IV Surface.
   volatilityStats: any
   realizedVol: any
   maxPain: any
@@ -113,130 +121,180 @@ export async function GET(
     )
   }
 
-  // Define all the slots and how to populate each. Settled
-  // independently via Promise.allSettled so one failure doesn't
-  // sink the whole bundle.
-  // Endpoint paths confirmed against the live UW v2 API (Apr 2026).
-  // Notes on the non-obvious ones:
-  //   - state           => /stock/:t/stock-state (NOT "/state")
-  //   - ivTermStructure => /stock/:t/volatility/term-structure
-  //   - flowAlerts      => /option-trades/flow-alerts?ticker=
-  //                        (the ticker-scoped /stock/:t/flow-alerts
-  //                        is gated and returns 404 on most plans)
-  //   - insider         => /insider/recent?ticker=  (no /insider/:t route)
-  //   - congress        => /congress/recent-trades?ticker=
-  //                        (no /congress/:t route, /congress/recent
-  //                        is also 404)
-  const slots: Record<string, () => Promise<any>> = {
-    info:                  () => uw(`stock/${ticker}/info`, apiKey),
+  // ──────────────────────────────────────────────────────────────────
+  // Check cache — return cached data if fresh enough
+  // ──────────────────────────────────────────────────────────────────
+  const now = Date.now()
+  const cached = bundleCache.get(ticker)
+  
+  // If cache is fresh (within FAST_TTL), return it immediately
+  if (cached && (now - cached.fastDataTimestamp) < FAST_TTL) {
+    return NextResponse.json({
+      ...cached.data,
+      cached: true,
+      cacheAge: Math.round((now - cached.fastDataTimestamp) / 1000),
+    })
+  }
+
+  // Determine what we need to fetch
+  // - Fast data: Always fetch if cache is stale
+  // - Slow data: Only fetch if >5 minutes old or not cached
+  const needSlowData = !cached || (now - cached.timestamp) > SLOW_TTL
+
+  // ──────────────────────────────────────────────────────────────────
+  // Define slots — split into fast-changing and slow-changing data
+  // ──────────────────────────────────────────────────────────────────
+  
+  // Fast-changing data (fetch every 30s): greeks, flow, dark pool, state
+  const fastSlots: Record<string, () => Promise<any>> = {
     state:                 () => uw(`stock/${ticker}/stock-state`, apiKey),
     greekExposure:         () => uw(`stock/${ticker}/greek-exposure`, apiKey),
     greekExposureByStrike: () => uw(`stock/${ticker}/greek-exposure/strike`, apiKey),
     spotExposures:         () => uw(`stock/${ticker}/spot-exposures`, apiKey),
     ivRank:                () => uw(`stock/${ticker}/iv-rank`, apiKey),
-    ivTermStructure:       () => uw(`stock/${ticker}/volatility/term-structure`, apiKey),
-    // Vol suite Phase 1 — see BundleResult interface for what each does.
-    // 52w stats are reference-class (slow-moving), realized is also slow.
-    // Both go in the second wave so wave 1 stays at 7 fast-changing
-    // endpoints (info/state/greek/iv-rank/term-structure/maxPain).
-    volatilityStats:       () => uw(`stock/${ticker}/volatility/stats`, apiKey),
-    realizedVol:           () => uw(`stock/${ticker}/volatility/realized`, apiKey),
     maxPain:               () => uw(`stock/${ticker}/max-pain`, apiKey),
     optionsVolume:         () => uw(`stock/${ticker}/options-volume`, apiKey),
-    oiChange:              () => uw(`stock/${ticker}/oi-change`, apiKey),
     flowAlerts:            () => uw(`option-trades/flow-alerts?ticker_symbol=${ticker}&limit=20`, apiKey),
-    // UW caps darkpool/recent at limit<=200 (limit=500 returns 422)
     darkPoolRaw:           () => uw(`darkpool/recent?limit=200`, apiKey),
+  }
+  
+  // Slow-changing data (fetch every 5min): info, insider, congress, vol stats
+  const slowSlots: Record<string, () => Promise<any>> = {
+    info:                  () => uw(`stock/${ticker}/info`, apiKey),
+    ivTermStructure:       () => uw(`stock/${ticker}/volatility/term-structure`, apiKey),
+    volatilityStats:       () => uw(`stock/${ticker}/volatility/stats`, apiKey),
+    realizedVol:           () => uw(`stock/${ticker}/volatility/realized`, apiKey),
+    oiChange:              () => uw(`stock/${ticker}/oi-change`, apiKey),
     insider:               () => uw(`insider/recent?ticker_symbol=${ticker}&limit=20`, apiKey),
     congress:              () => uw(`congress/recent-trades?ticker=${ticker}&limit=20`, apiKey),
   }
 
-  // Fan out in two waves of ~7 to stay under UW's per-second rate
-  // limit. With 14 concurrent calls some endpoints (spot-exposures,
-  // term-structure) consistently get 429'd; splitting into two
-  // sequential waves of 7 keeps us under the bucket.
-  const keys = Object.keys(slots)
-  const half = Math.ceil(keys.length / 2)
-  const wave1Keys = keys.slice(0, half)
-  const wave2Keys = keys.slice(half)
-  const wave1 = await Promise.allSettled(wave1Keys.map(k => slots[k]()))
-  // Tiny gap between waves so the rate-limit token bucket refills.
-  await new Promise(r => setTimeout(r, 120))
-  const wave2 = await Promise.allSettled(wave2Keys.map(k => slots[k]()))
-  const results = [...wave1, ...wave2]
+  // ──────────────────────────────────────────────────────────────────
+  // Fetch data — only fetch what we need
+  // ──────────────────────────────────────────────────────────────────
+  
+  // Always fetch fast-changing data
+  const fastKeys = Object.keys(fastSlots)
+  const fastResults = await Promise.allSettled(fastKeys.map(k => fastSlots[k]()))
+  
+  // Only fetch slow-changing data if needed
+  let slowResults: PromiseSettledResult<any>[] = []
+  let slowKeys: string[] = []
+  if (needSlowData) {
+    // Small delay between waves to avoid rate limit
+    await new Promise(r => setTimeout(r, 100))
+    slowKeys = Object.keys(slowSlots)
+    slowResults = await Promise.allSettled(slowKeys.map(k => slowSlots[k]()))
+  }
 
+  // ──────────────────────────────────────────────────────────────────
+  // Build result object
+  // ──────────────────────────────────────────────────────────────────
   const out: BundleResult = {
     ticker,
     asOf: new Date().toISOString(),
-    info: null,
+    info: cached?.data.info ?? null,
     state: null,
     greekExposure: null,
     greekExposureByStrike: null,
     spotExposures: null,
-    ivRank: null,
-    ivTermStructure: null,
-    volatilityStats: null,
-    realizedVol: null,
+    ivRank: cached?.data.ivRank ?? null,
+    ivTermStructure: cached?.data.ivTermStructure ?? null,
+    volatilityStats: cached?.data.volatilityStats ?? null,
+    realizedVol: cached?.data.realizedVol ?? null,
     maxPain: null,
     optionsVolume: null,
-    oiChange: null,
+    oiChange: cached?.data.oiChange ?? null,
     flowAlerts: null,
     darkPool: { trades: [], totalVol: 0, buyVol: 0, sellVol: 0, count: 0 },
-    insider: null,
-    congress: null,
+    insider: cached?.data.insider ?? null,
+    congress: cached?.data.congress ?? null,
     errors: {},
   }
 
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[i]
-    const result = results[i]
-    if (result.status === 'rejected') {
-      out.errors[key] = String(result.reason?.message || result.reason)
-      continue
-    }
-    const data = result.value
-    switch (key) {
-      case 'darkPoolRaw': {
-        // Filter the global feed to this ticker only and derive
-        // buy/sell from price vs NBBO (UW dark pool prints don't
-        // include side directly).
-        const all = data?.data || data?.trades || []
-        const tickerTrades = all.filter(
-          (t: any) => (t.ticker || '').toUpperCase() === ticker,
-        )
-        let buyVol = 0
-        let sellVol = 0
-        let totalVol = 0
-        for (const t of tickerTrades) {
-          const size = Number(t.size) || 0
-          const price = Number(t.price) || 0
-          const ask = Number(t.nbbo_ask) || 0
-          const bid = Number(t.nbbo_bid) || 0
-          totalVol += size
-          if (ask > 0 && price >= ask) buyVol += size
-          else if (bid > 0 && price <= bid) sellVol += size
-        }
-        out.darkPool = {
-          trades: tickerTrades.slice(0, 100),
-          totalVol,
-          buyVol,
-          sellVol,
-          count: tickerTrades.length,
-        }
-        break
-      }
-      default: {
-        // Most UW endpoints wrap data in { data: ... }
-        ;(out as any)[key] = data?.data ?? data
-      }
-    }
+  // Process fast results
+  for (let i = 0; i < fastKeys.length; i++) {
+    const key = fastKeys[i]
+    const result = fastResults[i]
+    processSlotResult(key, result, out, ticker)
+  }
+
+  // Process slow results (if fetched)
+  for (let i = 0; i < slowKeys.length; i++) {
+    const key = slowKeys[i]
+    const result = slowResults[i]
+    processSlotResult(key, result, out, ticker)
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // Update cache
+  // ──────────────────────────────────────────────────────────────────
+  bundleCache.set(ticker, {
+    data: out,
+    timestamp: needSlowData ? now : (cached?.timestamp ?? now),
+    fastDataTimestamp: now,
+  })
+
+  // Clean up old cache entries (keep max 50 tickers)
+  if (bundleCache.size > 50) {
+    const oldestKey = bundleCache.keys().next().value
+    if (oldestKey) bundleCache.delete(oldestKey)
   }
 
   return NextResponse.json(out, {
     headers: {
       'x-bundle-ticker': ticker,
-      'x-bundle-slots': String(keys.length),
+      'x-bundle-fast-slots': String(fastKeys.length),
+      'x-bundle-slow-slots': String(slowKeys.length),
       'x-bundle-errors': String(Object.keys(out.errors).length),
+      'x-bundle-cache-hit': String(!needSlowData),
     },
   })
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Helper to process a slot result
+// ──────────────────────────────────────────────────────────────────────
+function processSlotResult(
+  key: string,
+  result: PromiseSettledResult<any>,
+  out: BundleResult,
+  ticker: string
+) {
+  if (result.status === 'rejected') {
+    out.errors[key] = String(result.reason?.message || result.reason)
+    return
+  }
+  
+  const data = result.value
+  
+  if (key === 'darkPoolRaw') {
+    // Filter the global feed to this ticker only
+    const all = data?.data || data?.trades || []
+    const tickerTrades = all.filter(
+      (t: any) => (t.ticker || '').toUpperCase() === ticker,
+    )
+    let buyVol = 0
+    let sellVol = 0
+    let totalVol = 0
+    for (const t of tickerTrades) {
+      const size = Number(t.size) || 0
+      const price = Number(t.price) || 0
+      const ask = Number(t.nbbo_ask) || 0
+      const bid = Number(t.nbbo_bid) || 0
+      totalVol += size
+      if (ask > 0 && price >= ask) buyVol += size
+      else if (bid > 0 && price <= bid) sellVol += size
+    }
+    out.darkPool = {
+      trades: tickerTrades.slice(0, 100),
+      totalVol,
+      buyVol,
+      sellVol,
+      count: tickerTrades.length,
+    }
+  } else {
+    // Most UW endpoints wrap data in { data: ... }
+    ;(out as any)[key] = data?.data ?? data
+  }
 }
