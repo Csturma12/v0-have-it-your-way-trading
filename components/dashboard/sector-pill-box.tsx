@@ -79,9 +79,11 @@ export function SectorPillBox({ title, accent, tickers, onSelectTicker }: Sector
     setIsRefreshing(true)
     const symbols = tickers.map(t => t.symbol).join(',')
     try {
+      console.log('[v0] SectorPillBox fetching prices for:', symbols)
       const res = await fetch(`/api/polygon/batch-quotes?tickers=${symbols}`)
       if (res.ok) {
         const data = await res.json()
+        console.log('[v0] SectorPillBox got data:', { source: data.source, count: Object.keys(data.quotes || {}).length })
         const next: Record<string, LivePrice> = {}
         for (const t of tickers) {
           const q = data.quotes?.[t.symbol]
@@ -97,17 +99,23 @@ export function SectorPillBox({ title, accent, tickers, onSelectTicker }: Sector
         }
         setLivePrices(next)
         setLastUpdated(new Date())
+      } else {
+        console.error('[v0] SectorPillBox batch-quotes failed:', res.status)
       }
-    } catch {
+    } catch (err) {
+      console.error('[v0] SectorPillBox fetch error:', err)
       // fall back to static prices silently
     }
     setIsRefreshing(false)
   }, [tickers])
 
-  // Fetch on expand, refresh every 30s while expanded
+  // Fetch prices on mount and refresh every 30s while expanded
   useEffect(() => {
-    if (!isExpanded) return
+    // Always fetch once on mount to replace stale hardcoded prices
     fetchLivePrices()
+    
+    if (!isExpanded) return
+    // Refresh every 30s only when expanded
     const interval = setInterval(fetchLivePrices, 30_000)
     return () => clearInterval(interval)
   }, [isExpanded, fetchLivePrices])
@@ -206,10 +214,12 @@ export function SectorPillBox({ title, accent, tickers, onSelectTicker }: Sector
 
           {sorted.map((t) => {
             const live = livePrices[t.symbol]
-            const displayPrice  = live?.price    ?? t.price
-            const displayChgPct = live?.changePct ?? t.change
+            // Only show live price — don't fall back to stale mock data
+            const hasLiveData = live?.price !== undefined && live.price > 0
+            const displayPrice  = hasLiveData ? live.price : null
+            const displayChgPct = hasLiveData ? live.changePct : null
             const isPrePost     = live?.session === 'pre' || live?.session === 'post'
-            const isPositive    = displayChgPct >= 0
+            const isPositive    = (displayChgPct ?? 0) >= 0
 
             const signalColor =
               t.signal === 'BUY'  ? 'text-green-400 bg-green-500/10 border-green-500/30' :
@@ -241,6 +251,8 @@ export function SectorPillBox({ title, accent, tickers, onSelectTicker }: Sector
                   </div>
                   {isRefreshing && !live ? (
                     <span className="text-[9px] font-mono text-muted-foreground animate-pulse">loading...</span>
+                  ) : displayChgPct === null ? (
+                    <span className="text-[9px] font-mono text-muted-foreground animate-pulse">loading...</span>
                   ) : isPrePost && live?.extendedChangePct !== undefined ? (
                     <div className="flex items-center gap-1">
                       <span className={`text-[8px] font-mono px-1 rounded ${live.session === 'pre' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'}`}>
@@ -259,10 +271,13 @@ export function SectorPillBox({ title, accent, tickers, onSelectTicker }: Sector
 
                 {/* Price */}
                 <span className="text-[10px] font-mono text-foreground text-right self-center">
-                  {isPrePost && live?.extendedPrice
-                    ? `$${live.extendedPrice.toFixed(2)}`
-                    : `$${displayPrice.toFixed(2)}`
-                  }
+                  {displayPrice === null ? (
+                    <span className="text-muted-foreground animate-pulse">...</span>
+                  ) : isPrePost && live?.extendedPrice ? (
+                    `$${live.extendedPrice.toFixed(2)}`
+                  ) : (
+                    `$${displayPrice.toFixed(2)}`
+                  )}
                 </span>
 
                 {/* Signal */}
