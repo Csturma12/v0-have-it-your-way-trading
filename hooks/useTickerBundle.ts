@@ -56,10 +56,14 @@ export function useTickerBundle(ticker: string | null | undefined, opts?: {
 }) {
   const key = ticker ? `/api/ticker-bundle/${ticker.toUpperCase()}` : null
   const { data, error, isLoading, mutate } = useSWR<TickerBundle>(key, fetcher, {
-    refreshInterval: opts?.refreshInterval ?? 30_000,
+    // Default 60s refresh - server caches for 30s, so this ensures
+    // we get fresh data without hammering UW's rate limits.
+    // Fast-changing data (greeks, flow) updates every 30s server-side.
+    // Slow-changing data (insider, congress) updates every 5min server-side.
+    refreshInterval: opts?.refreshInterval ?? 60_000,
     revalidateOnFocus: false,
     keepPreviousData: true,
-    dedupingInterval: 5_000,
+    dedupingInterval: 10_000,  // Increased from 5s to 10s
   })
   return {
     bundle: data ?? null,
