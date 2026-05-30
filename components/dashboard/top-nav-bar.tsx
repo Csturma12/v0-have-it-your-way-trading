@@ -35,6 +35,7 @@ import {
   ArrowLeftRight,
   LogOut,
   Users,
+  Radar,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TickerAutocomplete } from '@/components/ui/ticker-autocomplete'
@@ -84,6 +85,12 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Trading Bot',
     href: '/bot',
     icon: Bot,
+    accent: 'green',
+  },
+  {
+    label: 'Trading Tools',
+    href: '/radar',
+    icon: Radar,
     accent: 'green',
   },
   {
