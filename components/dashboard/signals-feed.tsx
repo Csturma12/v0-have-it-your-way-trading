@@ -74,10 +74,9 @@ export function SignalsFeed({ ticker }: { ticker: string }) {
     }
     
     if (mode === 'technical') {
-      // Technical scanner signals
+      // Technical scanner signals - show all (don't filter by ticker since it's a market-wide scan)
       const techSignals = technicalData?.signals ?? []
       return techSignals
-        .filter((s: any) => !ticker || s.ticker === ticker)
         .slice(0, 50)
         .map((s: any) => ({
           ts: s.timestamp,
