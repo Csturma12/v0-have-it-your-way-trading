@@ -4,6 +4,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const UW_BASE = 'https://api.unusualwhales.com/api'
+const POLYGON_BASE = 'https://api.polygon.io'
 const TRADIER_BASE = 'https://api.tradier.com'
 
 /**
@@ -11,12 +12,12 @@ const TRADIER_BASE = 'https://api.tradier.com'
  *
  * GET /api/watchlist-data?tickers=NVDA,TSLA,AMD
  *
- * OPTIMIZED: Uses Tradier for prices (no rate limit issues), UW only for
- * options-specific data (IV rank, call/put volume). Server-side cache
- * reduces UW calls by 90%+.
+ * OPTIMIZED: Uses Polygon (annual plan) for prices, Tradier fallback,
+ * UW only for options-specific data (IV rank, call/put volume).
  *
  * Data sources:
- *   - Tradier: price, OHLC, volume (real-time, generous limits)
+ *   - Polygon: price, OHLC, volume, extended hours (annual plan - primary)
+ *   - Tradier: fallback for quotes
  *   - UW: IV rank, options volume (cached 60s to avoid rate limits)
  */
 
@@ -68,7 +69,38 @@ interface TickerRow {
   callPutRatio: number | null
 }
 
-// Fetch quotes from Tradier (batch up to 100 symbols)
+// Fetch quotes from Polygon (batch snapshot - annual plan)
+async function fetchPolygonQuotes(tickers: string[], apiKey: string): Promise<Map<string, any>> {
+  const quotes = new Map<string, any>()
+  try {
+    const url = `${POLYGON_BASE}/v2/snapshot/locale/us/markets/stocks/tickers?tickers=${tickers.join(',')}&apiKey=${apiKey}`
+    const res = await fetch(url, { cache: 'no-store' })
+    if (res.ok) {
+      const data = await res.json()
+      for (const t of (data.tickers ?? [])) {
+        const day = t.day ?? {}
+        const prevDay = t.prevDay ?? {}
+        const price = day.c ?? t.lastTrade?.p ?? 0
+        const prevClose = prevDay.c ?? 0
+        const changePct = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0
+        quotes.set(t.ticker, {
+          last: price,
+          open: day.o ?? 0,
+          high: day.h ?? 0,
+          low: day.l ?? 0,
+          volume: day.v ?? 0,
+          prevclose: prevClose,
+          change_percentage: changePct,
+        })
+      }
+    }
+  } catch (e) {
+    console.error('[watchlist-data] Polygon fetch error:', e)
+  }
+  return quotes
+}
+
+// Fetch quotes from Tradier (fallback)
 async function fetchTradierQuotes(tickers: string[], apiKey: string): Promise<Map<string, any>> {
   const quotes = new Map<string, any>()
   try {
@@ -140,11 +172,12 @@ async function getUWOptionsData(ticker: string, apiKey: string): Promise<CacheEn
 
 export async function GET(req: NextRequest) {
   const uwApiKey = process.env.UNUSUAL_WHALES_API_KEY
+  const polygonApiKey = process.env.POLYGON_API_KEY
   const tradierApiKey = process.env.TRADIER_API_KEY
   
-  if (!tradierApiKey) {
+  if (!polygonApiKey && !tradierApiKey) {
     return NextResponse.json(
-      { error: 'TRADIER_API_KEY not configured' },
+      { error: 'No quote API configured (POLYGON_API_KEY or TRADIER_API_KEY)' },
       { status: 500 },
     )
   }
@@ -161,8 +194,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'No tickers provided' }, { status: 400 })
   }
 
-  // 1. Fetch all quotes from Tradier in one batch call
-  const tradierQuotes = await fetchTradierQuotes(tickers, tradierApiKey)
+  // 1. Fetch quotes - Polygon primary (annual plan), Tradier fallback
+  let quotes = new Map<string, any>()
+  let quoteSource = 'none'
+  
+  if (polygonApiKey) {
+    quotes = await fetchPolygonQuotes(tickers, polygonApiKey)
+    if (quotes.size > 0) quoteSource = 'polygon'
+  }
+  
+  // Fallback to Tradier if Polygon returned nothing
+  if (quotes.size === 0 && tradierApiKey) {
+    quotes = await fetchTradierQuotes(tickers, tradierApiKey)
+    if (quotes.size > 0) quoteSource = 'tradier'
+  }
   
   // 2. Fetch UW options data (with caching) - only if UW key is configured
   // Fan out in small waves to avoid rate limits
@@ -189,7 +234,7 @@ export async function GET(req: NextRequest) {
 
   // 3. Combine data into response
   const rows: TickerRow[] = tickers.map(ticker => {
-    const tq = tradierQuotes.get(ticker)
+    const q = quotes.get(ticker)
     const uw = uwDataMap.get(ticker)
     
     const num = (v: any): number | null => {
@@ -200,16 +245,16 @@ export async function GET(req: NextRequest) {
     
     return {
       ticker,
-      price: num(tq?.last),
-      open: num(tq?.open),
-      prevClose: num(tq?.prevclose),
-      high: num(tq?.high),
-      low: num(tq?.low),
-      volume: num(tq?.volume),
-      totalVolume: num(tq?.volume), // Tradier doesn't separate pre/post
+      price: num(q?.last),
+      open: num(q?.open),
+      prevClose: num(q?.prevclose),
+      high: num(q?.high),
+      low: num(q?.low),
+      volume: num(q?.volume),
+      totalVolume: num(q?.volume),
       marketTime: null,
       tapeTime: null,
-      changePct: num(tq?.change_percentage),
+      changePct: num(q?.change_percentage),
       ivRank: uw?.ivRank ?? null,
       callVol: uw?.callVol ?? null,
       putVol: uw?.putVol ?? null,
@@ -221,6 +266,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     tickers: rows,
     asOf: new Date().toISOString(),
-    source: tradierApiKey ? 'tradier+uw' : 'tradier',
+    source: quoteSource + (uwApiKey ? '+uw' : ''),
   })
 }

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
- * Batch quotes endpoint — Tradier primary, Polygon fallback.
+ * Batch quotes endpoint — Polygon primary (annual plan), Tradier fallback.
  *
- * Tradier supports up to 100 symbols per request with real-time data.
- * Polygon is 15-min delayed on free tier but has extended-hours snapshots.
+ * Polygon annual plan has generous limits and real-time data with extended hours.
+ * Tradier is fallback for redundancy.
  */
 
 const TRADIER_KEY = process.env.TRADIER_API_KEY
@@ -188,14 +188,14 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // Try Tradier first (real-time)
-  let quotes = await fetchTradierBatch(tickers)
-  let source: 'tradier' | 'polygon' | 'none' = quotes ? 'tradier' : 'none'
+  // Try Polygon first (annual plan - generous limits, real-time with extended hours)
+  let quotes = await fetchPolygonBatch(tickers)
+  let source: 'tradier' | 'polygon' | 'none' = quotes ? 'polygon' : 'none'
 
-  // Fallback to Polygon if Tradier unavailable
+  // Fallback to Tradier if Polygon unavailable
   if (!quotes) {
-    quotes = await fetchPolygonBatch(tickers)
-    source = quotes ? 'polygon' : 'none'
+    quotes = await fetchTradierBatch(tickers)
+    source = quotes ? 'tradier' : 'none'
   }
 
   if (!quotes) {
