@@ -3,11 +3,11 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 /**
- * Unified quote endpoint — Tradier primary, Polygon fallback.
+ * Unified quote endpoint — Polygon primary (annual plan), Tradier fallback.
  *
  * Priority:
- * 1. Tradier (real-time, no delay)
- * 2. Polygon (15-min delayed on free tier, but has extended-hours + fundamentals)
+ * 1. Polygon (annual plan - real-time, extended-hours, fundamentals)
+ * 2. Tradier (fallback for redundancy)
  *
  * Returns a normalized QuoteShape regardless of source.
  */
@@ -221,12 +221,12 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const ticker = (searchParams.get('ticker') || searchParams.get('symbol') || 'AAPL').toUpperCase()
 
-    // Try Tradier first (real-time)
-    let quote = await fetchTradierQuote(ticker)
+    // Try Polygon first (annual plan - real-time with extended hours)
+    let quote = await fetchPolygonQuote(ticker)
 
-    // Fallback to Polygon if Tradier unavailable
+    // Fallback to Tradier if Polygon unavailable
     if (!quote) {
-      quote = await fetchPolygonQuote(ticker)
+      quote = await fetchTradierQuote(ticker)
     }
 
     if (!quote) {
