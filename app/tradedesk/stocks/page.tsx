@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 import { useLiveQuotes } from '@/hooks/useLiveQuotes'
+import { AlpacaTradeUpdates } from '@/components/alpaca/trade-updates'
 
 type Model = 'claude' | 'openai'
 type RiskLevel = 'low' | 'medium' | 'high'
@@ -504,6 +505,13 @@ export default function StocksPage() {
             </div>
           </div>
         </div>
+        
+        {/* Live Trade Updates */}
+        {broker === 'alpaca' && (
+          <div className="fixed bottom-4 right-4 w-80 z-40">
+            <AlpacaTradeUpdates maxUpdates={5} />
+          </div>
+        )}
       </main>
     </div>
   )

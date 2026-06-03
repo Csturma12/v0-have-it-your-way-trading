@@ -7,6 +7,7 @@ import { TopNavBar } from './top-nav-bar'
 import { WidgetGrid } from './widget-grid'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle } from 'lucide-react'
+import { AlpacaTradeUpdates } from '@/components/alpaca/trade-updates'
 
 export function TradingDashboard() {
   const [selectedTicker, setSelectedTicker] = useState('NVDA')
@@ -39,6 +40,11 @@ export function TradingDashboard() {
           onSelectTicker={setSelectedTicker}
         />
       </main>
+      
+      {/* Live Trade Updates - Fixed Position */}
+      <div className="fixed bottom-4 right-4 w-80 z-40">
+        <AlpacaTradeUpdates maxUpdates={5} />
+      </div>
     </div>
   )
 }

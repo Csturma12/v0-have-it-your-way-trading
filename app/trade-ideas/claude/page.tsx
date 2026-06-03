@@ -6,6 +6,7 @@ import { TickerAutocomplete } from '@/components/ui/ticker-autocomplete'
 import { Brain, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Target, Clock, BarChart3, Zap, BookOpen, Globe, DollarSign, Activity, Layers, Filter, RefreshCw, Star, Bookmark, Share2, ExternalLink, Search, X, Bot, Hand, Loader, CheckCircle, Sparkles } from 'lucide-react'
 import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 import { useTradeIdeas, TradeIdea } from '@/hooks/useTradeIdeas'
+import { AlpacaTradeUpdates } from '@/components/alpaca/trade-updates'
 
 type RiskLevel = 'low' | 'medium' | 'high'
 type Timeframe = 'short' | 'medium' | 'long'
@@ -1044,6 +1045,11 @@ export default function ClaudeIdeasPage() {
               </div>
             )
           })}
+        </div>
+        
+        {/* Live Trade Updates */}
+        <div className="mt-6 px-6 pb-6">
+          <AlpacaTradeUpdates maxUpdates={10} />
         </div>
       </main>
 

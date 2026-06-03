@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 import { QuickTradeIdeas } from '@/components/dashboard/quick-trade-ideas'
+import { AlpacaTradeUpdates } from '@/components/alpaca/trade-updates'
 import { useBrokerTrade } from '@/hooks/useBrokerTrade'
 import { useLiveQuote } from '@/hooks/useLiveQuotes'
 
@@ -241,28 +242,6 @@ export default function QuickTradePage() {
               </div>
             </div>
 
-            {/* Broker Selection */}
-            <div className="mb-6">
-              <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2 block">
-                Paper Trading Broker
-              </label>
-              <div className="flex gap-2">
-                {(['alpaca', 'tastytrade'] as const).map((b) => (
-                  <button
-                    key={b}
-                    onClick={() => setBroker(b)}
-                    className={`flex-1 px-4 py-2 rounded text-sm font-mono font-semibold uppercase transition-colors ${
-                      broker === b
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted/30 text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {b === 'alpaca' ? '🦙 Alpaca' : '🥒 Tastytrade'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Error/Success Messages */}
             {result && !result.success && (
               <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 mb-6">
@@ -325,16 +304,6 @@ export default function QuickTradePage() {
               </Button>
             </div>
 
-            {/* Trade Result Alert */}
-            {result && (
-              <div className="mt-4 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-                <div className="flex items-center gap-2 text-green-400">
-                  <Check className="w-4 h-4" />
-                  <span className="font-mono text-sm">{side === 'buy' ? 'Buy' : 'Sell'} order executed: {result.orderId}</span>
-                </div>
-              </div>
-            )}
-
 
           </div>
 
@@ -343,6 +312,13 @@ export default function QuickTradePage() {
             <h2 className="text-sm font-mono font-bold text-foreground mb-4 uppercase tracking-wide">Ideas for You</h2>
             <QuickTradeIdeas onSelectIdea={handleTradeIdeaSelect} />
           </div>
+          
+          {/* Live Trade Updates */}
+          {broker === 'alpaca' && (
+            <div className="mt-6">
+              <AlpacaTradeUpdates maxUpdates={10} />
+            </div>
+          )}
         </div>
       </main>
     </div>
