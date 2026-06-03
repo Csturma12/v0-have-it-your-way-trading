@@ -210,57 +210,6 @@ export async function GET(
     slowResults = await Promise.allSettled(slowKeys.map(k => slowSlots[k]()))
   }
 
-  // Determine what we need to fetch
-  // - Fast data: Always fetch if cache is stale
-  // - Slow data: Only fetch if >5 minutes old or not cached
-  const needSlowData = !cached || (now - cached.timestamp) > SLOW_TTL
-
-  // ──────────────────────────────────────────────────────────────────
-  // Define slots — split into fast-changing and slow-changing data
-  // ──────────────────────────────────────────────────────────────────
-  
-  // Fast-changing data (fetch every 30s): greeks, flow, dark pool, state
-  const fastSlots: Record<string, () => Promise<any>> = {
-    state:                 () => uw(`stock/${ticker}/stock-state`, apiKey),
-    greekExposure:         () => uw(`stock/${ticker}/greek-exposure`, apiKey),
-    greekExposureByStrike: () => uw(`stock/${ticker}/greek-exposure/strike`, apiKey),
-    spotExposures:         () => uw(`stock/${ticker}/spot-exposures`, apiKey),
-    ivRank:                () => uw(`stock/${ticker}/iv-rank`, apiKey),
-    maxPain:               () => uw(`stock/${ticker}/max-pain`, apiKey),
-    optionsVolume:         () => uw(`stock/${ticker}/options-volume`, apiKey),
-    flowAlerts:            () => uw(`option-trades/flow-alerts?ticker_symbol=${ticker}&limit=20`, apiKey),
-    darkPoolRaw:           () => uw(`darkpool/recent?limit=200`, apiKey),
-  }
-  
-  // Slow-changing data (fetch every 5min): info, insider, congress, vol stats
-  const slowSlots: Record<string, () => Promise<any>> = {
-    info:                  () => uw(`stock/${ticker}/info`, apiKey),
-    ivTermStructure:       () => uw(`stock/${ticker}/volatility/term-structure`, apiKey),
-    volatilityStats:       () => uw(`stock/${ticker}/volatility/stats`, apiKey),
-    realizedVol:           () => uw(`stock/${ticker}/volatility/realized`, apiKey),
-    oiChange:              () => uw(`stock/${ticker}/oi-change`, apiKey),
-    insider:               () => uw(`insider/recent?ticker_symbol=${ticker}&limit=20`, apiKey),
-    congress:              () => uw(`congress/recent-trades?ticker=${ticker}&limit=20`, apiKey),
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Fetch data — only fetch what we need
-  // ──────────────────────────────────────────────────────────────────
-  
-  // Always fetch fast-changing data
-  const fastKeys = Object.keys(fastSlots)
-  const fastResults = await Promise.allSettled(fastKeys.map(k => fastSlots[k]()))
-  
-  // Only fetch slow-changing data if needed
-  let slowResults: PromiseSettledResult<any>[] = []
-  let slowKeys: string[] = []
-  if (needSlowData) {
-    // Small delay between waves to avoid rate limit
-    await new Promise(r => setTimeout(r, 100))
-    slowKeys = Object.keys(slowSlots)
-    slowResults = await Promise.allSettled(slowKeys.map(k => slowSlots[k]()))
-  }
-
   // ──────────────────────────────────────────────────────────────────
   // Build result object
   // ──────────────────────────────────────────────────────────────────

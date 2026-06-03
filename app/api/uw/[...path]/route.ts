@@ -82,6 +82,18 @@ export async function GET(
       body = { raw: text }
     }
 
+    // On rate limit (429), return stale cache if available instead of error
+    if (res.status === 429 && cached) {
+      return NextResponse.json(cached.body, {
+        status: 200, // Return 200 with stale data, not 429
+        headers: { 
+          'x-uw-cache': 'STALE', 
+          'x-uw-path': subPath,
+          'x-uw-rate-limited': 'true',
+        },
+      })
+    }
+
     if (res.ok) {
       cache.set(upstream, { body, status: res.status, expires: now + ttl })
     }
@@ -95,6 +107,16 @@ export async function GET(
       },
     })
   } catch (err) {
+    // On network error, return stale cache if available
+    if (cached) {
+      return NextResponse.json(cached.body, {
+        status: 200,
+        headers: { 
+          'x-uw-cache': 'STALE-ERROR', 
+          'x-uw-path': subPath,
+        },
+      })
+    }
     return NextResponse.json(
       {
         error: 'Upstream fetch failed',
