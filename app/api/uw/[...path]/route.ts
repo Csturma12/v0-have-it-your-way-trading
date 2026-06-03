@@ -30,7 +30,7 @@ const UW_BASE = 'https://api.unusualwhales.com/api'
 // Keyed by full URL including query.
 type CacheEntry = { body: any; status: number; expires: number }
 const cache = new Map<string, CacheEntry>()
-const DEFAULT_TTL_MS = 5_000 // 5s — appropriate for "real-time-ish" widget polling
+const DEFAULT_TTL_MS = 10_000 // 10s — increased to reduce UW load
 
 export async function GET(
   req: NextRequest,
@@ -120,7 +120,7 @@ function ttlFor(path: string): number {
   )
     return 3_000
 
-  // Slowly changing data — medium TTL
+  // Slowly changing data — medium TTL (30s)
   if (
     path.includes('greek-exposure') ||
     path.includes('spot-exposures') ||
@@ -128,6 +128,9 @@ function ttlFor(path: string): number {
     path.includes('total-options-volume') ||
     path.includes('iv-rank') ||
     path.includes('iv-term-structure') ||
+    path.includes('stock-state') ||      // Added: state updates every few seconds during market hours
+    path.includes('options-volume') ||   // Added: options volume is slow-changing
+    path.includes('max-pain') ||         // Added: max pain updates daily
     // Vol suite Phase 1: stats and term structure update once or twice
     // a day, realized vol is computed off the daily close.
     path.includes('volatility/stats') ||
@@ -141,7 +144,7 @@ function ttlFor(path: string): number {
     path.includes('etf-tide') ||
     path.includes('market/correlations')
   )
-    return 10_000
+    return 30_000 // 30s for medium-changing data
 
   // Reference data — long TTL
   // Earnings calendars don't tick intraday — the schedule is set the
