@@ -7,6 +7,7 @@ import { TopNavBar } from '@/components/dashboard/top-nav-bar'
 import { TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, Brain, Cpu, DollarSign, Activity, Filter, RefreshCw, Star, Bookmark, Bot, Hand, Target, Loader, CheckCircle, Search, X } from 'lucide-react'
 import { TickerAutocomplete } from '@/components/ui/ticker-autocomplete'
 import { useTradeIdeas } from '@/hooks/useTradeIdeas'
+import { AlpacaTradeUpdates } from '@/components/alpaca/trade-updates'
 
 type SentimentCategory = 'bullish' | 'bearish' | 'hedge' | 'neutral'
 
@@ -456,6 +457,11 @@ export default function ConsensusPage() {
               <p className="text-muted-foreground">No ideas match your filters</p>
             </div>
           )}
+          
+          {/* Live Trade Updates */}
+          <div className="mt-6">
+            <AlpacaTradeUpdates maxUpdates={10} />
+          </div>
         </div>
       </main>
     </div>

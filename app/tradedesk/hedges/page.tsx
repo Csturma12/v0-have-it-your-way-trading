@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useLiveQuotes } from '@/hooks/useLiveQuotes'
+import { AlpacaTradeUpdates } from '@/components/alpaca/trade-updates'
 
 type Model = 'claude' | 'openai'
 type RiskLevel = 'low' | 'medium' | 'high'
@@ -521,6 +522,11 @@ export default function HedgesPage() {
                 <Badge key={type} variant="outline" className={`${colors} capitalize`}>{type}</Badge>
               ))}
             </div>
+          </div>
+          
+          {/* Live Trade Updates */}
+          <div className="mt-6">
+            <AlpacaTradeUpdates maxUpdates={10} />
           </div>
         </div>
       </main>

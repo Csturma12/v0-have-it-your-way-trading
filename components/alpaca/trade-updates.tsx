@@ -10,18 +10,22 @@ import { Activity, CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-re
 interface AlpacaTradeUpdatesProps {
   className?: string
   maxHeight?: string
+  maxUpdates?: number
   onTradeUpdate?: (update: AlpacaTradeUpdate) => void
 }
 
 export function AlpacaTradeUpdates({ 
   className, 
   maxHeight = '400px',
+  maxUpdates = 50,
   onTradeUpdate 
 }: AlpacaTradeUpdatesProps) {
-  const { isConnected, updates } = useAlpacaTradeUpdates({
+  const { isConnected, updates: allUpdates } = useAlpacaTradeUpdates({
     onTradeUpdate,
     enabled: true,
   })
+  
+  const updates = allUpdates.slice(0, maxUpdates)
 
   const getEventIcon = (event: string) => {
     switch (event) {

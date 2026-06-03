@@ -26,6 +26,7 @@ import {
   Brain,
   Cpu
 } from 'lucide-react'
+import { AlpacaTradeUpdates } from '@/components/alpaca/trade-updates'
 
 export default function BotDashboardPage() {
   const {
@@ -502,6 +503,11 @@ export default function BotDashboardPage() {
               </tbody>
             </table>
           </div>
+        </div>
+        
+        {/* Live Trade Updates */}
+        <div className="fixed bottom-4 right-4 w-80 z-40">
+          <AlpacaTradeUpdates maxUpdates={5} />
         </div>
       </main>
     </div>
