@@ -499,7 +499,7 @@ const WIDGET_SECTIONS: Array<{ section: string; widgets: RightWidget[] }> = [
       { id: 'iv-surface',         type: 'iv-surface',         title: 'IV Surface' },
       { id: 'dark-pool-blocks',   type: 'dark-pool-blocks',   title: 'Dark Pool / Blocks' },
       { id: 'dark-pool-flow',     type: 'dark-pool-flow',     title: 'Dark Pool Flow (Live)' },
-      { id: 'signals-feed',       type: 'signals-feed',       title: 'Signals (Flow + Congress + Insider)' },
+      { id: 'signals-feed',       type: 'signals-feed',       title: 'Signals' },
       { id: 'trading-tools',      type: 'trading-tools',      title: 'Trading Tools (UW + SEC + Gov + Social)' },
       { id: 'shorts-profile',     type: 'shorts-profile',     title: 'Shorts (Snapshot / Volume / Screener)' },
       { id: 'market-flow',        type: 'market-flow',        title: 'Market Flow (Greek / Sector / ETF / Corr)' },
