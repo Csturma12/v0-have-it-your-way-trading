@@ -1,21 +1,25 @@
 'use client'
 
 import { useEffect, useRef, useCallback, useState } from 'react'
+import useSWR from 'swr'
 
 /**
- * Alpaca WebSocket trade updates hook.
- * Connects to wss://paper-api.alpaca.markets/stream for real-time order updates.
- * 
- * Events: new, fill, partial_fill, canceled, expired, replaced, rejected, etc.
+ * Alpaca trade updates hook.
+ *
+ * Uses reliable polling against /api/alpaca/orders instead of a browser
+ * WebSocket. The previous WebSocket approach exposed the API secret to the
+ * client and frequently failed to stay connected in the preview environment
+ * (binary frame handling + auth handshake). Polling the REST orders endpoint
+ * gives us the same live order activity without those issues.
  */
 
 export interface AlpacaTradeUpdate {
-  event: 
-    | 'new' 
-    | 'fill' 
-    | 'partial_fill' 
-    | 'canceled' 
-    | 'expired' 
+  event:
+    | 'new'
+    | 'fill'
+    | 'partial_fill'
+    | 'canceled'
+    | 'expired'
     | 'done_for_day'
     | 'replaced'
     | 'accepted'
@@ -28,8 +32,9 @@ export interface AlpacaTradeUpdate {
     | 'suspended'
     | 'order_replace_rejected'
     | 'order_cancel_rejected'
+    | string
   timestamp?: string
-  price?: string
+  price?: string | null
   qty?: string
   position_qty?: string
   execution_id?: string
@@ -37,14 +42,14 @@ export interface AlpacaTradeUpdate {
     id: string
     client_order_id: string
     symbol: string
-    asset_class: 'us_equity' | 'us_option' | 'crypto'
+    asset_class: 'us_equity' | 'us_option' | 'crypto' | string
     side: 'buy' | 'sell'
     qty: string
     filled_qty: string
     filled_avg_price: string | null
-    order_type: 'market' | 'limit' | 'stop' | 'stop_limit'
+    order_type: 'market' | 'limit' | 'stop' | 'stop_limit' | string
     type: string
-    time_in_force: 'day' | 'gtc' | 'opg' | 'cls' | 'ioc' | 'fok'
+    time_in_force: string
     limit_price: string | null
     stop_price: string | null
     status: string
@@ -54,8 +59,14 @@ export interface AlpacaTradeUpdate {
     filled_at: string | null
     canceled_at: string | null
     expired_at: string | null
-    legs?: any[] // For multi-leg options
+    legs?: any[]
   }
+}
+
+interface OrdersResponse {
+  connected: boolean
+  updates?: AlpacaTradeUpdate[]
+  error?: string
 }
 
 interface UseAlpacaTradeUpdatesOptions {
@@ -64,160 +75,97 @@ interface UseAlpacaTradeUpdatesOptions {
   onDisconnected?: () => void
   onError?: (error: string) => void
   enabled?: boolean
+  /** Poll interval in ms. Defaults to 5s. */
+  refreshInterval?: number
+}
+
+const fetcher = async (url: string): Promise<OrdersResponse> => {
+  const res = await fetch(url, { cache: 'no-store' })
+  const data = await res.json()
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to fetch orders')
+  }
+  return data
 }
 
 export function useAlpacaTradeUpdates(options: UseAlpacaTradeUpdatesOptions = {}) {
-  const { 
-    onTradeUpdate, 
-    onConnected, 
-    onDisconnected, 
+  const {
+    onTradeUpdate,
+    onConnected,
+    onDisconnected,
     onError,
-    enabled = true 
+    enabled = true,
+    refreshInterval = 5000,
   } = options
 
-  const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const [isConnected, setIsConnected] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState<AlpacaTradeUpdate | null>(null)
   const [updates, setUpdates] = useState<AlpacaTradeUpdate[]>([])
+  const [lastUpdate, setLastUpdate] = useState<AlpacaTradeUpdate | null>(null)
+  const seenRef = useRef<Map<string, string>>(new Map())
+  const wasConnectedRef = useRef(false)
 
-  const connect = useCallback(async () => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return
-
-    try {
-      // Fetch credentials from our API (never expose keys to client)
-      const credRes = await fetch('/api/alpaca/ws-auth')
-      if (!credRes.ok) {
-        const err = await credRes.json()
-        onError?.(err.error || 'Failed to get WebSocket credentials')
-        return
-      }
-      const { key, secret, url } = await credRes.json()
-
-      const ws = new WebSocket(url)
-      wsRef.current = ws
-
-      ws.onopen = () => {
-        // Send authentication message
-        ws.send(JSON.stringify({
-          action: 'auth',
-          key,
-          secret,
-        }))
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          // Alpaca uses binary frames for trade_updates
-          let data: any
-          if (event.data instanceof Blob) {
-            // Handle binary data
-            const reader = new FileReader()
-            reader.onload = () => {
-              try {
-                data = JSON.parse(reader.result as string)
-                handleMessage(data)
-              } catch (e) {
-                console.error('[Alpaca WS] Failed to parse binary message:', e)
-              }
-            }
-            reader.readAsText(event.data)
-            return
-          } else {
-            data = JSON.parse(event.data)
-          }
-          handleMessage(data)
-        } catch (e) {
-          console.error('[Alpaca WS] Failed to parse message:', e)
-        }
-      }
-
-      ws.onerror = (event) => {
-        console.error('[Alpaca WS] WebSocket error:', event)
-        onError?.('WebSocket connection error')
-      }
-
-      ws.onclose = (event) => {
-        setIsConnected(false)
-        onDisconnected?.()
-        
-        // Reconnect after 5 seconds if enabled
-        if (enabled && event.code !== 1000) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect()
-          }, 5000)
-        }
-      }
-
-      function handleMessage(data: any) {
-        // Handle authorization response
-        if (data.stream === 'authorization') {
-          if (data.data?.status === 'authorized') {
-            // Subscribe to trade updates
-            ws.send(JSON.stringify({
-              action: 'listen',
-              data: {
-                streams: ['trade_updates']
-              }
-            }))
-          } else {
-            onError?.('WebSocket authorization failed')
-            ws.close()
-          }
-          return
-        }
-
-        // Handle listening confirmation
-        if (data.stream === 'listening') {
-          setIsConnected(true)
-          onConnected?.()
-          return
-        }
-
-        // Handle trade updates
-        if (data.stream === 'trade_updates') {
-          const update: AlpacaTradeUpdate = data.data
-          setLastUpdate(update)
-          setUpdates(prev => [update, ...prev].slice(0, 50)) // Keep last 50
-          onTradeUpdate?.(update)
-          return
-        }
-
-        // Handle errors
-        if (data.action === 'error') {
-          onError?.(data.data?.error_message || 'Unknown WebSocket error')
-        }
-      }
-
-    } catch (e) {
-      console.error('[Alpaca WS] Connection error:', e)
-      onError?.(e instanceof Error ? e.message : 'Connection failed')
+  const { data, error, mutate } = useSWR<OrdersResponse>(
+    enabled ? '/api/alpaca/orders' : null,
+    fetcher,
+    {
+      refreshInterval: enabled ? refreshInterval : 0,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
     }
-  }, [enabled, onTradeUpdate, onConnected, onDisconnected, onError])
+  )
+
+  const isConnected = !!data?.connected && !error
+
+  // Track connect/disconnect transitions.
+  useEffect(() => {
+    if (isConnected && !wasConnectedRef.current) {
+      wasConnectedRef.current = true
+      onConnected?.()
+    } else if (!isConnected && wasConnectedRef.current) {
+      wasConnectedRef.current = false
+      onDisconnected?.()
+    }
+  }, [isConnected, onConnected, onDisconnected])
+
+  // Surface errors.
+  useEffect(() => {
+    if (error) {
+      onError?.(error instanceof Error ? error.message : 'Connection error')
+    }
+  }, [error, onError])
+
+  // Diff incoming orders and emit new/changed events.
+  useEffect(() => {
+    const incoming = data?.updates
+    if (!incoming || incoming.length === 0) return
+
+    // Newest-first list from the API.
+    setUpdates(incoming.slice(0, 50))
+    setLastUpdate(incoming[0] ?? null)
+
+    // Fire callback only for orders we haven't seen in this state before.
+    const seen = seenRef.current
+    // Iterate oldest-first so callbacks arrive in chronological order.
+    for (let i = incoming.length - 1; i >= 0; i--) {
+      const u = incoming[i]
+      const key = u.order.id
+      const stateSig = `${u.order.status}:${u.order.filled_qty}`
+      if (seen.get(key) !== stateSig) {
+        seen.set(key, stateSig)
+        // Skip the very first hydration burst to avoid replaying history.
+        if (wasConnectedRef.current) {
+          onTradeUpdate?.(u)
+        }
+      }
+    }
+  }, [data, onTradeUpdate])
+
+  const connect = useCallback(() => {
+    mutate()
+  }, [mutate])
 
   const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
-    if (wsRef.current) {
-      wsRef.current.close(1000, 'Client disconnect')
-      wsRef.current = null
-    }
-    setIsConnected(false)
+    // No persistent connection to tear down with polling.
   }, [])
-
-  useEffect(() => {
-    if (enabled) {
-      connect()
-    } else {
-      disconnect()
-    }
-
-    return () => {
-      disconnect()
-    }
-  }, [enabled, connect, disconnect])
 
   return {
     isConnected,
@@ -225,6 +173,7 @@ export function useAlpacaTradeUpdates(options: UseAlpacaTradeUpdatesOptions = {}
     updates,
     connect,
     disconnect,
+    refresh: mutate,
     clearUpdates: () => setUpdates([]),
   }
 }

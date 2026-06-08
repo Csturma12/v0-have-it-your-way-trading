@@ -469,6 +469,7 @@ export default function OpenAIIdeasPage() {
   const [tradingMode, setTradingMode] = useState<'autonomous' | 'manual'>('manual')
   const [executingTrade, setExecutingTrade] = useState<string | null>(null)
   const [tradeResult, setTradeResult] = useState<{ id: string; success: boolean; message: string } | null>(null)
+  const [stagedTrades, setStagedTrades] = useState<Array<{ id: string; ticker: string; action: 'buy' | 'sell'; entry: number; quantity: number; stagedAt: Date }>>([])
   
   const { executeTrade, loading: tradeLoading } = useBrokerTrade('alpaca')
   const { ideas: dynamicIdeas, isGenerating, generateIdea } = useTradeIdeas({ provider: 'openai' })
@@ -503,6 +504,44 @@ export default function OpenAIIdeasPage() {
     setIdeas(prev => prev.map(idea => 
       idea.id === id ? { ...idea, saved: !idea.saved } : idea
     ))
+  }
+
+  const isStaged = (ticker: string) => stagedTrades.some(t => t.ticker === ticker)
+
+  const handleStageTrade = (idea: ResearchIdea) => {
+    setStagedTrades(prev => {
+      const existing = prev.findIndex(t => t.ticker === idea.ticker)
+      if (existing >= 0) {
+        return prev.filter((_, i) => i !== existing)
+      }
+      return [
+        ...prev,
+        {
+          id: `staged-${Date.now()}`,
+          ticker: idea.ticker,
+          action: idea.action === 'buy' ? 'buy' : 'sell',
+          entry: idea.currentPrice,
+          quantity: 10,
+          stagedAt: new Date(),
+        },
+      ]
+    })
+  }
+
+  const handleExecuteStaged = async (trade: { id: string; ticker: string; action: 'buy' | 'sell'; quantity: number }) => {
+    setExecutingTrade(trade.id)
+    const result = await executeTrade({
+      ticker: trade.ticker,
+      side: trade.action,
+      quantity: trade.quantity,
+      orderType: 'market',
+    })
+    setTradeResult({ id: trade.id, success: result.success, message: result.message })
+    if (result.success) {
+      setStagedTrades(prev => prev.filter(t => t.id !== trade.id))
+    }
+    setExecutingTrade(null)
+    setTimeout(() => setTradeResult(null), 3000)
   }
 
   // Convert dynamic ideas to the ResearchIdea format
@@ -960,12 +999,14 @@ export default function OpenAIIdeasPage() {
                               setExecutingTrade(null)
                               setTimeout(() => setTradeResult(null), 3000)
                             } else {
-                              console.log(`[v0] Staged ${idea.action.toUpperCase()} trade for ${idea.ticker}`)
+                              handleStageTrade(idea)
                             }
                           }}
                           disabled={executingTrade === idea.id}
                           className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 ${
-                            idea.action === 'buy' 
+                            isStaged(idea.ticker) && tradingMode === 'manual'
+                              ? 'bg-amber-500 text-black border border-amber-500'
+                              : idea.action === 'buy' 
                               ? 'bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30'
                               : 'bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30'
                           } ${executingTrade === idea.id ? 'opacity-50' : ''}`}
@@ -974,6 +1015,8 @@ export default function OpenAIIdeasPage() {
                             <Loader className="w-4 h-4 animate-spin" />
                           ) : tradeResult?.id === idea.id && tradeResult.success ? (
                             <CheckCircle className="w-4 h-4" />
+                          ) : isStaged(idea.ticker) && tradingMode === 'manual' ? (
+                            <CheckCircle className="w-4 h-4" />
                           ) : (
                             <Target className="w-4 h-4" />
                           )}
@@ -981,7 +1024,9 @@ export default function OpenAIIdeasPage() {
                             ? 'Executing...' 
                             : tradeResult?.id === idea.id 
                               ? (tradeResult.success ? 'Executed!' : 'Failed')
-                              : tradingMode === 'autonomous' ? 'Execute Trade' : 'Stage Trade'}
+                              : tradingMode === 'autonomous' 
+                                ? 'Execute Trade' 
+                                : isStaged(idea.ticker) ? 'Staged ✓' : 'Stage Trade'}
                         </button>
                       </div>
                     </div>
@@ -992,6 +1037,57 @@ export default function OpenAIIdeasPage() {
           })}
         </div>
         
+        {/* Staged Trades Review */}
+        {stagedTrades.length > 0 && (
+          <div className="mt-6 px-6">
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold flex items-center gap-2 text-amber-400">
+                  <Target className="w-4 h-4" />
+                  Staged Trades ({stagedTrades.length})
+                </h3>
+                <span className="text-xs text-muted-foreground">Review and execute via Alpaca paper trading</span>
+              </div>
+              <div className="space-y-2">
+                {stagedTrades.map(trade => (
+                  <div key={trade.id} className="flex items-center justify-between p-3 rounded-lg bg-card/60 border border-border">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono ${trade.action === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {trade.action.toUpperCase()}
+                      </span>
+                      <span className="font-mono font-semibold">{trade.ticker}</span>
+                      <span className="text-xs text-muted-foreground">
+                        Qty: {trade.quantity} · ~${trade.entry.toFixed(2)} · {trade.stagedAt.toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleExecuteStaged(trade)}
+                        disabled={executingTrade === trade.id}
+                        className="px-3 py-1.5 rounded-md text-xs font-bold bg-green-500 text-black hover:bg-green-400 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {executingTrade === trade.id ? (
+                          <><Loader className="w-3 h-3 animate-spin" /> Executing…</>
+                        ) : tradeResult?.id === trade.id && !tradeResult.success ? (
+                          'Failed — Retry'
+                        ) : (
+                          'Execute'
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setStagedTrades(prev => prev.filter(t => t.id !== trade.id))}
+                        className="px-3 py-1.5 rounded-md text-xs font-bold bg-muted/40 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Live Trade Updates */}
         <div className="mt-6 px-6 pb-6">
           <AlpacaTradeUpdates maxUpdates={10} />

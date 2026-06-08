@@ -84,7 +84,7 @@ export function AlpacaTradeUpdates({
             Trade Updates
           </CardTitle>
           <Badge variant={isConnected ? 'default' : 'secondary'} className="text-xs">
-            {isConnected ? 'Live' : 'Disconnected'}
+            {isConnected ? 'Live' : 'Connecting…'}
           </Badge>
         </div>
       </CardHeader>
@@ -93,8 +93,8 @@ export function AlpacaTradeUpdates({
           {updates.length === 0 ? (
             <div className="text-center text-muted-foreground py-8 text-sm">
               {isConnected 
-                ? 'Waiting for trade updates...' 
-                : 'Connect to see real-time updates'}
+                ? 'No recent orders. Place a trade to see it here.' 
+                : 'Connecting to Alpaca…'}
             </div>
           ) : (
             <div className="space-y-3">
