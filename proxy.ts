@@ -2,28 +2,22 @@ import { updateSession } from '@/lib/supabase/proxy'
 import { type NextRequest, NextResponse } from 'next/server'
 
 /**
- * GLOBAL API PAUSE / KILL SWITCH
+ * GLOBAL API PAUSE / KILL SWITCH — HARD LOCKED
  * ------------------------------------------------------------------
- * While this is `true`, every request to `/api/*` is short-circuited
- * and returns 503 before any route handler runs — so NO external API
- * calls (Alpaca, Finnhub, Polygon, Supabase queries in routes, etc.)
- * are made. Nothing is deleted; flip this back to `false` to resume.
+ * This is intentionally a hard-coded constant with NO env override.
+ * While `true`, every request to `/api/*` is short-circuited and
+ * returns 503 before any route handler runs — so NO external API
+ * calls (Alpaca, Finnhub, Polygon, OpenAI, Supabase, etc.) can fire.
  *
- * Can also be controlled without a code change via the env var
- * `API_PAUSED` ("true"/"false"). The env var, if set, wins.
+ * There is deliberately no env-var escape hatch so it can't be
+ * flipped accidentally. Nothing is deleted. To resume, set this to
+ * `false` (a deliberate code change).
  */
-const API_PAUSED_DEFAULT = true
-
-function isApiPaused() {
-  const envFlag = process.env.API_PAUSED
-  if (envFlag === 'true') return true
-  if (envFlag === 'false') return false
-  return API_PAUSED_DEFAULT
-}
+const API_PAUSED = true
 
 export async function proxy(request: NextRequest) {
   // Kill switch: block all API traffic while paused
-  if (request.nextUrl.pathname.startsWith('/api/') && isApiPaused()) {
+  if (request.nextUrl.pathname.startsWith('/api/') && API_PAUSED) {
     return NextResponse.json(
       {
         error: 'paused',
